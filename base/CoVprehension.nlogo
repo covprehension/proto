@@ -369,8 +369,7 @@ to fix_seed
 end
 
 to stat
-  set contamination current-nb-new-infections-reported
- +  current-nb-new-infections-asymptomatic
+  set contamination (current-nb-new-infections-reported + current-nb-new-infections-asymptomatic)
 
   if any? citizens with [respect-rules? = 1][
     set good-citizen count citizens with [respect-rules? = 1 and epidemic-state = 1]
@@ -973,7 +972,8 @@ NetLogo 6.1.1
     <metric>nb_S</metric>
     <metric>nb_Ir</metric>
     <metric>nb_Inr</metric>
-    <metric>contamination</metric>
+    <metric>current-nb-new-infections-reported</metric>
+    <metric>current-nb-new-infections-asymptomatic</metric>
     <steppedValueSet variable="i-proba-transmission" first="0.1" step="0.1" last="1"/>
     <enumeratedValueSet variable="EXPLICATION">
       <value value="&quot;La règle de distancation ne fonctionne que si tout le monde la respecte. Il suffit qu'une petite minorité ne soit pas en mesure de le faire (ici 10% des gens, représentés par des carrés) pour que le virus continue à se propager dans la population. La courbe rouge correspond au nombre de personnes cherchant à respecter la règle de distanciantion qui sont infectées, la courbe grise au nombre de personnes qui ne respectent pas cette règle et deviennent infectées par le virus&quot;"/>
