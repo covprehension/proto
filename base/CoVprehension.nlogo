@@ -20,6 +20,10 @@ globals
   transparency
   wall
 
+  ;stat variable
+  contamination
+  good-citizen
+
 ]
 
 
@@ -65,7 +69,7 @@ to setup_globals
   [set %unreported-infections 50
   set Proba-transmission-unreported-infected 1
   set wall 5]
-  set probability-transmission 1
+  set probability-transmission i-proba-transmission ;;1 initialiement à 1, mais pour les besoins de l'explroation en interface
   set transmission-distance 1
   ifelse  SIMULATIONS = "Simulation 3b : Des malades sur la piste de danse"
   [set nb-infected-initialisation 20]
@@ -361,8 +365,19 @@ end
 
 
 to fix_seed
- random-seed 47822
+ ;random-seed 47822
 end
+
+to stat
+  set contamination current-nb-new-infections-reported
+ +  current-nb-new-infections-asymptomatic
+
+  if any? citizens with [respect-rules? = 1][
+    set good-citizen count citizens with [respect-rules? = 1 and epidemic-state = 1]
+  ]
+
+end
+
 
 ;to capture [title]
 ;vid:start-recorder
@@ -543,7 +558,7 @@ CHOOSER
 SIMULATIONS
 SIMULATIONS
 "Simulation 1a : Le virus et nous" "Simulation 1b : Plus on est de fous..." "Simulation 2a : Gardons nos distances !" "Simulation 2b : Bain de foule" "Simulation 2c : Le maillon faible" "Simulation 3a : Courage, fuyons !" "Simulation 3b : Des malades sur la piste de danse" "Simulation 3c : L’arbre qui cache la forêt"
-4
+1
 
 INPUTBOX
 2
@@ -551,7 +566,7 @@ INPUTBOX
 591
 569
 EXPLICATION
-La règle de distancation ne fonctionne que si tout le monde la respecte. Il suffit qu'une petite minorité ne soit pas en mesure de le faire (ici 10% des gens, représentés par des carrés) pour que le virus continue à se propager dans la population. La courbe rouge correspond au nombre de personnes cherchant à respecter la règle de distanciantion qui sont infectées, la courbe grise au nombre de personnes qui ne respectent pas cette règle et deviennent infectées par le virus
+Plus la densité de population et surtout de contacts entre individus est importante, plus le virus pourra se propager rapidement. La population étant plus nombreuse, le pic épidémique est plus visible (graphique du bas).
 1
 1
 String
@@ -565,6 +580,17 @@ Mode d'emploi en 3 étapes :\n1 - Choisissez votre scénario dans le menu dérou
 11
 63.0
 1
+
+INPUTBOX
+980
+11
+1141
+71
+i-proba-transmission
+1.0
+1
+0
+Number
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -923,6 +949,40 @@ NetLogo 6.1.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
+<experiments>
+  <experiment name="vraiabilite_simu1a" repetitions="10000" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>nb_S</metric>
+    <metric>nb_Ir</metric>
+    <metric>nb_Inr</metric>
+    <metric>contamination</metric>
+    <enumeratedValueSet variable="i-proba-transmission">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="EXPLICATION">
+      <value value="&quot;La règle de distancation ne fonctionne que si tout le monde la respecte. Il suffit qu'une petite minorité ne soit pas en mesure de le faire (ici 10% des gens, représentés par des carrés) pour que le virus continue à se propager dans la population. La courbe rouge correspond au nombre de personnes cherchant à respecter la règle de distanciantion qui sont infectées, la courbe grise au nombre de personnes qui ne respectent pas cette règle et deviennent infectées par le virus&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="SIMULATIONS">
+      <value value="&quot;Simulation 1b : Plus on est de fous...&quot;"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="transmission_sim1b" repetitions="70" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>nb_S</metric>
+    <metric>nb_Ir</metric>
+    <metric>nb_Inr</metric>
+    <metric>contamination</metric>
+    <steppedValueSet variable="i-proba-transmission" first="0.1" step="0.1" last="1"/>
+    <enumeratedValueSet variable="EXPLICATION">
+      <value value="&quot;La règle de distancation ne fonctionne que si tout le monde la respecte. Il suffit qu'une petite minorité ne soit pas en mesure de le faire (ici 10% des gens, représentés par des carrés) pour que le virus continue à se propager dans la population. La courbe rouge correspond au nombre de personnes cherchant à respecter la règle de distanciantion qui sont infectées, la courbe grise au nombre de personnes qui ne respectent pas cette règle et deviennent infectées par le virus&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="SIMULATIONS">
+      <value value="&quot;Simulation 1b : Plus on est de fous...&quot;"/>
+    </enumeratedValueSet>
+  </experiment>
+</experiments>
 @#$#@#$#@
 @#$#@#$#@
 default
