@@ -24,5 +24,23 @@ ggplot(data = data.df, aes(x = X.step., y=nb_S, colour = i.proba.transmission))+
                     state_length = 1)
 ## Graphique statique ####
 
-small.df <- data.df %>% ##Aggreger les résultats par run et récupérer le dernier tour
-  group_by(X.run.number.) %>% summarise(maX.step = max(X.step.))
+small.df <- data.df %>% ##Aggreger les résultats 
+  group_by(X.step., i.proba.transmission) %>%
+  summarise(med.contamination = median(current.nb.new.infections.reported) + median(current.nb.new.infections.asymptomatic),
+            med.s = median(nb_S),
+            med.Ir = median(nb_Ir),
+            med.Inr = median(nb_Inr))
+
+ggplot(data = small.df)+
+  geom_col(aes(x = X.step., y = med.contamination, fill = i.proba.transmission),
+           binwidth = 0.2)+
+  facet_wrap(.~i.proba.transmission)+
+  xlim(0,300)+
+  theme_light()
+
+ggplot(data = small.df)+
+  geom_line(aes(x = X.step., y = med.s/500*100, group = i.proba.transmission, colour = i.proba.transmission))+
+  labs(title = "Evolution du nombre de personnes\nen bonne santé", x = "temps", y = "% de malade")+
+  scale_color_continuous("Probabilité\nde contaminer\nune personne\nrencontré")+
+  theme_light()
+ggsave("img/pct_saint.png")  
