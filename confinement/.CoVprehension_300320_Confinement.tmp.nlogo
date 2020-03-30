@@ -29,7 +29,7 @@ citizens-own
 ]
 
 to setup-globals
-  set population-size 200
+  set population-size 400
   set nb-house (population-size / 2)
   set nb-infected-initialisation (ifelse-value
   niveau-difficulté = "facile" [1]
@@ -49,6 +49,7 @@ to setup-houses
   create-houses nb-house[
     set shape "house"
     setxy random-xcor random-ycor
+
     set size 2
     set color lput transparency extract-rgb  white
   ]
@@ -84,6 +85,7 @@ end
 to go
   move-citizens
   update-epidemics
+  ;wait 0.1
   tick
 end
 
@@ -198,7 +200,6 @@ end
 to fix-seed
  random-seed 47822
 end
-
 
 @#$#@#$#@
 GRAPHICS-WINDOW
