@@ -200,7 +200,6 @@ to fix-seed
  random-seed 47822
 end
 
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 2
@@ -230,10 +229,10 @@ ticks
 30.0
 
 BUTTON
-594
-461
-672
-516
+586
+412
+664
+449
 Prêt  ?
 setup
 NIL
@@ -247,10 +246,10 @@ NIL
 1
 
 BUTTON
-593
-520
-672
-569
+587
+453
+666
+488
 Partez !
 go
 T
@@ -312,10 +311,10 @@ Mode d'emploi en 3 étapes :\n1 - Cliquez sur le bouton \"Prêt\"\n2 - Cliquez s
 1
 
 SWITCH
-696
-529
-836
-562
+830
+419
+970
+452
 confinement?
 confinement?
 1
@@ -323,10 +322,10 @@ confinement?
 -1000
 
 MONITOR
-392
-468
-528
-513
+384
+422
+520
+467
 % Infectés
 nb-I-Total
 1
@@ -334,10 +333,10 @@ nb-I-Total
 11
 
 MONITOR
-391
-517
-528
-562
+383
+471
+520
+516
 nb Jours confinement
 nb-day-confinement
 17
@@ -345,14 +344,14 @@ nb-day-confinement
 11
 
 CHOOSER
-699
-465
-837
-510
+691
+419
+829
+464
 niveau-difficulté
 niveau-difficulté
 "facile" "moyen" "difficile"
-0
+2
 
 @#$#@#$#@
 ## THINGS TO TRY
@@ -683,7 +682,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.1.0
+NetLogo 6.1.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
