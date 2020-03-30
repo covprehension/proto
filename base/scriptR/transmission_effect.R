@@ -49,7 +49,8 @@ ggplot(data = small.df)+
   geom_line(aes(x = X.step., y = med.Ir/500*100, group = i.proba.transmission, colour = i.proba.transmission))+
   labs(x = "temps", y = "% de personnes infectées")+
   scale_colour_gradient(low = "yellow", high = "red", na.value = NA, 
-                        "probabilité de transmission\ndu virus à chaque contact")+
+                        "probabilité de\ntransmission\ndu virus à\nchaque contact")+
+  xlim(0,300)+
   # theme_light()
   theme_classic()
 ggsave("img/pct_infected.png")  
