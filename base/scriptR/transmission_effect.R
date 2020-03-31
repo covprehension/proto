@@ -2,8 +2,6 @@
 
 library(ggplot2)
 library(dplyr)
-library(extrafont)
-library(xkcd)
 library(gganimate)
 
 rm(list = ls())
@@ -37,13 +35,25 @@ small.df <- data.df %>% ##Aggreger les résultats
             med.Ir = median(nb_Ir),
             med.Inr = median(nb_Inr))
 
-## Histograme des contamination
-# ggplot(data = small.df)+
-#   geom_col(aes(x = X.step., y = med.contamination, fill = i.proba.transmission),
-#            binwidth = 0.2)+
-#   facet_wrap(.~i.proba.transmission)+
-#   xlim(0,300)+
-#   theme_light()
+small.df %>%
+  ungroup() %>%
+  # Aggregate to groups of length 5 Steps using integer division "%/%"
+  # First Group = 0 to 4, second = 5 to 9, ...
+  mutate(X.step.1 = 5 * (X.step. %/% 5)) %>%
+  # Aggregate med.contamination for new groups by i.proba.transmission
+  count(X.step.1, i.proba.transmission, wt = med.contamination, name = "med.contamination") -> small.df 
+
+# Histograme des contamination
+ggplot(data = small.df,aes(x = X.step.1, 
+                           y = (med.contamination/500)*100, 
+                           colour = as.factor(i.proba.transmission)))+
+  geom_smooth(alpha = 1/5)+
+  scale_fill_discrete("probabilité de\ntransmission\ndu virus à\nchaque contact")+
+  # geom_line(aes(group = as.factor(i.proba.transmission)), position = "stack")+
+  labs(x = "temps",y =" contaminés")+
+  xlim(0,300)+
+  theme_classic()
+ggsave("img/pct_contamines.png") 
 
 ggplot(data = small.df)+
   geom_line(aes(x = X.step., y = med.Ir/500*100, group = i.proba.transmission, colour = i.proba.transmission))+
@@ -51,6 +61,5 @@ ggplot(data = small.df)+
   scale_colour_gradient(low = "yellow", high = "red", na.value = NA, 
                         "probabilité de\ntransmission\ndu virus à\nchaque contact")+
   xlim(0,300)+
-  # theme_light()
   theme_classic()
 ggsave("img/pct_infected.png")  
