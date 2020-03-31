@@ -29,7 +29,7 @@ citizens-own
 ]
 
 to setup-globals
-  set population-size 200
+  set population-size 400
   set nb-house (population-size / 2)
   set nb-infected-initialisation (ifelse-value
   niveau-difficulté = "facile" [1]
@@ -49,6 +49,7 @@ to setup-houses
   create-houses nb-house[
     set shape "house"
     setxy random-xcor random-ycor
+
     set size 2
     set color lput transparency extract-rgb  white
   ]
@@ -84,6 +85,7 @@ end
 to go
   move-citizens
   update-epidemics
+  ;wait 0.1
   tick
 end
 
@@ -228,10 +230,10 @@ ticks
 30.0
 
 BUTTON
-586
-412
-664
-449
+594
+461
+672
+516
 Prêt  ?
 setup
 NIL
@@ -245,10 +247,10 @@ NIL
 1
 
 BUTTON
-587
-453
-666
-488
+593
+520
+672
+569
 Partez !
 go
 T
@@ -310,10 +312,10 @@ Mode d'emploi en 3 étapes :\n1 - Cliquez sur le bouton \"Prêt\"\n2 - Cliquez s
 1
 
 SWITCH
-830
-419
-970
-452
+696
+529
+836
+562
 confinement?
 confinement?
 1
@@ -321,10 +323,10 @@ confinement?
 -1000
 
 MONITOR
-384
-422
-520
-467
+392
+468
+528
+513
 % Infectés
 nb-I-Total
 1
@@ -332,10 +334,10 @@ nb-I-Total
 11
 
 MONITOR
-383
-471
-520
-516
+391
+517
+528
+562
 nb Jours confinement
 nb-day-confinement
 17
@@ -343,14 +345,14 @@ nb-day-confinement
 11
 
 CHOOSER
-691
-419
-829
-464
+699
+465
+837
+510
 niveau-difficulté
 niveau-difficulté
 "facile" "moyen" "difficile"
-2
+0
 
 @#$#@#$#@
 ## THINGS TO TRY
@@ -681,7 +683,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.1.1
+NetLogo 6.1.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@

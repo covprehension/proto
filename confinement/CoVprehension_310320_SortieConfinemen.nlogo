@@ -26,15 +26,13 @@ citizens-own
   nb-other-infected
   contagion-counter ;;counter to go from state 1 or 2 (infected) to state 3 recovered
   my-house
+  confined?
 ]
 
 to setup-globals
-  set population-size 200
+  set population-size 400
   set nb-house (population-size / 2)
-  set nb-infected-initialisation (ifelse-value
-  niveau-difficulté = "facile" [1]
-  niveau-difficulté = "moyen" [0.02 * population-size]
-  niveau-difficulté = "difficile" [0.05 * population-size])
+  set nb-infected-initialisation 1
   set transmission-distance 1
   set probability-transmission 1
   set probability-transmission-unreported-infected 0.8
@@ -82,23 +80,42 @@ to setup
 end
 
 to go
+  update-confined
   move-citizens
   update-epidemics
+  wait 0.1
   tick
+end
+
+
+to update-confined
+  ;;on se base sur who pour que ceux qui sortent soient toujours les mêmes
+  ;;les nb-house sont crées en premiers
+  ;;les citizens sont numerotés de nb-house à nb-house + population-size - 1
+  let threshold-who (nb-house + pourcentage-confinés * population-size / 100)
+  ask citizens[ifelse who > threshold-who  [set confined? false][set confined? true]]
 end
 
 ;;MOVEMENT PROCEDURES
 to move-citizens
   ask citizens[
-    if confinement?
-    [move-to my-house
+    ifelse confined? [
+      ;confined
+      move-to my-house
+      if random-float 1 > frequence-sortie-confinés [
+        ;je sors
+        set heading heading + random walking-angle - random walking-angle
+      avoid-walls
+      fd distance-from-home-pour-confinés * speed
+      ]
     ]
+    [
+     ;not confined
       set heading heading + random walking-angle - random walking-angle
       avoid-walls
       fd speed
+    ]
    ]
-  if confinement?
-  [set nb-step-confinement (nb-step-confinement + 1)]
 end
 
 to avoid-walls
@@ -228,10 +245,10 @@ ticks
 30.0
 
 BUTTON
-586
-412
-664
-449
+496
+424
+574
+479
 Prêt  ?
 setup
 NIL
@@ -245,10 +262,10 @@ NIL
 1
 
 BUTTON
-587
-453
-666
-488
+495
+483
+574
+532
 Partez !
 go
 T
@@ -303,54 +320,56 @@ TEXTBOX
 13
 440
 355
-569
-Mode d'emploi en 3 étapes :\n1 - Cliquez sur le bouton \"Prêt\"\n2 - Cliquez sur le bouton \"Partez !\" \n3 - Vous pouvez déclencher le confinement en cliquant sur l'interrupteur correspondant\n\nEssayez de limiter nombre d'infectés et le nombre de jours de confinement
+580
+Mode d'emploi en 3 étapes :\n1 - Cliquez sur le bouton \"Prêt\"\n2 - Cliquez sur le bouton \"Partez !\" \n\nPour modifier les conditions de confinement vous pouvez jouer sur :\n- le pourcentage de confinés (vous ne pourrez pas confiner tout le monde)\n- la fréquence des sorties autorisés pour les confinés\n- la distance de sortie autorisée pour les confinés
 11
 63.0
 1
 
-SWITCH
-830
-419
-970
-452
-confinement?
-confinement?
+SLIDER
+660
+418
+852
+451
+pourcentage-confinés
+pourcentage-confinés
+0
+95
+95.0
 1
 1
--1000
+NIL
+HORIZONTAL
 
-MONITOR
-384
-422
-520
-467
-% Infectés
-nb-I-Total
+SLIDER
+661
+504
+853
+537
+distance-from-home-pour-confinés
+distance-from-home-pour-confinés
+0
+5
+1.5
+0.5
 1
-1
-11
+NIL
+HORIZONTAL
 
-MONITOR
-383
-471
-520
-516
-nb Jours confinement
-nb-day-confinement
-17
+SLIDER
+659
+461
+854
+494
+frequence-sortie-confinés
+frequence-sortie-confinés
+0
 1
-11
-
-CHOOSER
-691
-419
-829
-464
-niveau-difficulté
-niveau-difficulté
-"facile" "moyen" "difficile"
-2
+0.2
+0.05
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## THINGS TO TRY
@@ -681,7 +700,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.1.1
+NetLogo 6.1.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
