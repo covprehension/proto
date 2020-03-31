@@ -1,26 +1,18 @@
 ;extensions [vid] ; A virer de la version finale
 
-globals
-[
+globals [
   population-size
   nb-infected-initialisation
   transmission-distance
   distanciation-distance
   probability-transmission
-  %respect-distanciation
-  infected-avoidance-distance
+  proba-transmission-unreported-infected
+  contagion-duration
+
   walking-angle
   speed
-  transparency
-  contagion-duration ;; FA : Temporal
-
-  ;; specific 3c
-  %unreported-infections
-  proba-transmission-unreported-infected
   wall
-
-  ;; specific 4
-;  init-number-of-recovered
+  transparency
 
   ;; metrics
   previous-nb-new-infections-reported
@@ -30,223 +22,120 @@ globals
 ]
 
 
-breed
-[
+breed [
   citizens citizen
 ]
 
-patches-own
-[
-  obstacle? ; 0 no 1 yes
-]
 
-citizens-own
-[
+citizens-own [
   epidemic-state ;; Susceptible - Infected - Asymptomatic Infected - Recovered
   infection-date
   nb-other-infected
   nb-contacts
-  respect-rules? ;; true or false
-  quarantined? ;; true or false
   contagion-counter ; FA
 ]
 
 
-to setup
+to setup ;; observer procedure
   clear-all
   reset-ticks
 
   setup-globals
-
-  create-citizens population-size
-  [
-    setxy random-xcor random-ycor
-    set shape "circle white"
-    set size 1.5
-    set epidemic-state "Susceptible"
-    set respect-rules? true
-    set quarantined? false
-    show-epidemic-state
-  ]
-
-  set-infected-initialisation
-
-  if SIMULATIONS = "Simulation 2c : Le maillon faible"
-  [ set-respect-rules ]
-
-  set-explications
+  setup-population
+  show-epidemic-state
+;  set-explications
 
 end
 
 
-to setup-globals
-  ;; generic setup for all SIMULATIONS
-  set population-size 100
+to setup-globals ;; observer procedure
+  set population-size 500
   set nb-infected-initialisation 1
   set transmission-distance 1
   set distanciation-distance 3
-  set probability-transmission 0.5
-  set %respect-distanciation 90
-  set infected-avoidance-distance 2
+  set probability-transmission 1
   set walking-angle 50
-  set speed 0.3
+  set speed 0.5
+  set wall 0
   set transparency 145
-  set contagion-duration 14 * 4 ;FA
-
-  ;; specific setups for some SIMULATIONS, overwriting the generic one above
-  (ifelse
-    SIMULATIONS = "Simulation 1b : Plus on est de fous..."
-    or
-    SIMULATIONS = "Simulation 2b : Bain de foule"
-    [
-      set population-size 500
-    ]
-
-    SIMULATIONS = "Simulation 3b : Des malades sur la piste de danse"
-    [
-      set population-size 400
-      set nb-infected-initialisation 20
-      set walking-angle 50 ;; HA même chose que cas général !
-    ]
-
-    SIMULATIONS = "Simulation 3c : L’arbre qui cache la forêt"
-    [
-      set population-size 500
-      set %unreported-infections 50
-      set Proba-transmission-unreported-infected 1
-      set wall 5
-    ]
-
-    SIMULATIONS = "Simulation 4"
-    [
-      set population-size 600
-;      set init-number-of-recovered 100
-    ]
-  )
+  set contagion-duration 14 * 4
 end
 
 
-to show-epidemic-state
-  (ifelse
-    epidemic-state = "Susceptible" [ set color lput transparency extract-rgb  green ]
-
-    epidemic-state = "Infected"
-    [
-      set color lput transparency extract-rgb red
-      if SIMULATIONS = "Simulation 3c : L’arbre qui cache la forêt" [ set shape "square" ]
-    ]
-
-    epidemic-state = "Asymptomatic Infected"
-    [
-      ifelse SIMULATIONS = "Simulation 3c : L’arbre qui cache la forêt"
-      [ set color lput transparency extract-rgb blue ]
-      [ set color lput transparency extract-rgb green ]
-    ]
-
-    epidemic-state = "Recovered" [ set color lput transparency extract-rgb gray ]
-  )
-end
-
-
-to set-infected-initialisation
-  ask n-of nb-infected-initialisation citizens
-  [
-    set epidemic-state "Infected"
-    set contagion-counter contagion-duration ;FA
-    set current-nb-new-infections-reported (current-nb-new-infections-reported + 1) ; FA
-    show-epidemic-state
+to setup-population ;; observer procedure
+  create-citizens population-size [
+    setxy random-xcor random-ycor
+    set shape "circle"
+    set size 1
+    set epidemic-state "Susceptible"
   ]
 
-  (ifelse
-    SIMULATIONS = "Simulation 3c : L’arbre qui cache la forêt"
-    [
-      ask one-of citizens with [epidemic-state = "Susceptible"]
-      [
-        set epidemic-state "Asymptomatic Infected"
-        set contagion-counter contagion-duration ;FA
-        set current-nb-new-infections-asymptomatic (current-nb-new-infections-asymptomatic + 1) ; FA
-        show-epidemic-state
-      ]
-    ]
-
-    SIMULATIONS = "Simulation 4"
-    [
-      ask n-of init-number-of-recovered citizens with [epidemic-state = "Susceptible"]
-      [ become-recovered ]
-    ]
-  )
+  set-infected-initialisation
 end
 
-to become-recovered
+
+to set-infected-initialisation ;; observer procedure
+  ask n-of nb-infected-initialisation citizens [
+    set epidemic-state "Infected"
+    set contagion-counter contagion-duration
+    set current-nb-new-infections-reported (current-nb-new-infections-reported + 1)
+  ]
+
+  ;; Simu 4
+  let nb-immunized-init init-proportion-of-recovered * population-size / 100
+  ask n-of nb-immunized-init citizens with [epidemic-state = "Susceptible"] [ become-recovered ]
+end
+
+
+to show-epidemic-state ;; observer procedure
+  ask citizens [
+    (ifelse
+      epidemic-state = "Susceptible" [ set color lput transparency extract-rgb  green ]
+
+      epidemic-state = "Infected" [ set color lput transparency extract-rgb red ]
+
+      epidemic-state = "Asymptomatic Infected"
+      [  ]
+
+      epidemic-state = "Recovered" [ set color lput transparency extract-rgb gray ]
+    )
+  ]
+end
+
+to become-recovered ;; citizen procedure
   set epidemic-state "Recovered"
 end
 
 
-to set-respect-rules
-  ask citizens with [epidemic-state = "Infected"]
-  [
-    set respect-rules? false
-    set shape "square"
-    set size 1.5
-  ]
+to go ;; observer procedure
+  ;; stop criterion
+  if nb-S = 0 or nb-I = 0 [ show-asymptomatic-cases stop ]
 
-  let nb-rulebreakers-susceptible population-size - round (%respect-distanciation * population-size / 100) - nb-infected-initialisation
-  ask n-of nb-rulebreakers-susceptible citizens with [epidemic-state = "Susceptible"]
-  [
-    set respect-rules? false
-    set shape "square"
-    set size 1.5
-  ]
-end
-
-
-to go
-  if nb-S = 0
-  [
-    ifelse SIMULATIONS = "Simulation 4"
-    [ if nb-I = 0 [ show-asymptotic-cases stop ] ]
-    [ show-asymptotic-cases stop ]
-  ]
-
+  ;; update case counts
   update-previous-epidemic-counts
 
-  (ifelse
-    SIMULATIONS = "Simulation 2a : Gardons nos distances !"
-    or
-    SIMULATIONS = "Simulation 2b : Bain de foule"
-    or
-    SIMULATIONS = "Simulation 2c : Le maillon faible"
-    [ move-distanciation-citizens ]
+  ;; movement
+  move-randomly-citizens
 
-    SIMULATIONS = "Simulation 3a : Courage, fuyons !"
-    or
-    SIMULATIONS = "Simulation 3b : Des malades sur la piste de danse"
-    or
-    SIMULATIONS = "Simulation 3c : L’arbre qui cache la forêt"
-    [ avoid-infected ]
+  ;; transmission
+  ask citizens with [epidemic-state = "Susceptible"] [ get-virus ]
 
-    ;; else case:
-    [ move-randomly-citizens ]
-  )
-
-  update-epidemics ; FA
-;  connect
-;  update-connections
+  update-epidemics
   update-current-epidemic-counts
 
-  ask citizens [ show-epidemic-state ] ;FA
+  show-epidemic-state
 
   tick
 end
 
 
-to show-asymptotic-cases
+to show-asymptomatic-cases ;; observer procedure
   ask citizens with [epidemic-state = "Asymptomatic Infected"]
   [ set color lput transparency extract-rgb blue ]
 end
 
 
-to update-previous-epidemic-counts
+to update-previous-epidemic-counts ;; observer procedure
   ;set previous-nb-new-infections-reported nb-Ir
   ;set previous-nb-new-infections-asymptomatic nb-Inr
   set current-nb-new-infections-reported 0 ; FA
@@ -254,33 +143,12 @@ to update-previous-epidemic-counts
 end
 
 
-to move-distanciation-citizens
+to move-randomly-citizens
   ask citizens
   [
-    ifelse respect-rules?
-    [
-      let target min-one-of other citizens in-radius distanciation-distance [ distance myself ]
-      ifelse is-agent? target
-      [
-        face target
-        rt 180
-        avoid-walls
-        fd speed
-      ]
-      [
-        set heading heading + random walking-angle - random walking-angle
-        avoid-walls
-        fd speed
-      ]
-    ]
-    [
-      set heading heading + random walking-angle - random walking-angle
-      avoid-walls
-      fd speed
-    ]
-
-    if epidemic-state = "Susceptible"
-    [ get-virus ]
+    set heading heading + random walking-angle - random walking-angle
+    avoid-walls
+    fd speed
   ]
 end
 
@@ -293,130 +161,85 @@ to avoid-walls
 end
 
 
-to get-virus
+to get-virus ;; citizen procedure
   let target one-of other citizens in-radius transmission-distance with [epidemic-state = "Infected" or epidemic-state = "Asymptomatic Infected"]
-  if is-agent? target
-  [
+  if is-agent? target [
     if ([epidemic-state] of target = "Infected" and random-float 1 < probability-transmission)
     or
     ([epidemic-state] of target = "Asymptomatic Infected" and random-float 1 < proba-transmission-unreported-infected)
     [
-      ifelse SIMULATIONS = "Simulation 3c : L’arbre qui cache la forêt"
-      [
-        ifelse random 100 > %Unreported-infections
-        [
-          set epidemic-state "Infected"
-          set contagion-counter contagion-duration ;FA
-          set current-nb-new-infections-reported (current-nb-new-infections-reported + 1);FA
-
-        ]
-        [
-          set epidemic-state "Asymptomatic Infected"
-          set contagion-counter contagion-duration ;FA
-          set  current-nb-new-infections-asymptomatic (current-nb-new-infections-asymptomatic + 1);FA
-        ]
-      ]
-      [
-        set epidemic-state "Infected"
-        set contagion-counter contagion-duration ;FA
-        set current-nb-new-infections-reported (current-nb-new-infections-reported + 1) ;FA
-        ask target [ set nb-other-infected nb-other-infected + 1 ]
-      ]
-
-      show-epidemic-state
+      set epidemic-state "Infected"
+      set contagion-counter contagion-duration
+      set current-nb-new-infections-reported (current-nb-new-infections-reported + 1)
       set infection-date ticks
+
+      ask target [ set nb-other-infected nb-other-infected + 1 ]
     ]
   ]
 end
 
 
-to avoid-infected
-  ask citizens
-  [
-    let target min-one-of other citizens with [epidemic-state = "Infected"] in-radius infected-avoidance-distance [distance myself]
-    ifelse epidemic-state != "Infected" and is-agent? target
-    [
-      face target
-      rt 180
-      avoid-walls
-    ]
-    [
-      set heading heading + random walking-angle - random walking-angle
-      avoid-walls
-    ]
-
-    ifelse epidemic-state != "Infected"
-    [ fd speed ]
-    [ ifelse  SIMULATIONS = "Simulation 3c : L’arbre qui cache la forêt" [ quarantine-infected ] [ fd speed / 2 ] ]
-
-    if epidemic-state = "Susceptible" [ get-virus ]
-  ]
-end
-
-
-to move-randomly-citizens
-  ask citizens
-  [
-    set heading heading + random walking-angle - random walking-angle
-    avoid-walls
-    fd speed
-    if epidemic-state = "Susceptible" [ get-virus ]
-  ]
-end
+;to move-distanciation-citizens
+;  ask citizens
+;  [
+;    ifelse respect-rules?
+;    [
+;      let target min-one-of other citizens in-radius distanciation-distance [ distance myself ]
+;      ifelse is-agent? target
+;      [
+;        face target
+;        rt 180
+;        avoid-walls
+;        fd speed
+;      ]
+;      [
+;        set heading heading + random walking-angle - random walking-angle
+;        avoid-walls
+;        fd speed
+;      ]
+;    ]
+;    [
+;      set heading heading + random walking-angle - random walking-angle
+;      avoid-walls
+;      fd speed
+;    ]
+;  ]
+;end
 
 
-to update-epidemics ;FA
-  ask citizens with [ epidemic-state = "Infected" or epidemic-state = "Asymptomatic Infected" ][
+;to avoid-infected
+;  ask citizens
+;  [
+;    let target min-one-of other citizens with [epidemic-state = "Infected"] in-radius infected-avoidance-distance [distance myself]
+;    ifelse epidemic-state != "Infected" and is-agent? target
+;    [
+;      face target
+;      rt 180
+;      avoid-walls
+;    ]
+;    [
+;      set heading heading + random walking-angle - random walking-angle
+;      avoid-walls
+;    ]
+;
+;    ifelse epidemic-state != "Infected"
+;    [ fd speed ]
+;    [ ifelse  SIMULATIONS = "Simulation 3c : L’arbre qui cache la forêt" [ quarantine-infected ] [ fd speed / 2 ] ]
+;  ]
+;end
+
+
+to update-epidemics
+  ask citizens with [ epidemic-state = "Infected" or epidemic-state = "Asymptomatic Infected" ] [
     set contagion-counter (contagion-counter - 1)
     if contagion-counter <= 0 [ become-recovered ]
   ]
 end
 
 
-to connect
-  ask citizens
-  [ create-links-with other citizens in-radius transmission-distance ]
-end
-
-
-to update-connections
-  ask links with [link-length > transmission-distance] [ die ]
-end
-
-
 to update-current-epidemic-counts
   ;FA set current-nb-new-infections-reported nb-Ir - previous-nb-new-infections-reported
   ;FA set  current-nb-new-infections-asymptomatic nb-Inr - previous-nb-new-infections-asymptomatic
-end
-
-
-to quarantine-infected
-  if not quarantined?
-  [
-    set shape "square"
-    move-to min-one-of patches with [not any? citizens-here] [ pxcor ]
-    set size 1
-    set quarantined? true
-  ]
-end
-
-
-
-;###############################
-;PATCHES
-;###############################
-to draw-obstacles
-  if mouse-down?
-  [
-    ask patch mouse-xcor mouse-ycor
-    [
-      ask patches in-radius 1
-      [
-        set obstacle? 1
-        set pcolor grey
-      ]
-    ]
-  ]
 end
 
 
@@ -460,27 +283,6 @@ to fix-seed
   random-seed 47822
 end
 
-;to capture [title]
-;vid:start-recorder
-;vid:record-view
-;  while [nb-S != 0]
-;[ go
-;  vid:record-view ]
-;vid:save-recording title
-;
-;end
-;
-;
-;to capture-duration [title duration]
-;vid:start-recorder
-;vid:record-view
-;repeat duration
-;[ go
-;  vid:record-view ]
-;vid:save-recording title
-;
-;end
-
 
 ;+++++++++++++++
 ;EXPLICATIONS
@@ -488,38 +290,36 @@ end
 
 ; A COMPLETER
 
-
-
-to set-explications
-  set explication (ifelse-value
-    SIMULATIONS = "Simulation 1a : Le virus et nous"
-    [ "Une personne infectée (en rouge) par le virus pourra le transmettre à d’autres personnes saines (en vert) avec qui elle entrera en contact au cours de son déplacement aléatoire. Les deux courbes de l'épidemie se croisent lorsque la moitié de la population est infectée." ]
-
-    SIMULATIONS = "Simulation 1b : Plus on est de fous..."
-    [ "Plus la densité de population et surtout de contacts entre individus est importante, plus le virus pourra se propager rapidement. La population étant plus nombreuse, le pic épidémique est plus visible (graphique du bas)." ]
-
-    SIMULATIONS = "Simulation 2a : Gardons nos distances !"
-    [ "Maintenir une distance minimale entre les individus (distanciation sociale) permet de bloquer la chaîne de transmission du virus. A condition que rien ne vienne perturber l'application de cette règle bien sûr." ]
-
-    SIMULATIONS = "Simulation 2b : Bain de foule"
-    [ "En situation de forte densité, l'application stricte de cette règle de distanciation devient plus difficile à mettre en oeuvre. Une fois les premières infections réalisées, le virus se propage inexorablement. D'où l'importance d'éviter les regroupements de population en situation de flambée épidémique." ]
-
-    SIMULATIONS = "Simulation 2c : Le maillon faible"
-    [ "La règle de distancation ne fonctionne que si tout le monde la respecte. Il suffit qu'une petite minorité ne joue pas le jeu (ici 10% des gens, représentés par des carrés) pour que le virus reprenne ses droits."]
-
-    SIMULATIONS = "Simulation 3a : Courage, fuyons !"
-    [ "Un exercice de pensée un brin dystopique ici : les personnes saines cherchent à éviter les personnes infectées, identifiables à leurs symptômes et dont les capacités physiques (vitesse de marche ici) sont réduites (NB : non, les rouges ne poursuivent pas les verts ! Chaque déplacement reste aléatoire, mais les verts cherchent en plus à éviter les rouges)."]
-
-    SIMULATIONS = "Simulation 3b : Des malades sur la piste de danse"
-    [ "Juste pour le plaisir, imaginons la situation suivante : des personnes malades surgissent dans un endroit bondé ! Si vous lancez plusieurs simulation, vous trouverez des configurations dans lesquelles la situation peut rapidement dégénérer (NB : non, les rouges ne poursuivent pas les verts ! Chaque déplacement reste aléatoire, mais les verts cherchent en plus à éviter les rouges)." ]
-
-    SIMULATIONS = "Simulation 3c : L’arbre qui cache la forêt"
-    [ "Scénario plus subtil cette fois : certaines personnes infectées ne sont pas identifiables (en bleu). Le virus se propage alors de manière insidieuse, alors même que les cas identifiés (en rouge) sont systématiquement isolés en étant placés en quarantaine sur le côté gauche. Une meilleure connaissance de cette population non répertoriée est donc nécessaire, si l'on veut comprendre et maîtriser cette épidémie." ]
-
-    SIMULATIONS = "Simulation 4"
-    [ "A FAIRE" ]
-  )
-end
+;to set-explications
+;  set explication (ifelse-value
+;    SIMULATIONS = "Simulation 1a : Le virus et nous"
+;    [ "Une personne infectée (en rouge) par le virus pourra le transmettre à d’autres personnes saines (en vert) avec qui elle entrera en contact au cours de son déplacement aléatoire. Les deux courbes de l'épidemie se croisent lorsque la moitié de la population est infectée." ]
+;
+;    SIMULATIONS = "Simulation 1b : Plus on est de fous..."
+;    [ "Plus la densité de population et surtout de contacts entre individus est importante, plus le virus pourra se propager rapidement. La population étant plus nombreuse, le pic épidémique est plus visible (graphique du bas)." ]
+;
+;    SIMULATIONS = "Simulation 2a : Gardons nos distances !"
+;    [ "Maintenir une distance minimale entre les individus (distanciation sociale) permet de bloquer la chaîne de transmission du virus. A condition que rien ne vienne perturber l'application de cette règle bien sûr." ]
+;
+;    SIMULATIONS = "Simulation 2b : Bain de foule"
+;    [ "En situation de forte densité, l'application stricte de cette règle de distanciation devient plus difficile à mettre en oeuvre. Une fois les premières infections réalisées, le virus se propage inexorablement. D'où l'importance d'éviter les regroupements de population en situation de flambée épidémique." ]
+;
+;    SIMULATIONS = "Simulation 2c : Le maillon faible"
+;    [ "La règle de distancation ne fonctionne que si tout le monde la respecte. Il suffit qu'une petite minorité ne joue pas le jeu (ici 10% des gens, représentés par des carrés) pour que le virus reprenne ses droits."]
+;
+;    SIMULATIONS = "Simulation 3a : Courage, fuyons !"
+;    [ "Un exercice de pensée un brin dystopique ici : les personnes saines cherchent à éviter les personnes infectées, identifiables à leurs symptômes et dont les capacités physiques (vitesse de marche ici) sont réduites (NB : non, les rouges ne poursuivent pas les verts ! Chaque déplacement reste aléatoire, mais les verts cherchent en plus à éviter les rouges)."]
+;
+;    SIMULATIONS = "Simulation 3b : Des malades sur la piste de danse"
+;    [ "Juste pour le plaisir, imaginons la situation suivante : des personnes malades surgissent dans un endroit bondé ! Si vous lancez plusieurs simulation, vous trouverez des configurations dans lesquelles la situation peut rapidement dégénérer (NB : non, les rouges ne poursuivent pas les verts ! Chaque déplacement reste aléatoire, mais les verts cherchent en plus à éviter les rouges)." ]
+;
+;    SIMULATIONS = "Simulation 3c : L’arbre qui cache la forêt"
+;    [ "Scénario plus subtil cette fois : certaines personnes infectées ne sont pas identifiables (en bleu). Le virus se propage alors de manière insidieuse, alors même que les cas identifiés (en rouge) sont systématiquement isolés en étant placés en quarantaine sur le côté gauche. Une meilleure connaissance de cette population non répertoriée est donc nécessaire, si l'on veut comprendre et maîtriser cette épidémie." ]
+;
+;    SIMULATIONS = "Simulation 4 : Immunité de groupe"
+;    [ "A FAIRE" ]
+;  )
+;end
 @#$#@#$#@
 GRAPHICS-WINDOW
 2
@@ -621,23 +421,13 @@ true
 PENS
 "I" 1.0 1 -2139308 true "" "plot current-nb-new-infections-reported\n +  current-nb-new-infections-asymptomatic"
 
-CHOOSER
-593
-411
-972
-456
-SIMULATIONS
-SIMULATIONS
-"Simulation 1a : Le virus et nous" "Simulation 1b : Plus on est de fous..." "Simulation 2a : Gardons nos distances !" "Simulation 2b : Bain de foule" "Simulation 2c : Le maillon faible" "Simulation 3a : Courage, fuyons !" "Simulation 3b : Des malades sur la piste de danse" "Simulation 3c : L’arbre qui cache la forêt" "Simulation 4"
-8
-
 INPUTBOX
 2
 411
 591
 569
 EXPLICATION
-A FAIRE
+Une personne infectée (en rouge) par le virus pourra le transmettre à d’autres personnes saines (en vert) avec qui elle entrera en contact au cours de son déplacement aléatoire. Les deux courbes de l'épidemie se croisent lorsque la moitié de la population est infectée.
 1
 1
 String
@@ -646,7 +436,7 @@ TEXTBOX
 682
 469
 975
-563
+580
 Mode d'emploi en 3 étapes :\n1 - Choisissez votre scénario dans le menu déroulant\n2 - Cliquez sur le bouton \"Prêt\"\n3 - Cliquez sur le bouton \"Partez !\" \nVous n'avez plus qu'à observer la simulation et la relancer autant de fois que vous le souhaitez.
 11
 63.0
@@ -655,16 +445,16 @@ Mode d'emploi en 3 étapes :\n1 - Choisissez votre scénario dans le menu dérou
 SLIDER
 637
 640
-854
+909
 673
-init-number-of-recovered
-init-number-of-recovered
+init-proportion-of-recovered
+init-proportion-of-recovered
 0
-600
-100.0
+100
+50.0
+5
 1
-1
-NIL
+%
 HORIZONTAL
 
 @#$#@#$#@
