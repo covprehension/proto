@@ -22,6 +22,7 @@ globals [
 ;  current-nb-new-infections-asymptomatic
 
   total-nb-infected
+  infinity
   date-RcrossesI
 
   timeseries-incidence
@@ -93,8 +94,9 @@ to setup-globals ;; observer procedure
   set contagion-duration 14 * 4
 
   ;;metric
-  set total-nb-infected -1
-  set date-RcrossesI -1
+  set total-nb-infected nb-infected-initialisation
+  set infinity 99999
+  set date-RcrossesI infinity
 
   set timeseries-incidence []
   set timeseries-S []
@@ -151,12 +153,12 @@ end
 
 to go ;; observer procedure
   ;; stop criterion
-  if nb-S = 0 or nb-I = 0 [
-    show-asymptomatic-cases
-    stop
-  ]
+  while [nb-I > 0] [ headless-go ]
 
-  headless-go
+  final-metrics
+  show-asymptomatic-cases
+
+  stop
 end
 
 
@@ -176,12 +178,6 @@ to headless-go ;; observer procedure
   update-epidemic-counts
 
   tick
-end
-
-
-to show-asymptomatic-cases ;; observer procedure
-  ask citizens with [epidemic-state = "Asymptomatic Infected"]
-  [ set color lput transparency extract-rgb blue ]
 end
 
 
@@ -291,12 +287,23 @@ end
 
 to update-epidemic-counts ;; observer procedure
   set total-nb-infected total-nb-infected + current-nb-new-infections-reported
-  if date-RcrossesI < 0 and nb-R > total-nb-infected [ set date-RcrossesI ticks ]
+  if date-RcrossesI = infinity and nb-R = total-nb-infected [ set date-RcrossesI ticks ]
 
   set timeseries-incidence lput current-nb-new-infections-reported timeseries-incidence
   set timeseries-S lput nb-S timeseries-S
   set timeseries-I lput nb-I timeseries-I
   set timeseries-R lput nb-R timeseries-R
+end
+
+
+to final-metrics
+  set final-proportion-infected total-nb-infected / population-size * 100
+end
+
+
+to show-asymptomatic-cases ;; observer procedure
+  ask citizens with [epidemic-state = "Asymptomatic Infected"]
+  [ set color lput transparency extract-rgb blue ]
 end
 
 
@@ -490,7 +497,7 @@ init-proportion-of-recovered
 init-proportion-of-recovered
 0
 100
-100.0
+95.0
 5
 1
 %
