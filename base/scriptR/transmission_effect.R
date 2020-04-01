@@ -19,11 +19,11 @@ ggplot(data = data.df, aes(x = X.step., y=(nb_Ir/500)*100, colour = i.proba.tran
   xlim(0,350)+
   scale_colour_gradient(low = "yellow", high = "red", na.value = NA, 
                         "probabilité de transmission\ndu virus à chaque contact")+
-  # theme_classic()+
+  theme_classic()+
   transition_states(i.proba.transmission,
                     transition_length = 2,
-                    state_length = 1)+
-  options(gganimate.dev_args = list(width = 500,height= 350))
+                    state_length = 1)
+  options(gganimate.dev_args = list(width = 400,height= 300))
 
 
 
@@ -46,7 +46,7 @@ small.df %>%
 
 # Histograme des contamination
 ggplot(data = small2.df,aes(x = X.step.1, 
-                           y = (med.contamination/500)*100, 
+                           y = med.contamination, 
                            colour = as.factor(i.proba.transmission)))+
   geom_smooth(alpha = 1/5)+
   scale_fill_discrete("probabilité de\ntransmission\ndu virus à\nchaque contact")+

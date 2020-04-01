@@ -1,6 +1,7 @@
 globals [ ;;global parameters
   population-size
   nb-house
+  nb-store
   nb-infected-initialisation
   transmission-distance
   probability-transmission
@@ -18,6 +19,7 @@ globals [ ;;global parameters
 
 breed [citizens citizen]
 breed [houses house]
+breed [stores store]
 
 citizens-own
 [
@@ -26,11 +28,20 @@ citizens-own
   nb-other-infected
   contagion-counter ;;counter to go from state 1 or 2 (infected) to state 3 recovered
   my-house
+  Derogating-travel-certificate ; boleen
+  supermarket-cashier ; boleen
+]
+
+houses-own
+[
+ frigo ;When's the next shopping spree
 ]
 
 to setup-globals
-  set population-size 400
+  set population-size 200
+  set nb-supermarket-cashier 10
   set nb-house (population-size / 2)
+  set nb-store 1
   set nb-infected-initialisation (ifelse-value
   niveau-difficulté = "facile" [1]
   niveau-difficulté = "moyen" [0.02 * population-size]
@@ -49,8 +60,17 @@ to setup-houses
   create-houses nb-house[
     set shape "house"
     setxy random-xcor random-ycor
-
     set size 2
+    set color lput transparency extract-rgb  white
+    set frigo random 16
+  ]
+end
+
+to setup-stores
+  create-stores nb-store[
+    set shape "fish"
+    setxy 0 0
+    set size 3
     set color lput transparency extract-rgb  white
   ]
 end
@@ -64,8 +84,15 @@ to setup-population
     set color green ; lput transparency extract-rgb  green
     set epidemic-state 0
     set my-house one-of houses
+    set Derogating-travel-certificate FALSE
+    set supermarket-cashier FALSE
   ]
   set-infected-initialisation
+  ask n-of nb-supermarket-cashier citizens [
+   set supermarket-cashier TRUE
+    set color yellow
+  ]
+
 end
 
 to set-infected-initialisation
@@ -79,28 +106,46 @@ to setup
   reset-ticks
   setup-globals
   setup-houses
+  setup-stores
   setup-population
 end
 
 to go
   move-citizens
   update-epidemics
-  ;wait 0.1
   tick
 end
 
 ;;MOVEMENT PROCEDURES
 to move-citizens
   ask citizens[
-    if confinement?
-    [move-to my-house
+    if confinement? AND NOT supermarket-cashier [
+    [
+        ifelse [frigo] of my-house <= 0 [
+         ;If I have nothing to heat I can go to the maket
+        ][
+          ;if I have something to heat
+         move-to my-house
+        ]
+
     ]
+     if supermarket-cashier [ ;; TODO ya surment un truc a regarder l
+        move-to one-of stores
+      ]
+
       set heading heading + random walking-angle - random walking-angle
       avoid-walls
       fd speed
    ]
   if confinement?
   [set nb-step-confinement (nb-step-confinement + 1)]
+
+
+end
+
+to shopping-clearance
+;house proc
+
 end
 
 to avoid-walls
@@ -200,7 +245,6 @@ end
 to fix-seed
  random-seed 47822
 end
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 2
@@ -230,10 +274,10 @@ ticks
 30.0
 
 BUTTON
-594
-461
-672
-516
+146
+415
+224
+470
 Prêt  ?
 setup
 NIL
@@ -247,10 +291,10 @@ NIL
 1
 
 BUTTON
-593
-520
-672
-569
+228
+415
+307
+464
 Partez !
 go
 T
@@ -302,20 +346,20 @@ PENS
 "I" 1.0 1 -2139308 true "" "plot current-nb-new-infections-reported\n +  current-nb-new-infections-asymptomatic"
 
 TEXTBOX
-13
-440
-355
-569
-Mode d'emploi en 3 étapes :\n1 - Cliquez sur le bouton \"Prêt\"\n2 - Cliquez sur le bouton \"Partez !\" \n3 - Vous pouvez déclencher le confinement en cliquant sur l'interrupteur correspondant\n\nEssayez de limiter nombre d'infectés et le nombre de jours de confinement
+315
+422
+608
+520
+Mode d'emploi en 3 étapes :\n1 - Cliquez sur le bouton \"Prêt\"\n2 - Cliquez sur le bouton \"Partez !\" \n3 - Vous pouvez déclencher le confinement en cliquant sur l'interrupteur correspondant\nVous n'avez plus qu'à observer la simulation et la relancer autant de fois que vous le souhaitez.
 11
 63.0
 1
 
 SWITCH
-696
-529
-836
-562
+0
+417
+140
+450
 confinement?
 confinement?
 1
@@ -323,10 +367,10 @@ confinement?
 -1000
 
 MONITOR
-392
-468
-528
-513
+620
+419
+756
+464
 % Infectés
 nb-I-Total
 1
@@ -334,10 +378,10 @@ nb-I-Total
 11
 
 MONITOR
-391
-517
-528
-562
+619
+468
+756
+513
 nb Jours confinement
 nb-day-confinement
 17
@@ -345,14 +389,14 @@ nb-day-confinement
 11
 
 CHOOSER
-699
-465
-837
-510
+764
+421
+902
+466
 niveau-difficulté
 niveau-difficulté
 "facile" "moyen" "difficile"
-0
+2
 
 @#$#@#$#@
 ## THINGS TO TRY
@@ -683,7 +727,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.1.0
+NetLogo 6.1.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
