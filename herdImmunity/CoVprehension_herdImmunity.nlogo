@@ -18,10 +18,12 @@ globals [
   transparency
 
   ;; metrics
-  previous-nb-new-infections-reported
-  previous-nb-new-infections-asymptomatic
   current-nb-new-infections-reported
-  current-nb-new-infections-asymptomatic
+;  current-nb-new-infections-asymptomatic
+  timeseries-incidence
+  timeseries-S
+  timeseries-I
+  timeseries-R
 ]
 
 
@@ -135,21 +137,20 @@ end
 
 to go ;; observer procedure
   ;; stop criterion
-  if nb-S = 0 or nb-I = 0 [ show-asymptomatic-cases stop ]
-
-  ;; update case counts
-  update-previous-epidemic-counts
+  if nb-S = 0 or nb-I = 0 [
+    show-asymptomatic-cases
+    stop
+  ]
 
   ;; movement
   move-randomly-citizens
 
   ;; transmission
-  ask citizens with [epidemic-state = "Susceptible"] [ get-virus ]
+  get-virus
 
-  update-epidemics
-  update-current-epidemic-counts
-
-  show-epidemic-state
+  ;; update agents' state and case counts
+  update-epidemic-states
+  update-epidemic-counts
 
   tick
 end
@@ -161,15 +162,7 @@ to show-asymptomatic-cases ;; observer procedure
 end
 
 
-to update-previous-epidemic-counts ;; observer procedure
-  ;set previous-nb-new-infections-reported nb-Ir
-  ;set previous-nb-new-infections-asymptomatic nb-Inr
-  set current-nb-new-infections-reported 0 ; FA
-  set current-nb-new-infections-asymptomatic 0 ; FA
-end
-
-
-to move-randomly-citizens
+to move-randomly-citizens ;; observer procedure
   ask citizens
   [
     set heading heading + random walking-angle - random walking-angle
@@ -179,7 +172,7 @@ to move-randomly-citizens
 end
 
 
-to avoid-walls
+to avoid-walls ;; citizen procedure
   if abs [pxcor] of patch-ahead (wall + 1) = max-pxcor
   [ set heading (- heading) ]
   if abs [pycor] of patch-ahead 1 = max-pycor
@@ -187,25 +180,27 @@ to avoid-walls
 end
 
 
-to get-virus ;; citizen procedure
-  let target one-of other citizens in-radius transmission-distance with [epidemic-state = "Infected" or epidemic-state = "Asymptomatic Infected"]
-  if is-agent? target [
-    if ([epidemic-state] of target = "Infected" and random-float 1 < probability-transmission)
-    or
-    ([epidemic-state] of target = "Asymptomatic Infected" and random-float 1 < proba-transmission-unreported-infected)
-    [
-      set epidemic-state "Infected"
-      set contagion-counter contagion-duration
-      set current-nb-new-infections-reported (current-nb-new-infections-reported + 1)
-      set infection-date ticks
+to get-virus ;; observer procedure
+  ask citizens with [epidemic-state = "Susceptible"] [
+    let target one-of other citizens in-radius transmission-distance with [epidemic-state = "Infected" or epidemic-state = "Asymptomatic Infected"]
+    if is-agent? target [
+      if ([epidemic-state] of target = "Infected" and random-float 1 < probability-transmission)
+      or
+      ([epidemic-state] of target = "Asymptomatic Infected" and random-float 1 < proba-transmission-unreported-infected)
+      [
+        set epidemic-state "Infected"
+        set contagion-counter contagion-duration
+        set current-nb-new-infections-reported current-nb-new-infections-reported + 1
+        set infection-date ticks
 
-      ask target [ set nb-other-infected nb-other-infected + 1 ]
+        ask target [ set nb-other-infected nb-other-infected + 1 ]
+      ]
     ]
   ]
 end
 
 
-;to move-distanciation-citizens
+;to move-distanciation-citizens ;; observer procedure
 ;  ask citizens
 ;  [
 ;    ifelse respect-rules?
@@ -233,7 +228,7 @@ end
 ;end
 
 
-;to avoid-infected
+;to avoid-infected ;; observer procedure
 ;  ask citizens
 ;  [
 ;    let target min-one-of other citizens with [epidemic-state = "Infected"] in-radius infected-avoidance-distance [distance myself]
@@ -255,17 +250,25 @@ end
 ;end
 
 
-to update-epidemics
+to update-epidemic-states ;; observer procedure
   ask citizens with [ epidemic-state = "Infected" or epidemic-state = "Asymptomatic Infected" ] [
     set contagion-counter (contagion-counter - 1)
     if contagion-counter <= 0 [ become-recovered ]
   ]
+
+  show-epidemic-state
 end
 
 
-to update-current-epidemic-counts
-  ;FA set current-nb-new-infections-reported nb-Ir - previous-nb-new-infections-reported
-  ;FA set  current-nb-new-infections-asymptomatic nb-Inr - previous-nb-new-infections-asymptomatic
+to update-epidemic-counts ;; observer procedure
+  set timeseries-incidence lput current-nb-new-infections-reported timeseries-incidence
+  set timeseries-S lput nb-S timeseries-S
+  set timeseries-I lput nb-I timeseries-I
+  set timeseries-R lput nb-R timeseries-R
+
+  ;; reset daily counters
+  set current-nb-new-infections-reported 0
+;  set current-nb-new-infections-asymptomatic 0
 end
 
 
