@@ -1,8 +1,11 @@
 ;extensions [vid] ; A virer de la version finale
 
 globals [
+  headless?
+
   population-size
   nb-infected-initialisation
+  headless-init-proportion-of-recovered
   transmission-distance
   distanciation-distance
   probability-transmission
@@ -40,6 +43,9 @@ to setup ;; observer procedure
   clear-all
   reset-ticks
 
+  set headless? false
+  setup-from-GUI
+
   setup-globals
   setup-population
   show-epidemic-state
@@ -48,8 +54,28 @@ to setup ;; observer procedure
 end
 
 
+;; for openmole execution
+to headless-setup ;; observer procedure
+  reset-ticks
+
+  set headless? true
+
+  setup-globals
+  setup-population
+  show-epidemic-state
+;  set-explications
+
+end
+
+
+;; setup global variables from GUI variables
+to setup-from-GUI ;; observer procedure
+  set headless-init-proportion-of-recovered init-proportion-of-recovered
+end
+
+
 to setup-globals ;; observer procedure
-  set population-size 500
+  set population-size 100
   set nb-infected-initialisation 1
   set transmission-distance 1
   set distanciation-distance 3
@@ -82,7 +108,7 @@ to set-infected-initialisation ;; observer procedure
   ]
 
   ;; Simu 4
-  let nb-immunized-init init-proportion-of-recovered * population-size / 100
+  let nb-immunized-init headless-init-proportion-of-recovered * population-size / 100
   ask n-of nb-immunized-init citizens with [epidemic-state = "Susceptible"] [ become-recovered ]
 end
 
@@ -451,7 +477,7 @@ init-proportion-of-recovered
 init-proportion-of-recovered
 0
 100
-50.0
+25.0
 5
 1
 %
