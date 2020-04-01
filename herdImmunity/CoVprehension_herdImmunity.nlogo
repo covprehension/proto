@@ -3,7 +3,7 @@
 globals [
   headless?
 
-  population-size
+  headless-population-size
   nb-infected-initialisation
   headless-init-proportion-of-recovered
   transmission-distance
@@ -20,6 +20,10 @@ globals [
   ;; metrics
   current-nb-new-infections-reported
 ;  current-nb-new-infections-asymptomatic
+
+  total-nb-infected
+  date-RcrossesI
+
   timeseries-incidence
   timeseries-S
   timeseries-I
@@ -72,12 +76,12 @@ end
 
 ;; setup global variables from GUI variables
 to setup-from-GUI ;; observer procedure
+  set headless-population-size population-size
   set headless-init-proportion-of-recovered init-proportion-of-recovered
 end
 
 
 to setup-globals ;; observer procedure
-  set population-size 100
   set nb-infected-initialisation 1
   set transmission-distance 1
   set distanciation-distance 3
@@ -87,6 +91,10 @@ to setup-globals ;; observer procedure
   set wall 0
   set transparency 145
   set contagion-duration 14 * 4
+
+  ;;metric
+  set total-nb-infected -1
+  set date-RcrossesI -1
 
   set timeseries-incidence []
   set timeseries-S []
@@ -281,6 +289,9 @@ end
 
 
 to update-epidemic-counts ;; observer procedure
+  set total-nb-infected total-nb-infected + current-nb-new-infections-reported
+  if date-RcrossesI < 0 and nb-R > total-nb-infected [ set date-RcrossesI ticks ]
+
   set timeseries-incidence lput current-nb-new-infections-reported timeseries-incidence
   set timeseries-S lput nb-S timeseries-S
   set timeseries-I lput nb-I timeseries-I
@@ -501,6 +512,17 @@ false
 "" ""
 PENS
 "default" 1.0 1 -2674135 true "" "plot current-nb-new-infections-reported"
+
+INPUTBOX
+637
+577
+798
+637
+population-size
+500.0
+1
+0
+Number
 
 @#$#@#$#@
 ## WHAT IS IT?
