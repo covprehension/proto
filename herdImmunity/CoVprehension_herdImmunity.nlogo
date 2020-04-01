@@ -22,6 +22,7 @@ globals [
 ;  current-nb-new-infections-asymptomatic
 
   total-nb-infected
+  final-proportion-infected
   infinity
   date-RcrossesI
 
