@@ -87,6 +87,11 @@ to setup-globals ;; observer procedure
   set wall 0
   set transparency 145
   set contagion-duration 14 * 4
+
+  set timeseries-incidence []
+  set timeseries-S []
+  set timeseries-I []
+  set timeseries-R []
 end
 
 
@@ -142,6 +147,15 @@ to go ;; observer procedure
     stop
   ]
 
+  headless-go
+end
+
+
+;; for openmole execution
+to headless-go ;; observer procedure
+  ;; reset daily counters
+  reset-epidemic-counts
+
   ;; movement
   move-randomly-citizens
 
@@ -159,6 +173,12 @@ end
 to show-asymptomatic-cases ;; observer procedure
   ask citizens with [epidemic-state = "Asymptomatic Infected"]
   [ set color lput transparency extract-rgb blue ]
+end
+
+
+to reset-epidemic-counts
+  set current-nb-new-infections-reported 0
+;  set current-nb-new-infections-asymptomatic 0
 end
 
 
@@ -265,10 +285,6 @@ to update-epidemic-counts ;; observer procedure
   set timeseries-S lput nb-S timeseries-S
   set timeseries-I lput nb-I timeseries-I
   set timeseries-R lput nb-R timeseries-R
-
-  ;; reset daily counters
-  set current-nb-new-infections-reported 0
-;  set current-nb-new-infections-asymptomatic 0
 end
 
 
@@ -416,7 +432,7 @@ PLOT
 10
 972
 226
-Epidémie
+Epidemic dynamics
 Temps
 Nombre total de cas
 0.0
@@ -431,24 +447,6 @@ PENS
 "Ia" 1.0 0 -2674135 true "" "if nb-Ir > 1 [plot nb-Ir]"
 "Ib" 1.0 0 -13791810 true "" "if nb-Inr > 0 [plot nb-Inr]"
 "R" 1.0 0 -7500403 true "" "if nb-R > 0 [plot nb-R]"
-
-PLOT
-593
-228
-972
-409
-Nouveaux cas identifiés
-Temps
-Nombre de cas
-0.0
-10.0
-0.0
-10.0
-true
-true
-"" ""
-PENS
-"I" 1.0 1 -2139308 true "" "plot current-nb-new-infections-reported\n +  current-nb-new-infections-asymptomatic"
 
 INPUTBOX
 2
@@ -485,6 +483,24 @@ init-proportion-of-recovered
 1
 %
 HORIZONTAL
+
+PLOT
+593
+225
+972
+408
+New identified cases
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 1 -2674135 true "" "plot current-nb-new-infections-reported"
 
 @#$#@#$#@
 ## WHAT IS IT?
