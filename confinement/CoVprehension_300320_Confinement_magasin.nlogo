@@ -3,6 +3,7 @@ globals [ ;;global parameters
   nb-house
   nb-store
   nb-infected-initialisation
+  nb-supermarket-cashier
   transmission-distance
   probability-transmission
   probability-transmission-unreported-infected
@@ -28,6 +29,7 @@ citizens-own
   nb-other-infected
   contagion-counter ;;counter to go from state 1 or 2 (infected) to state 3 recovered
   my-house
+  my-store
   Derogating-travel-certificate ; boleen
   supermarket-cashier ; boleen
 ]
@@ -84,6 +86,7 @@ to setup-population
     set color green ; lput transparency extract-rgb  green
     set epidemic-state 0
     set my-house one-of houses
+    set my-store one-of stores
     set Derogating-travel-certificate FALSE
     set supermarket-cashier FALSE
   ]
@@ -113,6 +116,7 @@ end
 to go
   move-citizens
   update-epidemics
+  shopping-clearance
   tick
 end
 
@@ -120,32 +124,48 @@ end
 to move-citizens
   ask citizens[
     if confinement? AND NOT supermarket-cashier [
-    [
-        ifelse [frigo] of my-house <= 0 [
-         ;If I have nothing to heat I can go to the maket
+        ;ifelse [frigo] of my-house <= 0 [
+      ifelse Derogating-travel-certificate [
+          ;If I have nothing to heat I can go to the maket
+          face my-store
+          fd speed
+        if any? stores-here [
+         ;If I'm in the store
+          set Derogating-travel-certificate false
+          ask my-house [set frigo random 16]
+        ]
         ][
           ;if I have something to heat
-         move-to my-house
+          move-to my-house
         ]
 
-    ]
-     if supermarket-cashier [ ;; TODO ya surment un truc a regarder là ... quand y a pas de confinement.
+      ]
+      if supermarket-cashier [ ;; TODO ya surment un truc a regarder là ... quand y a pas de confinement.
         move-to one-of stores
       ]
 
       set heading heading + random walking-angle - random walking-angle
       avoid-walls
       fd speed
-   ]
-  if confinement?
-  [set nb-step-confinement (nb-step-confinement + 1)]
+    ]
+    if confinement?
+    [set nb-step-confinement (nb-step-confinement + 1)]
 
 
 end
 
 to shopping-clearance
 ;house proc
-
+  ask houses [
+    if any? citizens-here [
+      if frigo <= 0 [
+        ask one-of citizens-here [
+          set  Derogating-travel-certificate true
+        ]
+      ]
+      set frigo frigo - count citizens-here
+    ]
+  ]
 end
 
 to avoid-walls
@@ -362,7 +382,7 @@ SWITCH
 450
 confinement?
 confinement?
-1
+0
 1
 -1000
 
