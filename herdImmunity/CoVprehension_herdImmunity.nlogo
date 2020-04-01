@@ -116,15 +116,16 @@ end
 
 
 to set-infected-initialisation ;; observer procedure
-  ask n-of nb-infected-initialisation citizens [
+  ;; import virus
+  ask n-of nb-infected-initialisation citizens with [epidemic-state = "Susceptible"] [
     set epidemic-state "Infected"
     set contagion-counter contagion-duration
     set current-nb-new-infections-reported (current-nb-new-infections-reported + 1)
   ]
 
-  ;; Simu 4
-  let nb-immunized-init headless-init-proportion-of-recovered * population-size / 100
-  ask n-of nb-immunized-init citizens with [epidemic-state = "Susceptible"] [ become-recovered ]
+  ;; immunized people
+  let init-nb-immunized floor (headless-init-proportion-of-recovered * (population-size - nb-infected-initialisation) / 100)
+  ask n-of init-nb-immunized citizens with [epidemic-state = "Susceptible"] [ become-recovered ]
 end
 
 
@@ -489,7 +490,7 @@ init-proportion-of-recovered
 init-proportion-of-recovered
 0
 100
-25.0
+100.0
 5
 1
 %
@@ -519,7 +520,7 @@ INPUTBOX
 798
 637
 population-size
-500.0
+215.0
 1
 0
 Number
