@@ -1,79 +1,91 @@
 globals [ ;;global parameters
+  ;;population
   population-size
-  nb-house
-  nb-store
-  nb-infected-initialisation
+  nb-houses
+  nb-stores
+  nb-workplaces
   nb-supermarket-cashier
-  transmission-distance
-  probability-transmission
-  probability-transmission-unreported-infected
+  fridge-capacity
+
+  ;;movement
   walking-angle
   speed
-  current-nb-new-infections-reported
-  current-nb-new-infections-asymptomatic
-  transparency
-  wall
-  contagion-duration
-  nb-step-confinement
+
   nb-step-per-day
+
+  ;;epidemics
+  nb-infected-initialisation
+  transmission-distance
+  probability-transmission
+  current-nb-new-infections-reported
+  contagion-duration
 ]
 
 breed [citizens citizen]
 breed [houses house]
 breed [stores store]
+breed [workplaces workplace]
 
 citizens-own
 [
-  epidemic-state;FA: 0 Susceptible 1 Infected 2 Asymptomatic Infected 3 Recovered
-  infection-date
-  nb-other-infected
-  contagion-counter ;;counter to go from state 1 or 2 (infected) to state 3 recovered
+  epidemic-state;FA: 0 Susceptible 1 Infected 2 Recovered
+  contagion-counter ;;counter to go from state 1 infected to state 2 recovered
   my-house
   my-store
-  Derogating-travel-certificate ; boleen
-  supermarket-cashier ; boleen
+  my-workplace
+  supermarket-cashier?
+  derogating-travel-certificate?
+  at-home? ;; pour limiter la contamination aux colocataires
 ]
 
 houses-own
 [
- frigo ;When's the next shopping spree
+  fridge-level ;;niveau de remplissement du frigo
 ]
 
 to setup-globals
-  set population-size 200
+  set population-size 400
+  set nb-houses (population-size / 2)
+  set nb-stores 3
+  set nb-workplaces (population-size / 50)
   set nb-supermarket-cashier 10
-  set nb-house (population-size / 2)
-  set nb-store 1
-  set nb-infected-initialisation (ifelse-value
-  niveau-difficulté = "facile" [1]
-  niveau-difficulté = "moyen" [0.02 * population-size]
-  niveau-difficulté = "difficile" [0.05 * population-size])
-  set transmission-distance 1
-  set probability-transmission 1
-  set probability-transmission-unreported-infected 0.8
+  set fridge-capacity 320
+
   set walking-angle 50
   set speed 0.5
-  set transparency 145
   set nb-step-per-day 4
   set contagion-duration 14 * nb-step-per-day
+
+  set nb-infected-initialisation 1
+  set transmission-distance 1
+  set probability-transmission 0.01
 end
 
 to setup-houses
-  create-houses nb-house[
+  create-houses nb-houses[
     set shape "house"
     setxy random-xcor random-ycor
     set size 2
-    set color lput transparency extract-rgb  white
-    set frigo random 16
+    set color lput 145 extract-rgb  white
+    set fridge-level random fridge-capacity
   ]
 end
 
 to setup-stores
-  create-stores nb-store[
+  create-stores nb-stores[
     set shape "fish"
-    setxy 0 0
+    setxy random-xcor random-ycor
     set size 3
-    set color lput transparency extract-rgb  white
+    set color lput 145 extract-rgb  white
+  ]
+end
+
+to setup-workplaces
+  create-workplaces nb-workplaces[
+    set shape "wheel"
+    setxy random-xcor random-ycor
+    set size 3
+    set color lput 145 extract-rgb  white
   ]
 end
 
@@ -83,19 +95,19 @@ to setup-population
     setxy random-xcor random-ycor
     set shape "circle"
     set size 1
-    set color green ; lput transparency extract-rgb  green
+    set color green
     set epidemic-state 0
     set my-house one-of houses
-    set my-store one-of stores
-    set Derogating-travel-certificate FALSE
-    set supermarket-cashier FALSE
+    set my-store min-one-of stores [distance myself]
+    set my-workplace one-of workplaces
+    set supermarket-cashier? false
+    set derogating-travel-certificate? false
+  ]
+  ask n-of nb-supermarket-cashier citizens [
+    set supermarket-cashier? true
+    set my-workplace my-store
   ]
   set-infected-initialisation
-  ask n-of nb-supermarket-cashier citizens [
-   set supermarket-cashier TRUE
-    set color yellow
-  ]
-
 end
 
 to set-infected-initialisation
@@ -110,6 +122,7 @@ to setup
   setup-globals
   setup-houses
   setup-stores
+  setup-workplaces
   setup-population
 end
 
@@ -123,65 +136,86 @@ end
 ;;MOVEMENT PROCEDURES
 to move-citizens
   ask citizens[
-    if confinement? AND NOT supermarket-cashier [
-        ;ifelse [frigo] of my-house <= 0 [
-      ifelse Derogating-travel-certificate [
-          ;If I have nothing to heat I can go to the maket
+    ifelse not confinement? [
+      let time ticks / 2
+     ;;il passe 1/3 du temps à la maison
+      if time mod 3 = 0 [go-home]
+      ;;1/3 au travail
+      if time mod 3 = 1 [go-to-work]
+      ;;1/3 à flanner
+      if time mod 3 = 2 [wander-around]
+    ][
+    ;;confinement
+    ifelse not supermarket-cashier? [
+      ifelse derogating-travel-certificate? [
+          go-shopping
+        ][
+          ;if I have something to eat
+          go-home
+        ]
+      ][;; caissiere
+        go-to-work
+      ]
+  ]]
+end
+
+to go-home
+  move-to my-house
+  set at-home? true
+end
+
+to go-shopping
+  set at-home? false
+  ;If I have nothing to eat I can go to the market
           face my-store
           fd speed
         if any? stores-here [
          ;If I'm in the store
-          set Derogating-travel-certificate false
-          ask my-house [set frigo random 16]
+          set derogating-travel-certificate? false
+          ask my-house [set fridge-level random fridge-capacity]
         ]
-        ][
-          ;if I have something to heat
-          move-to my-house
-        ]
+end
 
-      ]
-      if supermarket-cashier [ ;; TODO ya surment un truc a regarder là ... quand y a pas de confinement.
-        move-to one-of stores
-      ]
+to go-to-work
+  set at-home? false
+  move-to my-workplace
+end
 
-      set heading heading + random walking-angle - random walking-angle
-      avoid-walls
-      fd speed
-    ]
-    if confinement?
-    [set nb-step-confinement (nb-step-confinement + 1)]
+to wander-around
+  set at-home? false
+  set heading heading + random walking-angle - random walking-angle
+  avoid-walls
+  fd speed
+end
 
-
+to avoid-walls
+  if abs [pxcor] of patch-ahead (1) = max-pxcor
+    [ set heading (- heading) ]
+  if abs [pycor] of patch-ahead 1 = max-pycor
+    [ set heading (180 - heading) ]
 end
 
 to shopping-clearance
 ;house proc
   ask houses [
     if any? citizens-here [
-      if frigo <= 0 [
+      if fridge-level <= 0 [
         ask one-of citizens-here [
-          set  Derogating-travel-certificate true
+          set  derogating-travel-certificate? true
         ]
       ]
-      set frigo frigo - count citizens-here
+      set fridge-level fridge-level - count citizens-here ;; FA oh c'est beau ça Etienne !
     ]
   ]
 end
 
-to avoid-walls
-  if abs [pxcor] of patch-ahead (wall + 1) = max-pxcor
-    [ set heading (- heading) ]
-  if abs [pycor] of patch-ahead 1 = max-pycor
-    [ set heading (180 - heading) ]
-end
 
 ;;EPIDEMICS PROCEDURE
 to update-epidemics
   ;;update the counters for the infected at this timestep
   set current-nb-new-infections-reported 0
-  set  current-nb-new-infections-asymptomatic 0
   ;;update recovered
-  ask citizens with [epidemic-state = 1 or epidemic-state = 2][
+  ask citizens with [epidemic-state = 1][
     set contagion-counter (contagion-counter - 1)
     if contagion-counter <= 0 [ become-recovered ]
   ]
@@ -192,33 +226,31 @@ to update-epidemics
 end
 
 to get-virus
-  let target one-of other citizens in-radius transmission-distance with [epidemic-state = 1 or epidemic-state = 2]
+  ifelse not at-home? [
+  let target one-of other citizens in-radius transmission-distance with [epidemic-state = 1]
   if is-agent? target[
       if ([epidemic-state] of target = 1  and random-float 1 < probability-transmission)
-      or
-      ([epidemic-state] of target = 2 and random-float 1 < probability-transmission-unreported-infected)
-    [
-        become-infected
-        ask target [set nb-other-infected nb-other-infected + 1]
-    ]]
+    [become-infected]
+  ]]
+  [;;à la maison
+    let target one-of other citizens with [epidemic-state = 1 and my-house = [my-house] of myself]
+  if is-agent? target[
+      if ([epidemic-state] of target = 1  and random-float 1 < probability-transmission)
+    [become-infected]
+  ]
+  ]
 end
 
 ;;STATE TRANSITION PROCEDURES
 to become-infected
   set epidemic-state 1
   set contagion-counter contagion-duration
-  set infection-date ticks
   set current-nb-new-infections-reported (current-nb-new-infections-reported + 1)
   set color red ; lput transparency extract-rgb red
 end
 
-to become-asymptotic-infected
-  set epidemic-state 2
-  set color blue ; lput transparency extract-rgb blue
-end
-
 to become-recovered
-  set epidemic-state 3
+  set epidemic-state 2
   set color gray ; lput transparency extract-rgb gray
 end
 
@@ -230,41 +262,14 @@ to-report nb-S
   report count citizens with [epidemic-state = 0 ]
 end
 
-to-report nb-Ir
-  report count citizens with [epidemic-state = 1 ]
-end
-
-to-report nb-Inr
-  report count citizens with [epidemic-state = 2 ]
-end
-
 to-report nb-I
-  report count citizens with [epidemic-state = 1 or epidemic-state = 2 ]
-end
-
-to-report nb-I-Total
-  report (nb-I + nb-R) / population-size * 100
+  report count citizens with [epidemic-state = 1]
 end
 
 to-report nb-R
-  report count citizens with [epidemic-state = 3 ]
+  report count citizens with [epidemic-state = 2 ]
 end
 
-to-report nb-Day-Confinement
-  report nb-step-confinement / nb-step-per-day
-end
-
-
-
-;==============
-
-;TECHNICAL ADDS
-
-;===============
-
-to fix-seed
- random-seed 47822
-end
 @#$#@#$#@
 GRAPHICS-WINDOW
 2
@@ -344,7 +349,7 @@ true
 "" ""
 PENS
 "S" 1.0 0 -13840069 true "" "if nb-S > 0 [plot nb-S]"
-"Ia" 1.0 0 -2674135 true "" "plot nb-Ir"
+"I" 1.0 0 -2674135 true "" "plot nb-I"
 "R" 1.0 0 -7500403 true "" "plot nb-R"
 
 PLOT
@@ -363,7 +368,7 @@ true
 true
 "" ""
 PENS
-"I" 1.0 1 -2139308 true "" "plot current-nb-new-infections-reported\n +  current-nb-new-infections-asymptomatic"
+"I" 1.0 1 -2139308 true "" "plot current-nb-new-infections-reported"
 
 TEXTBOX
 315
@@ -392,31 +397,10 @@ MONITOR
 756
 464
 % Infectés
-nb-I-Total
+nb-I / population-size * 100
 1
 1
 11
-
-MONITOR
-619
-468
-756
-513
-nb Jours confinement
-nb-day-confinement
-17
-1
-11
-
-CHOOSER
-764
-421
-902
-466
-niveau-difficulté
-niveau-difficulté
-"facile" "moyen" "difficile"
-2
 
 @#$#@#$#@
 ## THINGS TO TRY
@@ -747,7 +731,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.1.1
+NetLogo 6.1.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
