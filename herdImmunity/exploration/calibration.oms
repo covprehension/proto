@@ -1,0 +1,26 @@
+import _parent_.envDef._
+import _file_.CoVprehension_herdImmunity._
+
+
+// val finalProportionInfected = Val[Double]
+
+// val propInf = ScalaTask("val finalProportionInfected = totalNbInfected / populationSize * 100") set (
+//     inputs += (initProportionOfRecovered, totalNbInfected, populationSize),
+//     outputs += (finalProportionInfected, initProportionOfRecovered)
+// )
+
+
+val calib = NSGA2Evolution(
+  evaluation = model,
+  genome = Seq(
+    // populationSize in (100, 1000),
+    initProportionOfRecovered in (0.0, 100.0)
+  ),
+  objectives = Seq(initProportionOfRecovered, finalProportionInfected),
+  stochastic = Stochastic(seed = mySeed, reevaluate = 0.2, replications = 100),
+  parallelism = 100,
+  termination = 20000,
+  distribution = Island(5 minutes)
+)
+
+calib hook (workDirectory / "calibration", 100) on ifb

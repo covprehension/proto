@@ -1,0 +1,46 @@
+val mySeed = Val[Int]
+
+// inputs
+val populationSize = Val[Int]
+val initProportionOfRecovered = Val[Double]
+
+// outputs
+val totalNbInfected = Val[Double]
+val finalProportionInfected = Val[Double]
+val dateRcrossesI = Val[Double]
+
+val timeseriesIncidence = Val[Array[Int]]
+val timeseriesS = Val[Array[Int]]
+val timeseriesI = Val[Array[Int]]
+val timeseriesR = Val[Array[Int]]
+
+
+// model execution
+val launch = List(
+    "headless-setup",
+    "while [nb-I > 0] [ headless-go ]",
+    "final-metrics")
+            
+val model = NetLogo6Task(workDirectory / "CoVprehension_herdImmunity.nlogo", launch, embedWorkspace = false, seed = mySeed) set(
+  inputs += (mySeed),
+  inputs += populationSize mapped "population-size",
+  inputs += initProportionOfRecovered mapped "headless-init-proportion-of-recovered",
+  
+  outputs += populationSize,
+  outputs += initProportionOfRecovered,
+  outputs += totalNbInfected mapped "total-nb-infected",
+  outputs += finalProportionInfected mapped "final-proportion-infected",
+  outputs += dateRcrossesI mapped "date-RcrossesI",
+  
+//   outputs += timeseriesIncidence mapped "timeseries-incidence",
+//   outputs += timeseriesS mapped "timeseries-S",
+//   outputs += timeseriesI mapped "timeseries-I",
+//   outputs += timeseriesR mapped "timeseries-R",
+  
+  //Default values
+//   seed := 0,
+  populationSize := 500
+//   initProportionOfRecovered := 25.0
+)
+
+model hook (workDirectory / "output.csv")

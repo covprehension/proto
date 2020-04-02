@@ -135,7 +135,7 @@ end
 to show-epidemic-state ;; observer procedure
   ask citizens [
     (ifelse
-      epidemic-state = "Susceptible" [ set color lput transparency extract-rgb  green ]
+      epidemic-state = "Susceptible" [ set color lput transparency extract-rgb green ]
 
       epidemic-state = "Infected" [ set color lput transparency extract-rgb red ]
 
@@ -168,11 +168,11 @@ to headless-go ;; observer procedure
   ;; reset daily counters
   reset-epidemic-counts
 
-  ;; movement
-  move-randomly-citizens
-
   ;; transmission
   get-virus
+
+  ;; movement
+  move-randomly-citizens
 
   ;; update agents' state and case counts
   update-epidemic-states
