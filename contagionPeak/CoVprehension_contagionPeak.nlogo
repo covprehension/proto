@@ -687,15 +687,69 @@ reduce-diffusion?
 3
 
 MONITOR
-213
-872
-385
-917
+336
+229
+508
+274
 NIL
 transmission-probability
 17
 1
 11
+
+PLOT
+14
+769
+332
+1006
+distribution of incubation duration
+NIL
+NIL
+0.0
+40.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 1 -16777216 true "" "histogram [state-duration] of incubating"
+
+PLOT
+331
+769
+649
+1006
+distribution of symptomes duration
+NIL
+NIL
+0.0
+40.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 1 -16777216 true "" "histogram [state-duration] of infected"
+
+PLOT
+648
+769
+966
+1006
+distribution of hospitalization duration
+NIL
+NIL
+0.0
+40.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 1 -16777216 true "" "histogram [state-duration] of hospitalized"
 
 @#$#@#$#@
 ## WHAT IS IT?
