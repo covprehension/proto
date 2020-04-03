@@ -29,6 +29,7 @@ globals [
   headless-hospitalized-duration
   headless-travel-distance
   headless-transmission-distance
+  headless-travel-distance
   headless-social-distancing?
   headless-distanciation-distance
 
@@ -86,6 +87,7 @@ to setup-from-GUI ;; observer procedure
   set headless-hospitalized-duration hospitalized-duration
   set headless-travel-distance travel-distance
   set headless-transmission-distance transmission-distance
+  set headless-travel-distance travel-distance
   set headless-social-distancing? social-distancing?
   set headless-distanciation-distance distanciation-distance
 end
