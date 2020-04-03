@@ -9,7 +9,7 @@ turtles-own [
   contagious?
   state-duration
   infection-date
-  my-distance-travel
+  my-travel-distance
 ]
 
 
@@ -35,7 +35,7 @@ globals [
 ;  %respect-distanciation
 ;  infected-avoidance-distance
 
-  walking-angle
+;  walking-angle
   wall
   transparency
 
@@ -91,7 +91,7 @@ to setup-globals ;; observer procedure
   set probability-transmission 1
 ;  set %respect-distanciation 90
 ;  set infected-avoidance-distance 2
-  set walking-angle 50
+;  set walking-angle 50
   set wall 5
   set transparency 145
 
@@ -108,8 +108,9 @@ end
 
 to setup-world
   let patch-side-size 100 ;; meters
-  let side-size (sqrt (population-size / population-density)) * 1000 / patch-side-size
-  resize-world 0 (side-size + wall) 0 side-size
+  let width (sqrt (population-size / population-density)) * 1000 / patch-side-size
+  let max-cor (width - 1) / 2
+  resize-world (- max-cor) (max-cor + wall) (- max-cor) (max-cor)
 end
 
 
@@ -152,7 +153,7 @@ to get-susceptible ;; turtle procedure
   set contagious? false
   set state-duration -1
   set infection-date -1
-  set my-distance-travel travel-distance
+  set my-travel-distance travel-distance
 end
 
 
@@ -162,7 +163,7 @@ to get-asymptomatic ;; turtle procedure
   set contagious? true
   set state-duration 7
   set infection-date ticks
-  set my-distance-travel travel-distance
+  set my-travel-distance travel-distance
 end
 
 
@@ -215,22 +216,23 @@ end
 
 
 to move-randomly ;; turtle procedure
-;  ask (turtle-set susceptibles asymptomatic symptomatic recovered) [
-    set heading heading + random walking-angle - random walking-angle
-    avoid-walls
-    forward travel-distance
-;  ]
+;  set heading heading + random walking-angle - random walking-angle
+  right random 360
+  avoid-walls
 end
 
 
 to avoid-walls ;; turtle procedure
-  while [my-travel-distance > 0 and can-move? 1 and [not hospital?] of target] [
+  while [my-travel-distance > 0] [
+    while [patch-ahead 1 = nobody] [ right random 360 ]
+    if [abs pxcor] of patch-ahead 1 = max-pxcor or [hospital?] of patch-ahead 1 [ set heading (- heading) ]
+    if [abs pycor] of patch-ahead 1 = max-pycor [ set heading (180 - heading) ]
+
     jump 1
-    let my-travel-distance my-travel-distance - 1
+    set my-travel-distance my-travel-distance - 1
   ]
-  if my-travel-distance > 0
-  if [pxcor] of target or [hospital?] of target [ set heading (- heading) ]
-  if target = nobody [ set heading (180 - heading) ]
+
+  set my-travel-distance travel-distance
 end
 
 
@@ -244,7 +246,6 @@ to move-distancing ;; turtle procedure
         face target
         right 180
         avoid-walls
-        forward travel-distance
       ]
       [ move-randomly ]
 ;    ]
@@ -272,11 +273,11 @@ end
 
 to get-symptomatic ;; turtle procedure
   set breed symptomatic
-  set color lput transparency extract-rgb red
+  set color lput transparency extract-rgb orange
   set contagious? true
   set state-duration 14
   set infection-date ticks
-  set my-distance-travel travel-distance
+  set my-travel-distance travel-distance
 
   set nb-new-infections nb-new-infections + 1
 end
@@ -289,17 +290,18 @@ to get-hospitalized ;; turtle procedure
   [ move-to icu-bed ]
   [ move-to one-of patches with [hospital? and not any? turtles-here] ]
   set shape "square"
+  set color lput transparency extract-rgb red
   set contagious? true
   set state-duration 7
   set infection-date ticks
-  set my-distance-travel 0
+  set my-travel-distance 0
 end
 
 
 to get-recovered ;; turtle procedure
   if breed = hospitalized [
     set shape "circle"
-    move-to one-of patches with [not hospital? and not any? turtles-here]
+    move-to one-of patches with [not hospital?]
   ]
 
   set breed recovered
@@ -372,8 +374,8 @@ end
 GRAPHICS-WINDOW
 535
 198
-1242
-859
+1094
+711
 -1
 -1
 9.525
@@ -386,10 +388,10 @@ GRAPHICS-WINDOW
 0
 0
 1
-0
-74
-0
-69
+-26
+31
+-26
+26
 1
 1
 1
@@ -435,9 +437,9 @@ PLOT
 204
 393
 420
-Epidémie
+Prévalence
 Temps
-Nombre total de cas
+Nombre de cas
 0.0
 10.0
 0.0
@@ -448,9 +450,9 @@ true
 PENS
 "S" 1.0 0 -13840069 true "" "plot nb-S"
 "Asymp" 1.0 0 -13345367 true "" "plot nb-Asymp"
-"Symp" 1.0 0 -2674135 true "" "plot nb-Symp"
-"H" 1.0 0 -7500403 true "" "plot nb-H"
-"R" 1.0 0 -955883 true "" "plot nb-R"
+"Symp" 1.0 0 -955883 true "" "plot nb-Symp"
+"H" 1.0 0 -2674135 true "" "plot nb-H"
+"R" 1.0 0 -7500403 true "" "plot nb-R"
 
 PLOT
 14
@@ -476,7 +478,7 @@ INPUTBOX
 1124
 198
 EXPLICATION
-vert = susceptible\nbleu = asymptomatique (incubation)\nrouge = symptomatique\nzone blanche à droite du monde de simu = hôpital\ncarrés gris = lits de réa dispo\ncarrés rouge = hospitalisé en réa si dans un carré gris, sinon ailleurs dans l'hôpital car réa saturée\n1 patch = 100m²\n1 step = 1 jour
+vert = susceptible\nbleu = asymptomatique (incubation)\norange = symptomatique\nzone blanche à droite du monde de simu = hôpital\ncarrés gris = lits de réa dispo\ncarrés rouge = hospitalisé en réa si dans un carré gris, sinon ailleurs dans l'hôpital car réa saturée\n1 patch = 100m²\n1 step = 1 jour
 1
 1
 String
@@ -490,7 +492,7 @@ population-size
 population-size
 1000
 10000
-5000.0
+3000.0
 1000
 1
 NIL
@@ -595,8 +597,8 @@ travel-distance
 travel-distance
 1
 50
-10.0
-100
+3.0
+1
 1
 patch
 HORIZONTAL
