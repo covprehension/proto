@@ -31,19 +31,11 @@ globals [
   probability-transmission
 ;  %respect-distanciation
 ;  infected-avoidance-distance
-;  contagion-duration
 
   walking-angle
   speed
   wall
   transparency
-
-  ;; specific 3c
-;  %unreported-infections
-;  proba-transmission-unreported-infected
-
-  ;; specific 4
-;  init-proportion-of-recovered
 
   ;; metrics
   nb-new-infections
@@ -61,15 +53,10 @@ globals [
 
 to setup ;; observer procedure
   clear-all
-  reset-ticks
-
   random-seed 12
 
-  set headless? false
   setup-from-GUI
-  setup-globals
-  setup-hospital
-  setup-population
+  headless-setup
 end
 
 
@@ -77,7 +64,6 @@ end
 to headless-setup ;; observer procedure
   reset-ticks
 
-  set headless? true
   setup-globals
   setup-hospital
   setup-population
@@ -98,7 +84,6 @@ end
 to setup-globals ;; observer procedure
   set nb-infected-initialisation 1
   set probability-transmission 1
-;  set distanciation-distance 3
 ;  set %respect-distanciation 90
 ;  set infected-avoidance-distance 2
   set walking-angle 50
@@ -225,7 +210,9 @@ end
 
 
 to avoid-walls ;; turtle procedure
-  if not is-agent? patch-ahead speed or [hospital?] of patch-ahead speed [ set heading (- heading) ]
+  let target patch-ahead speed
+  if [abs pxcor] of target = max-pxcor or [hospital?] of target [ set heading (- heading) ]
+  if [abs pycor] of target = max-pycor [ set heading (180 - heading) ]
 end
 
 
@@ -483,7 +470,7 @@ population-size
 population-size
 100
 500
-300.0
+400.0
 100
 1
 NIL
@@ -560,7 +547,7 @@ SWITCH
 617
 social-distancing?
 social-distancing?
-0
+1
 1
 -1000
 
