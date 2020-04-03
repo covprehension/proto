@@ -29,7 +29,6 @@ globals [
   headless-hospitalized-duration
   headless-travel-distance
   headless-transmission-distance
-  headless-travel-distance
   headless-social-distancing?
   headless-distanciation-distance
 
@@ -378,7 +377,7 @@ end
 GRAPHICS-WINDOW
 535
 198
-1094
+1095
 711
 -1
 -1
