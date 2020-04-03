@@ -23,9 +23,12 @@ globals [
   headless?
   headless-population-size
   headless-nb-icu-beds-per-thousand
+  headless-incubation-duration
+  headless-symptomes-duration
   headless-probability-hospitalized
-  headless-transmission-distance
+  headless-hospitalized-duration
   headless-travel-distance
+  headless-transmission-distance
   headless-social-distancing?
   headless-distanciation-distance
 
@@ -55,7 +58,7 @@ globals [
 
 to setup ;; observer procedure
   clear-all
-  random-seed 12
+;  random-seed 12
 
   setup-from-GUI
   headless-setup
@@ -77,9 +80,12 @@ end
 to setup-from-GUI ;; observer procedure
   set headless-population-size population-size
   set headless-nb-icu-beds-per-thousand nb-icu-beds-per-thousand
+  set headless-incubation-duration incubation-duration
+  set headless-symptomes-duration symptomes-duration
   set headless-probability-hospitalized probability-hospitalized
-  set headless-transmission-distance transmission-distance
+  set headless-hospitalized-duration hospitalized-duration
   set headless-travel-distance travel-distance
+  set headless-transmission-distance transmission-distance
   set headless-social-distancing? social-distancing?
   set headless-distanciation-distance distanciation-distance
 end
@@ -108,7 +114,7 @@ end
 
 to setup-world
   let patch-side-size 100 ;; meters
-  let width (sqrt (population-size / population-density)) * 1000 / patch-side-size
+  let width (sqrt (headless-population-size / population-density)) * 1000 / patch-side-size
   let max-cor (width - 1) / 2
   resize-world (- max-cor) (max-cor + wall) (- max-cor) (max-cor)
 end
@@ -123,7 +129,7 @@ to setup-hospital
     set hospital? true
     set pcolor white
   ]
-  let nb-icu-beds nb-icu-beds-per-thousand * population-size / 1000
+  let nb-icu-beds headless-nb-icu-beds-per-thousand * headless-population-size / 1000
   ask max-n-of nb-icu-beds patches with [hospital?] [pxcor + pycor] [
     set icu-bed? true
     set pcolor grey
@@ -135,7 +141,7 @@ to setup-population ;; observer procedure
   set-default-shape turtles "circle"
 
   ;; create population and make it susceptible
-  create-turtles population-size [
+  create-turtles headless-population-size [
     setxy random-xcor random-ycor
     while [[hospital?] of patch-here] [setxy random-xcor random-ycor ]
     set size 1
@@ -153,7 +159,7 @@ to get-susceptible ;; turtle procedure
   set contagious? false
   set state-duration -1
   set infection-date -1
-  set my-travel-distance travel-distance
+  set my-travel-distance headless-travel-distance
 end
 
 
@@ -161,9 +167,9 @@ to get-asymptomatic ;; turtle procedure
   set breed asymptomatic
   set color lput transparency extract-rgb blue
   set contagious? true
-  set state-duration 7
+  set state-duration headless-incubation-duration
   set infection-date ticks
-  set my-travel-distance travel-distance
+  set my-travel-distance headless-travel-distance
 end
 
 
@@ -172,7 +178,6 @@ to go ;; observer procedure
   while [virus-present?] [ headless-go ]
 
   final-metrics
-
   stop
 end
 
@@ -187,7 +192,7 @@ to headless-go ;; observer procedure
 
   ;; movement
   ask (turtle-set susceptibles asymptomatic symptomatic recovered) [
-    ifelse social-distancing?
+    ifelse headless-social-distancing?
     [ move-distancing ]
     [ move-randomly ]
   ]
@@ -207,7 +212,7 @@ end
 
 to get-virus ;; observer procedure
   ask susceptibles [
-    let infected-contacts other turtles with [contagious?] in-radius transmission-distance
+    let infected-contacts other turtles with [contagious?] in-radius headless-transmission-distance
     if any? infected-contacts and random-float 1 < probability-transmission [
       get-asymptomatic
     ]
@@ -216,7 +221,6 @@ end
 
 
 to move-randomly ;; turtle procedure
-;  set heading heading + random walking-angle - random walking-angle
   right random 360
   avoid-walls
 end
@@ -237,20 +241,18 @@ end
 
 
 to move-distancing ;; turtle procedure
-;  ask (turtle-set susceptibles asymptomatic symptomatic recovered) [
-;    ifelse respect-rules?
-;    [
-      let target min-one-of other turtles in-radius distanciation-distance [distance myself]
-      ifelse is-agent? target
-      [
-        face target
-        right 180
-        avoid-walls
-      ]
-      [ move-randomly ]
-;    ]
-;    [ move-randomly ]
+;  ifelse respect-rules?
+;  [
+    let target min-one-of other turtles in-radius headless-distanciation-distance [distance myself]
+    ifelse is-agent? target
+    [
+      face target
+      right 180
+      avoid-walls
+    ]
+    [ move-randomly ]
 ;  ]
+;  [ move-randomly ]
 end
 
 
@@ -260,7 +262,7 @@ to update-epidemic-states ;; observer procedure
       if breed = hospitalized [ get-recovered ]
 
       if breed = symptomatic [
-        ifelse random-float 1 < probability-hospitalized
+        ifelse random-float 1 < headless-probability-hospitalized
         [ get-hospitalized ]
         [ get-recovered ]
       ]
@@ -275,9 +277,9 @@ to get-symptomatic ;; turtle procedure
   set breed symptomatic
   set color lput transparency extract-rgb orange
   set contagious? true
-  set state-duration 14
+  set state-duration headless-symptomes-duration
   set infection-date ticks
-  set my-travel-distance travel-distance
+  set my-travel-distance headless-travel-distance
 
   set nb-new-infections nb-new-infections + 1
 end
@@ -292,7 +294,7 @@ to get-hospitalized ;; turtle procedure
   set shape "square"
   set color lput transparency extract-rgb red
   set contagious? true
-  set state-duration 7
+  set state-duration headless-hospitalized-duration
   set infection-date ticks
   set my-travel-distance 0
 end
@@ -324,7 +326,7 @@ end
 
 
 to final-metrics ;; observer procedure
-  set final-proportion-infected total-nb-infected / population-size * 100
+  set final-proportion-infected total-nb-infected / headless-population-size * 100
 end
 
 
@@ -399,10 +401,10 @@ ticks
 30.0
 
 BUTTON
-426
-84
-504
-139
+402
+149
+480
+204
 Prêt  ?
 setup
 NIL
@@ -416,10 +418,10 @@ NIL
 1
 
 BUTTON
-425
-143
-504
-192
+401
+208
+480
+257
 Partez !
 go
 T
@@ -434,9 +436,9 @@ NIL
 
 PLOT
 14
-204
+243
 393
-420
+459
 Prévalence
 Temps
 Nombre de cas
@@ -456,9 +458,9 @@ PENS
 
 PLOT
 14
-419
+458
 393
-635
+674
 Nouveaux cas identifiés
 Temps
 Nombre de cas
@@ -514,10 +516,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-14
-106
-237
-139
+257
+42
+480
+75
 transmission-distance
 transmission-distance
 1
@@ -530,9 +532,9 @@ HORIZONTAL
 
 SLIDER
 14
-74
+153
 237
-107
+186
 probability-hospitalized
 probability-hospitalized
 0
@@ -545,9 +547,9 @@ HORIZONTAL
 
 PLOT
 14
-634
+673
 393
-884
+923
 ICU overflow
 NIL
 NIL
@@ -561,23 +563,24 @@ true
 PENS
 "nb beds needed" 1.0 0 -7500403 true "" "plot nb-H"
 "ICU capacity" 1.0 0 -2674135 true "" "plot nb-icu-beds-per-thousand * population-size / 1000"
+"incidence new cases" 1.0 0 -955883 true "" "plot nb-new-infections"
 
 SWITCH
-281
-10
-504
-43
+257
+74
+480
+107
 social-distancing?
 social-distancing?
-1
+0
 1
 -1000
 
 SLIDER
-281
-42
-504
-75
+257
+106
+480
+139
 distanciation-distance
 distanciation-distance
 0
@@ -589,10 +592,10 @@ patch
 HORIZONTAL
 
 SLIDER
-14
-138
-237
-171
+257
+10
+480
+43
 travel-distance
 travel-distance
 1
@@ -601,6 +604,51 @@ travel-distance
 1
 1
 patch
+HORIZONTAL
+
+SLIDER
+14
+89
+237
+122
+incubation-duration
+incubation-duration
+0
+28
+7.0
+1
+1
+days
+HORIZONTAL
+
+SLIDER
+14
+121
+237
+154
+symptomes-duration
+symptomes-duration
+0
+28
+14.0
+1
+1
+days
+HORIZONTAL
+
+SLIDER
+14
+185
+237
+218
+hospitalized-duration
+hospitalized-duration
+0
+28
+7.0
+1
+1
+days
 HORIZONTAL
 
 @#$#@#$#@
