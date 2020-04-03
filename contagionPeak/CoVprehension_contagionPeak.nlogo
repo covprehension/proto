@@ -36,7 +36,8 @@ globals [
   transmission-probability
   transmission-reduced?
   reduction-factor
-  reduction-date
+  intervention-date
+  intervention
 ;  %respect-distanciation
 ;  infected-avoidance-distance
 
@@ -101,7 +102,8 @@ to setup-globals ;; observer procedure
   set transmission-probability 0.12
   set transmission-reduced? ifelse-value headless-reduce-diffusion? = "never" [true] [false]
   set reduction-factor 10
-  set reduction-date -1
+  set intervention-date -1
+  set intervention 0
 ;  set %respect-distanciation 90
 ;  set infected-avoidance-distance 2
 ;  set walking-angle 50
@@ -212,6 +214,7 @@ end
 to reset-epidemic-counts ;; observer procedure
   set nb-new-infections 0
   set nb-new-hospitalized 0
+  set intervention 0
 end
 
 
@@ -220,14 +223,16 @@ to reduce-diffusion ;; observer procedure
     headless-reduce-diffusion? = "from the start" [
       set transmission-probability transmission-probability / reduction-factor
       set transmission-reduced? true
-      set reduction-date ticks
+      set intervention-date ticks
+      set intervention 100
     ]
 
     headless-reduce-diffusion? = "when the first case occurs" [
       if nb-Inf = 1 [
         set transmission-probability transmission-probability / reduction-factor
         set transmission-reduced? true
-        set reduction-date ticks
+        set intervention-date ticks
+        set intervention 100
       ]
     ]
 
@@ -235,7 +240,8 @@ to reduce-diffusion ;; observer procedure
       if nb-H = 1 [
         set transmission-probability transmission-probability / reduction-factor
         set transmission-reduced? true
-        set reduction-date ticks
+        set intervention-date ticks
+        set intervention 100
       ]
     ]
 
@@ -243,7 +249,8 @@ to reduce-diffusion ;; observer procedure
       if count patches with [icu-bed? and not any? turtles-here] = 0 [
         set transmission-probability transmission-probability / reduction-factor
         set transmission-reduced? true
-        set reduction-date ticks
+        set intervention-date ticks
+        set intervention 100
       ]
     ]
   )
@@ -307,10 +314,6 @@ end
 
 to get-hospitalized ;; turtle procedure
   set breed hospitalized
-  let icu-bed min-one-of patches with [icu-bed? and not any? turtles-here] [pxcor]
-  ifelse is-agent? icu-bed
-  [ move-to icu-bed ]
-  [ move-to one-of patches with [hospital? and not any? turtles-here] ]
   set shape "square"
   set color lput transparency extract-rgb red
   set contagious? true
@@ -318,7 +321,26 @@ to get-hospitalized ;; turtle procedure
   set infection-date ticks
   set my-travel-distance 0
 
+  find-hospital-spot
+
   set nb-new-hospitalized nb-new-hospitalized + 1
+end
+
+
+to find-hospital-spot ;; turtle procedure
+  let icu-bed min-one-of patches with [icu-bed? and not any? turtles-here] [pxcor]
+  let hospital-spot one-of patches with [hospital? and not any? turtles-here]
+
+  (ifelse
+    is-agent? icu-bed [
+      move-to icu-bed
+      stop
+    ]
+    is-agent? hospital-spot [
+      move-to hospital-spot
+      stop
+    ]
+  )
 end
 
 
@@ -446,10 +468,10 @@ ticks
 30.0
 
 BUTTON
-402
-149
-480
-204
+357
+96
+435
+151
 Prêt  ?
 setup
 NIL
@@ -463,10 +485,10 @@ NIL
 1
 
 BUTTON
-401
-208
-480
-257
+356
+155
+435
+204
 Partez !
 go
 T
@@ -480,10 +502,10 @@ NIL
 1
 
 PLOT
-14
-243
-393
-459
+15
+295
+394
+511
 Prévalence
 Temps
 Nombre de cas
@@ -566,17 +588,17 @@ probability-hospitalized
 probability-hospitalized
 0
 1
-0.17
+0.05
 0.01
 1
 NIL
 HORIZONTAL
 
 PLOT
-14
-459
-517
-709
+15
+511
+518
+761
 ICU overflow
 NIL
 NIL
@@ -592,6 +614,7 @@ PENS
 "ICU capacity" 1.0 0 -5825686 true "" "plot nb-icu-beds"
 "incidence new cases" 1.0 0 -955883 true "" "plot nb-new-infections"
 "incidence new hospitalized" 1.0 0 -2674135 true "" "plot nb-new-hospitalized"
+"intervention" 1.0 0 -7500403 true "" "plot intervention"
 
 SLIDER
 257
@@ -654,14 +677,14 @@ days
 HORIZONTAL
 
 CHOOSER
-85
-776
-394
-821
+14
+229
+323
+274
 reduce-diffusion?
 reduce-diffusion?
 "never" "from the start" "when the first case occurs" "when the first hospitalization occurs" "when the ICU is at capacity"
-4
+3
 
 MONITOR
 213
