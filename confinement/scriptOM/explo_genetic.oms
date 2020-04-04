@@ -1,4 +1,5 @@
 // LES INPUTS
+val seed = Val[Int]
 val difficulty = Val[String]
 val init_conf = Val[Int]
 val duration_conf = Val[Int]
@@ -17,8 +18,7 @@ Dans Netlogo on a :
 ["temps_entre_confinement" [4 2 30]]
 */
 
-val cmds = 
-  seq(
+val cmds = Seq(
     "random-seed ${seed}",
     "setup",
     "while any? citizens with [epidemic-state = 1][go]"
@@ -34,33 +34,20 @@ val model =
     inputs += (init_conf mapped "confinement-tick"),
     inputs += (duration_conf mapped "confinement-duree"),
     inputs += (relesae_conf mapped "temps_entre_confinement"),
-    outputs += ("nb-S" mapped nbS),
-    outputs += ("nb-Ir" mapped nbIr),
-    outputs += ("nb-R" mapped nbR),
-    outputs += ("nb-confinement" mapped nb_confinement)
+    outputs += (nbS mapped "nb-S"),
+    outputs += (nbIr mapped "nb-Ir"),
+    outputs += (nbR mapped "nb-R"),
+    outputs += (nb_confinement mapped "nb-confinement"),
+    // fixed values
+    seed := 42,
+    difficulty := "Difficile"
   )
-  
-val cmds = Seq("random-seed ${seed}", "run-to-grid")
-val ants =
-  NetLogo6Task(workDirectory / "ants.nlogo", cmds) set (
-    name := "ants",
-    // Map the OpenMOLE variables to NetLogo variables
-    inputs += (population mapped "gpopulation"),
-    inputs += (diffusion mapped "gdiffusion-rate"),
-    inputs += (evaporation mapped "gevaporation-rate"),
-    inputs += (maxsteps mapped "gmax-steps"),
-    outputs += (food1 mapped "final-ticks-food1"),
-    outputs += (food2 mapped "final-ticks-food2"),
-    outputs += (food3 mapped "final-ticks-food3"),
-    // The seed is used to control the initialisation of the random number generator of NetLogo
-    inputs += seed
- )
  
 val evolution =
   NSGA2Evolution(
     mu = 100, // mu is the size of the population
     inputs = Seq(init_conf -> (5,20), duration_conf -> (5, 60), relesae_conf -> (5,20)),
-    //genome = Seq(x in (0.0, 1.0), y in (0.0, 1.0)), // genome (of individuals) is the inputs prototype and their variation ranges
+    genome = Seq(x in (0.0, 1.0), y in (0.0, 1.0)), // genome (of individuals) is the inputs prototype and their variation ranges
     objectives = Seq(nbS), //ici, il n'y a qu'un objectif
     // OpenMOLE provide a seed for your stochastic model to use (it is optional)
     // 20% of the evaluations are used for replicating existing solutions
@@ -73,13 +60,3 @@ val evolution =
 val env = LocalEnvironment(2)
 
 evolution on env
-
-
-val exploration = 
-  DirectSampling(
-    evaluation = model on env by 20 hook CSVHook(workDirectory / "result.csv", seed, density, difficulty, init_conf, duration_conf, relesae_conf,
-                nbS, nbR, nbIr, nb_confinement), seed, 10),
-    sampling = init_conf in (10 to 30 by 1)
-  )
-
-exploration
