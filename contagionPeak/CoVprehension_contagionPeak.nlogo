@@ -248,7 +248,7 @@ to reduce-diffusion ;; observer procedure
     ]
 
     headless-reduce-diffusion? = "when there are as many infected as hospital beds" [
-      if nb-Inf = nb-icu-beds [
+      if nb-Inf >= nb-icu-beds [
         set transmission-probability transmission-probability / reduction-factor
         set transmission-reduced? true
         set intervention-date ticks
@@ -738,7 +738,7 @@ CHOOSER
 reduce-diffusion?
 reduce-diffusion?
 "never" "from the start" "when the first case occurs" "when there are as many infected as hospital beds" "when the first hospitalization occurs" "when the ICU is at capacity"
-4
+3
 
 MONITOR
 336
