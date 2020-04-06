@@ -34,6 +34,11 @@ globals [
   headless-transmission-distance
   headless-reduce-diffusion?
 
+  population-size
+  probability-hospitalized
+  travel-distance
+  transmission-distance
+
   population-density
   nb-icu-beds
   nb-infected-initialisation
@@ -42,10 +47,6 @@ globals [
   reduction-factor
   intervention-date
   intervention
-;  %respect-distanciation
-;  infected-avoidance-distance
-
-;  walking-angle
   wall
   transparency
 
@@ -90,21 +91,25 @@ end
 
 ;; setup global variables from GUI variables
 to setup-from-GUI ;; observer procedure
-  set headless-population-size population-size
+;  set headless-population-size population-size
   set headless-nb-icu-beds-per-1000 nb-icu-beds-per-1000
   set headless-avg-incubation-duration avg-incubation-duration
   set headless-avg-mild-symptomes-duration avg-mild-symptomes-duration
   set headless-avg-severe-symptomes-duration avg-severe-symptomes-duration
-  set headless-probability-hospitalized probability-hospitalized
+;  set headless-probability-hospitalized probability-hospitalized
   set headless-avg-hospitalized-duration avg-hospitalized-duration
-  set headless-travel-distance travel-distance
-  set headless-transmission-distance transmission-distance
-  set headless-travel-distance travel-distance
+;  set headless-travel-distance travel-distance
+;  set headless-transmission-distance transmission-distance
   set headless-reduce-diffusion? reduce-diffusion?
 end
 
 
 to setup-globals ;; observer procedure
+  set headless-population-size 4000
+  set headless-probability-hospitalized 0.05
+  set headless-travel-distance 5
+  set headless-transmission-distance 1
+
   set population-density 105 ;; average for France
   set nb-icu-beds headless-nb-icu-beds-per-1000 * headless-population-size / 1000
   set nb-infected-initialisation 1
@@ -113,9 +118,6 @@ to setup-globals ;; observer procedure
   set reduction-factor 10
   set intervention-date -1
   set intervention 0
-;  set %respect-distanciation 90
-;  set infected-avoidance-distance 2
-;  set walking-angle 50
   set wall 5
   set transparency 145
 
@@ -504,8 +506,8 @@ end
 GRAPHICS-WINDOW
 535
 197
-999
-614
+1171
+786
 -1
 -1
 9.525
@@ -518,10 +520,10 @@ GRAPHICS-WINDOW
 0
 0
 1
--21
-26
--21
-21
+-30
+35
+-30
+30
 1
 1
 1
@@ -529,11 +531,11 @@ ticks
 30.0
 
 BUTTON
-357
-96
-435
-151
-Prêt  ?
+356
+125
+438
+180
+Ready?
 setup
 NIL
 1
@@ -546,11 +548,11 @@ NIL
 1
 
 BUTTON
-357
-150
-436
-199
-Partez !
+356
+179
+438
+228
+Go!
 go
 T
 1
@@ -563,13 +565,13 @@ NIL
 1
 
 PLOT
-15
-331
-394
-547
-Prévalence
-Temps
-Nombre de cas
+14
+360
+517
+576
+Prevalence
+Days
+Number of cases
 0.0
 10.0
 0.0
@@ -578,11 +580,11 @@ true
 true
 "" ""
 PENS
-"S" 1.0 0 -13840069 true "" "plot nb-S"
-"Asymp" 1.0 0 -13345367 true "" "plot nb-Incub"
-"Symp" 1.0 0 -955883 true "" "plot nb-Inf"
-"H" 1.0 0 -2674135 true "" "plot nb-H"
-"R" 1.0 0 -7500403 true "" "plot nb-R"
+"Susceptible" 1.0 0 -13840069 true "" "plot nb-S"
+"Incubating" 1.0 0 -13345367 true "" "plot nb-Incub"
+"Infected" 1.0 0 -955883 true "" "plot nb-Inf"
+"Hospitalized" 1.0 0 -2674135 true "" "plot nb-H"
+"Recovered" 1.0 0 -7500403 true "" "plot nb-R"
 
 INPUTBOX
 535
@@ -596,25 +598,10 @@ vert = susceptible\nbleu = asymptomatique (incubation)\norange = symptomatique\n
 String
 
 SLIDER
-14
-10
-237
-43
-population-size
-population-size
-1000
-10000
-2000.0
-1000
-1
-NIL
-HORIZONTAL
-
-SLIDER
-14
-42
-237
-75
+13
+71
+236
+104
 nb-icu-beds-per-1000
 nb-icu-beds-per-1000
 1
@@ -625,41 +612,11 @@ nb-icu-beds-per-1000
 NIL
 HORIZONTAL
 
-SLIDER
-257
-42
-480
-75
-transmission-distance
-transmission-distance
-1
-10
-1.0
-1
-1
-patch
-HORIZONTAL
-
-SLIDER
-14
-185
-291
-218
-probability-hospitalized
-probability-hospitalized
-0
-1
-0.05
-0.01
-1
-NIL
-HORIZONTAL
-
 PLOT
-15
-547
-518
-797
+14
+576
+517
+826
 ICU overflow
 NIL
 NIL
@@ -678,25 +635,10 @@ PENS
 "intervention" 1.0 0 -7500403 true "" "plot intervention"
 
 SLIDER
-257
-10
-480
-43
-travel-distance
-travel-distance
-1
-50
-5.0
-1
-1
-patch
-HORIZONTAL
-
-SLIDER
-14
-89
-291
-122
+13
+118
+290
+151
 avg-incubation-duration
 avg-incubation-duration
 0
@@ -708,10 +650,10 @@ days
 HORIZONTAL
 
 SLIDER
-14
-153
-291
-186
+13
+182
+290
+215
 avg-severe-symptomes-duration
 avg-severe-symptomes-duration
 0
@@ -723,10 +665,10 @@ days
 HORIZONTAL
 
 SLIDER
-14
-217
-291
-250
+13
+214
+290
+247
 avg-hospitalized-duration
 avg-hospitalized-duration
 0
@@ -738,21 +680,21 @@ days
 HORIZONTAL
 
 CHOOSER
-14
-265
-292
-310
+13
+259
+291
+304
 reduce-diffusion?
 reduce-diffusion?
 "never" "from the start" "when the first case occurs" "when there are as many infected as hospital beds" "when the first hospitalization occurs" "when the ICU is at capacity"
 0
 
 MONITOR
-320
-243
-492
-288
-NIL
+319
+272
+491
+317
+transmission probability
 transmission-probability
 17
 1
@@ -813,10 +755,10 @@ PENS
 "default" 1.0 1 -16777216 true "" "histogram [state-duration] of hospitalized"
 
 SLIDER
-14
-121
-291
-154
+13
+150
+290
+183
 avg-mild-symptomes-duration
 avg-mild-symptomes-duration
 0
@@ -824,16 +766,27 @@ avg-mild-symptomes-duration
 21.0
 1
 1
-NIL
+days
 HORIZONTAL
 
 MONITOR
-320
-287
-492
-332
-NIL
+319
+316
+491
+361
+duration of icu overflow
 duration-icu-overflow
+17
+1
+11
+
+MONITOR
+14
+10
+125
+55
+population size
+headless-population-size
 17
 1
 11
