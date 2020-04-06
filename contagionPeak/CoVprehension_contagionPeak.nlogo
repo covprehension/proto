@@ -8,9 +8,12 @@ breed [ recovered a-recovered ]
 turtles-own [
   contagious?
   state-duration
-  infection-date
+  state-starting-date
   my-travel-distance
 ]
+
+
+infected-own [ severe-symptomes? ]
 
 
 patches-own [
@@ -23,7 +26,8 @@ globals [
   headless-population-size
   headless-nb-icu-beds-per-1000
   headless-avg-incubation-duration
-  headless-avg-symptomes-duration
+  headless-avg-mild-symptomes-duration
+  headless-avg-severe-symptomes-duration
   headless-probability-hospitalized
   headless-avg-hospitalized-duration
   headless-travel-distance
@@ -85,7 +89,8 @@ to setup-from-GUI ;; observer procedure
   set headless-population-size population-size
   set headless-nb-icu-beds-per-1000 nb-icu-beds-per-1000
   set headless-avg-incubation-duration avg-incubation-duration
-  set headless-avg-symptomes-duration avg-symptomes-duration
+  set headless-avg-mild-symptomes-duration avg-mild-symptomes-duration
+  set headless-avg-severe-symptomes-duration avg-severe-symptomes-duration
   set headless-probability-hospitalized probability-hospitalized
   set headless-avg-hospitalized-duration avg-hospitalized-duration
   set headless-travel-distance travel-distance
@@ -166,7 +171,7 @@ to get-susceptible ;; turtle procedure
   set color lput transparency extract-rgb green
   set contagious? false
   set state-duration -1
-  set infection-date -1
+  set state-starting-date -1
   set my-travel-distance headless-travel-distance
 end
 
@@ -176,7 +181,7 @@ to get-incubating ;; turtle procedure
   set color lput transparency extract-rgb blue
   set contagious? true
   set state-duration law-incubation-duration
-  set infection-date ticks
+  set state-starting-date ticks
   set my-travel-distance headless-travel-distance
 end
 
@@ -285,11 +290,11 @@ end
 
 to update-epidemic-states ;; observer procedure
   ask turtles [
-    if ticks > infection-date + state-duration [
+    if ticks > state-starting-date + state-duration [
       if breed = hospitalized [ get-recovered ]
 
       if breed = infected [
-        ifelse random-float 1 < headless-probability-hospitalized
+        ifelse severe-symptomes?
         [ get-hospitalized ]
         [ get-recovered ]
       ]
@@ -304,9 +309,11 @@ to get-infected ;; turtle procedure
   set breed infected
   set color lput transparency extract-rgb orange
   set contagious? true
+  set severe-symptomes? ifelse-value random-float 1 < headless-probability-hospitalized [true] [false]
   set state-duration law-symptomes-duration
-  set infection-date ticks
+  set state-starting-date ticks
   set my-travel-distance headless-travel-distance
+
 
   set nb-new-infections nb-new-infections + 1
 end
@@ -318,7 +325,7 @@ to get-hospitalized ;; turtle procedure
   set color lput transparency extract-rgb red
   set contagious? true
   set state-duration law-hospitalized-duration
-  set infection-date ticks
+  set state-starting-date ticks
   set my-travel-distance 0
 
   find-hospital-spot
@@ -354,7 +361,7 @@ to get-recovered ;; turtle procedure
   set color lput transparency extract-rgb grey
   set contagious? false
   set state-duration -1
-  set infection-date ticks
+  set state-starting-date ticks
 end
 
 
@@ -382,7 +389,7 @@ end
 ;; durations for each state
 to-report law-incubation-duration
   let mean-duration headless-avg-incubation-duration
-  let var-duration 9
+  let var-duration 3
 
   let alpha mean-duration * mean-duration / var-duration
   let lambda mean-duration / var-duration
@@ -391,18 +398,32 @@ to-report law-incubation-duration
 end
 
 to-report law-symptomes-duration
-  let mean-duration headless-avg-symptomes-duration
-  let var-duration 9
+  (ifelse
+    severe-symptomes? [
+      let mean-duration headless-avg-severe-symptomes-duration
+      let var-duration 0.5
 
-  let alpha mean-duration * mean-duration / var-duration
-  let lambda mean-duration / var-duration
+      let alpha mean-duration * mean-duration / var-duration
+      let lambda mean-duration / var-duration
 
-  report random-gamma alpha lambda
+      report random-gamma alpha lambda
+    ]
+    ;; else
+    [
+      let mean-duration headless-avg-mild-symptomes-duration
+      let var-duration 4
+
+      let alpha mean-duration * mean-duration / var-duration
+      let lambda mean-duration / var-duration
+
+      report random-gamma alpha lambda
+    ]
+  )
 end
 
 to-report law-hospitalized-duration
   let mean-duration headless-avg-hospitalized-duration
-  let var-duration 9
+  let var-duration 0.25
 
   let alpha mean-duration * mean-duration / var-duration
   let lambda mean-duration / var-duration
@@ -442,9 +463,9 @@ end
 @#$#@#$#@
 GRAPHICS-WINDOW
 535
-198
-999
-616
+197
+1246
+861
 -1
 -1
 9.525
@@ -457,10 +478,10 @@ GRAPHICS-WINDOW
 0
 0
 1
--21
-26
--21
-21
+-34
+39
+-34
+34
 1
 1
 1
@@ -485,10 +506,10 @@ NIL
 1
 
 BUTTON
-356
-155
-435
-204
+357
+150
+436
+199
 Partez !
 go
 T
@@ -503,9 +524,9 @@ NIL
 
 PLOT
 15
-295
+331
 394
-511
+547
 Prévalence
 Temps
 Nombre de cas
@@ -543,7 +564,7 @@ population-size
 population-size
 1000
 10000
-2000.0
+5000.0
 1000
 1
 NIL
@@ -581,9 +602,9 @@ HORIZONTAL
 
 SLIDER
 14
-153
-258
-186
+185
+291
+218
 probability-hospitalized
 probability-hospitalized
 0
@@ -596,9 +617,9 @@ HORIZONTAL
 
 PLOT
 15
-511
+547
 518
-761
+797
 ICU overflow
 NIL
 NIL
@@ -634,13 +655,13 @@ HORIZONTAL
 SLIDER
 14
 89
-258
+291
 122
 avg-incubation-duration
 avg-incubation-duration
 0
-28
-7.0
+30
+6.0
 1
 1
 days
@@ -648,14 +669,14 @@ HORIZONTAL
 
 SLIDER
 14
-121
-258
-154
-avg-symptomes-duration
-avg-symptomes-duration
+153
+291
+186
+avg-severe-symptomes-duration
+avg-severe-symptomes-duration
 0
-28
-14.0
+30
+4.0
 1
 1
 days
@@ -663,14 +684,14 @@ HORIZONTAL
 
 SLIDER
 14
-185
-258
-218
+217
+291
+250
 avg-hospitalized-duration
 avg-hospitalized-duration
 0
-28
-7.0
+30
+12.0
 1
 1
 days
@@ -678,19 +699,19 @@ HORIZONTAL
 
 CHOOSER
 14
-229
+265
 323
-274
+310
 reduce-diffusion?
 reduce-diffusion?
 "never" "from the start" "when the first case occurs" "when the first hospitalization occurs" "when the ICU is at capacity"
-3
+0
 
 MONITOR
 336
-229
+265
 508
-274
+310
 NIL
 transmission-probability
 17
@@ -699,9 +720,9 @@ transmission-probability
 
 PLOT
 14
-769
+805
 332
-1006
+1042
 distribution of incubation duration
 NIL
 NIL
@@ -717,9 +738,9 @@ PENS
 
 PLOT
 331
-769
+805
 649
-1006
+1042
 distribution of symptomes duration
 NIL
 NIL
@@ -735,9 +756,9 @@ PENS
 
 PLOT
 648
-769
+805
 966
-1006
+1042
 distribution of hospitalization duration
 NIL
 NIL
@@ -750,6 +771,21 @@ false
 "" ""
 PENS
 "default" 1.0 1 -16777216 true "" "histogram [state-duration] of hospitalized"
+
+SLIDER
+14
+121
+291
+154
+avg-mild-symptomes-duration
+avg-mild-symptomes-duration
+0
+30
+21.0
+1
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
