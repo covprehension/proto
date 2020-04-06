@@ -52,6 +52,9 @@ globals [
   ;; metrics
   nb-new-infections
   nb-new-hospitalized
+  nb-new-icu
+  nb-new-hospital
+  nb-new-turned-down
 
   total-nb-infected
   final-proportion-infected
@@ -219,6 +222,9 @@ end
 to reset-epidemic-counts ;; observer procedure
   set nb-new-infections 0
   set nb-new-hospitalized 0
+  set nb-new-icu 0
+  set nb-new-hospital 0
+  set nb-new-turned-down 0
   set intervention 0
 end
 
@@ -310,6 +316,8 @@ to update-epidemic-states ;; observer procedure
 
       if breed = incubating [ get-infected ]
     ]
+
+    if breed = hospitalized and [not hospital?] of patch-here [ find-hospital-spot ]
   ]
 end
 
@@ -350,12 +358,16 @@ to find-hospital-spot ;; turtle procedure
   (ifelse
     is-agent? icu-bed [
       move-to icu-bed
+      set nb-new-icu nb-new-icu + 1
       stop
     ]
     is-agent? hospital-spot [
       move-to hospital-spot
+      set nb-new-hospital nb-new-hospital + 1
       stop
     ]
+    ;; no place in ICU or hospital
+    [ set nb-new-turned-down nb-new-turned-down + 1 ]
   )
 end
 
@@ -458,12 +470,24 @@ to-report nb-H
   report count hospitalized
 end
 
+to-report nb-R
+  report count recovered
+end
+
 to-report nb-I
   report nb-Incub + nb-Inf + nb-H
 end
 
-to-report nb-R
-  report count recovered
+to-report nb-ICU
+  report count (patches with [icu-bed? and any? turtles-here])
+end
+
+to-report nb-hospital
+  report count (patches with [hospital? and not icu-bed? and any? turtles-here])
+end
+
+to-report nb-turned-down
+  report count (hospitalized-on patches with [not hospital?])
 end
 
 to-report virus-present?
@@ -618,7 +642,7 @@ probability-hospitalized
 probability-hospitalized
 0
 1
-0.05
+0.88
 0.01
 1
 NIL
@@ -641,9 +665,9 @@ true
 "" ""
 PENS
 "nb beds needed" 1.0 0 -16777216 true "" "plot nb-H"
-"ICU capacity" 1.0 0 -5825686 true "" "plot nb-icu-beds"
 "incidence new cases" 1.0 0 -955883 true "" "plot nb-new-infections"
 "incidence new hospitalized" 1.0 0 -2674135 true "" "plot nb-new-hospitalized"
+"ICU capacity" 1.0 0 -5825686 true "" "plot nb-icu-beds"
 "intervention" 1.0 0 -7500403 true "" "plot intervention"
 
 SLIDER
@@ -714,7 +738,7 @@ CHOOSER
 reduce-diffusion?
 reduce-diffusion?
 "never" "from the start" "when the first case occurs" "when there are as many infected as hospital beds" "when the first hospitalization occurs" "when the ICU is at capacity"
-0
+4
 
 MONITOR
 336
