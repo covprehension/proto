@@ -6,11 +6,57 @@ patches-own [
 globals [
   population-size
   total-nb-I
+
+  headless-infectivity-duration
+  headless-transmission-rate
+  headless-proportion-immunised
 ]
 
 to generic-setup
   clear-all
 
+  random-seed 12
+
+  setup-GUI-variables
+  set population-size count patches
+  set total-nb-I 0
+
+  ask patches [
+    set state "S"
+    set pcolor green
+    set infectivity-counter -1
+  ]
+end
+
+to setup-GUI-variables
+  set headless-infectivity-duration infectivity-duration
+  set headless-transmission-rate transmission-rate
+  set headless-proportion-immunised proportion-immunised
+end
+
+to setup-centre
+  generic-setup
+
+  ask patches with [pxcor * pxcor + pycor * pycor < 80] [
+      get-infected
+;      set infectivity-counter random headless-infectivity-duration
+  ]
+
+  reset-ticks
+end
+
+to setup-aleatoire
+  generic-setup
+
+  let nb-immunised-init (headless-proportion-immunised / 100 * population-size)
+  ask n-of nb-immunised-init patches [ get-immunised ]
+
+  random-infection
+
+  reset-ticks
+end
+
+to headless-setup
   set population-size count patches
   set total-nb-I 0
 
@@ -20,31 +66,18 @@ to generic-setup
     set infectivity-counter -1
   ]
 
-  reset-ticks
-end
-
-to setup-centre
-  generic-setup
-
-  ask patches with [pxcor * pxcor + pycor * pycor < 80] [
-      get-infected
-;      set infectivity-counter random infectivity-duration
-  ]
-end
-
-to setup-aleatoire
-  generic-setup
-
-  let nb-immunised-init (proportion-immunised / 100 * population-size)
+  let nb-immunised-init (headless-proportion-immunised / 100 * population-size)
   ask n-of nb-immunised-init patches [ get-immunised ]
 
   random-infection
+
+  reset-ticks
 end
 
 to get-infected
   set state "I"
   set pcolor red
-  set infectivity-counter infectivity-duration
+  set infectivity-counter headless-infectivity-duration
   set total-nb-I total-nb-I + 1
 end
 
@@ -60,19 +93,21 @@ end
 
 to go
   ifelse virus-present?
-  [
-    diffusion
-    update-states
-    tick
-  ]
+  [ headless-go ]
   [ stop ]
+end
+
+to headless-go
+  diffusion
+  update-states
+  tick
 end
 
 ;to diffusion
 ;  ask patches with [state = "S"] [
 ;    let contacts n-of random count neighbors neighbors
 ;    if count contacts > 0 [
-;      let risk-infection count contacts with [state = "I"] / count contacts * transmission-rate
+;      let risk-infection count contacts with [state = "I"] / count contacts * headless-transmission-rate
 ;      if random-float 1 < risk-infection [ get-infected ]
 ;    ]
 ;  ]
@@ -83,7 +118,7 @@ to diffusion
     let contacts n-of random count neighbors neighbors
     let infected-contacts contacts with [state = "I"]
     repeat count infected-contacts [
-      if random-float 1 < transmission-rate [ get-infected ]
+      if random-float 1 < headless-transmission-rate [ get-infected ]
     ]
   ]
 end
