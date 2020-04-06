@@ -1,107 +1,119 @@
 patches-own [
-  state   ;; state = 0 pour S,  1 pour I et 2 pour R
-  VoisI
-  age
-]      ;; age = 0 pour S, = -1 pour R et entre 1 et n pour I
+  state
+  infectivity-counter
+]
 
 globals [
   population-size
-  nb-I
-  freq
-  iteration
+  total-nb-I
 ]
 
-to setup-centre
+to generic-setup
   clear-all
-  reset-ticks
 
   set population-size count patches
+  set total-nb-I 0
 
   ask patches [
-    set pcolor 67
     set state "S"
+    set pcolor green
+    set infectivity-counter -1
+  ]
 
-    if ( pxcor * pxcor + pycor * pycor < 80 ) [
-      set age 5
-      set state "I"
-      set pcolor 100
-      set nb-I nb-I + 1
-    ]
+  reset-ticks
+end
+
+to setup-centre
+  generic-setup
+
+  ask patches with [pxcor * pxcor + pycor * pycor < 80] [
+      get-infected
+;      set infectivity-counter random infectivity-duration
   ]
 end
 
 to setup-aleatoire
-  clear-all
-  reset-ticks
+  generic-setup
 
-  set population-size count patches
+  let nb-immunised-init (proportion-immunised / 100 * population-size)
+  ask n-of nb-immunised-init patches [ get-immunised ]
 
-  ask patches [ set pcolor 67 ]
-
-  repeat proportion-immunises / 100 * population-size [
-    let b (random (world-width * world-height ) + 1 )
-    ask patch   (int (b / world-width) + min-pxcor) ((b mod world-width) + min-pycor) [
-      set age -1
-      set state 0
-      	 set pcolor yellow
-    	 ]
-  ]
-  repeat graine [
-    let a (random (world-width * world-height ) + 1 )
-    ask patch   (int (a / world-width) + min-pxcor) ((a mod world-width) + min-pycor) [
-      set age 5
-      set state 1
-      	 set pcolor 100
-      	 set nb-I nb-I + 1]
-  ]
+  random-infection
 end
 
-to nouvel-vague
- repeat graine [
-  let a (random (world-width * world-height ) + 1 )
-  ask patch   (int (a / world-width) + min-pxcor) ((a mod world-width) + min-pycor) [
-   set age 5
-   set state 1
- 	 set pcolor 100
-	 set nb-I nb-I + 1]
-]
+to get-infected
+  set state "I"
+  set pcolor red
+  set infectivity-counter infectivity-duration
+  set total-nb-I total-nb-I + 1
 end
 
+to get-immunised
+  set state "R"
+  set pcolor black
+  set infectivity-counter -1
+end
+
+to random-infection
+  ask one-of patches with [state = "S"] [ get-infected ]
+end
+
+to go
+  ifelse virus-present?
+  [
+    diffusion
+    update-states
+    tick
+  ]
+  [ stop ]
+end
+
+;to diffusion
+;  ask patches with [state = "S"] [
+;    let contacts n-of random count neighbors neighbors
+;    if count contacts > 0 [
+;      let risk-infection count contacts with [state = "I"] / count contacts * transmission-rate
+;      if random-float 1 < risk-infection [ get-infected ]
+;    ]
+;  ]
+;end
 
 to diffusion
-set iteration iteration + 1
-ask patches [
-	ifelse (age > 0)
-	  [set age (age - 1)]
-	  [if age = 0 and state = 1
-	    [set state 0
-	     set age -1
-       set pcolor yellow
-	     set nb-I (nb-I - 1)]
-	  ]
-]
-ask patches [set VoisI sum [state] of neighbors]
-ask patches [if (age != -1) and (state != 1) and (VoisI > 0)
- [if ((random 100 ) <= (VoisI / 8) * r )
-   [set state 1
-    set nb-I (nb-I + 1)
-    set age duree_de_vie
-    let a 100 + (iteration / 20)
-    ifelse a > 109
-      [set pcolor 109 + (iteration / 1000)]
-      [set pcolor a]
-   ]
- ]
-]
-set freq ((nb-I / population-size) * 100)
-if nb-I = 0 [stop]
-Graphiques
+  ask patches with [state = "S"] [
+    let contacts n-of random count neighbors neighbors
+    let infected-contacts contacts with [state = "I"]
+    repeat count infected-contacts [
+      if random-float 1 < transmission-rate [ get-infected ]
+    ]
+  ]
 end
 
-to Graphiques
- set-current-plot "Nombre de contaminés"
- set-current-plot-pen "nb-I"
- plotxy iteration nb-I
+to update-states
+  ask patches [
+    (ifelse
+      infectivity-counter > 0 [ set infectivity-counter infectivity-counter - 1 ]
+      infectivity-counter = 0 [ get-immunised ]
+    )
+  ]
+end
+
+
+;;;;; Reporters ;;;;;
+
+to-report nb-S
+  report count patches with [state = "S"]
+end
+
+to-report nb-I
+  report count patches with [state = "I"]
+end
+
+to-report nb-R
+  report count patches with [state = "R"]
+end
+
+to-report virus-present?
+  report nb-I > 0
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -132,10 +144,10 @@ ticks
 30.0
 
 BUTTON
-7
-71
-110
-104
+17
+49
+120
+82
 NIL
 setup-centre
 NIL
@@ -149,12 +161,12 @@ NIL
 1
 
 BUTTON
-8
-113
-88
-146
+10
+129
+90
+162
 NIL
-diffusion
+go
 T
 1
 T
@@ -166,32 +178,21 @@ NIL
 1
 
 MONITOR
-95
-112
-152
-157
-NIL
-iteration
+141
+54
+293
+99
+Nombre de contamines
+total-nb-I
 0
 1
 11
 
 MONITOR
-157
-113
-290
-158
-Nombre de contamine
-nb-I
-0
-1
-11
-
-MONITOR
-158
-60
-261
-105
+141
+10
+293
+55
 Population totale
 population-size
 0
@@ -199,25 +200,25 @@ population-size
 11
 
 SLIDER
-11
-164
-290
-197
-duree_de_vie
-duree_de_vie
+7
+193
+286
+226
+infectivity-duration
+infectivity-duration
 1
-14
-14.0
+30
+21.0
 1
 1
 NIL
 HORIZONTAL
 
 PLOT
-10
-286
-291
-478
+6
+315
+287
+507
 Nombre de contaminés
 iteration
 nba
@@ -229,7 +230,9 @@ true
 true
 "" ""
 PENS
-"nbI" 1.0 0 -13791810 true "" ""
+"S" 1.0 0 -10899396 true "" "plot nb-S"
+"I" 1.0 0 -1184463 true "" "plot nb-I"
+"R" 1.0 0 -16777216 true "" "plot nb-R"
 
 BUTTON
 8
@@ -249,57 +252,42 @@ NIL
 1
 
 SLIDER
-134
-10
-298
-43
-graine
-graine
+7
+235
+235
+268
+transmission-rate
+transmission-rate
 0
-100
-10.0
 1
+0.12
+0.01
 1
 NIL
 HORIZONTAL
 
 SLIDER
-11
-206
-183
-239
-r
-r
+8
+275
+286
+308
+proportion-immunised
+proportion-immunised
 0
 100
-25.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-12
-246
-290
-279
-proportion-immunises
-proportion-immunises
-0
-100
-50.0
-1
+45.0
+5
 1
 NIL
 HORIZONTAL
 
 BUTTON
-12
-489
-129
-522
-NIL
-nouvel-vague
+106
+130
+233
+163
+new infection
+random-infection
 NIL
 1
 T
