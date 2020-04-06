@@ -58,6 +58,7 @@ globals [
 
   total-nb-infected
   final-proportion-infected
+  duration-icu-overflow
 
   timeseries-incidence-infections
   timeseries-S
@@ -120,6 +121,7 @@ to setup-globals ;; observer procedure
 
   ;;metric
   set total-nb-infected nb-infected-initialisation
+  set duration-icu-overflow 0
 
   set timeseries-incidence-infections []
   set timeseries-S []
@@ -388,6 +390,7 @@ end
 
 to update-epidemic-counts ;; observer procedure
   set total-nb-infected total-nb-infected + nb-new-infections
+  if icu-saturated? [ set duration-icu-overflow duration-icu-overflow + 1 ]
 
   set timeseries-incidence-infections lput nb-new-infections timeseries-incidence-infections
   set timeseries-S lput nb-S timeseries-S
@@ -493,12 +496,16 @@ end
 to-report virus-present?
   report nb-I > 0
 end
+
+to-report icu-saturated?
+  report nb-H > nb-icu-beds
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 535
 197
-1246
-861
+999
+614
 -1
 -1
 9.525
@@ -511,10 +518,10 @@ GRAPHICS-WINDOW
 0
 0
 1
--34
-39
--34
-34
+-21
+26
+-21
+21
 1
 1
 1
@@ -597,7 +604,7 @@ population-size
 population-size
 1000
 10000
-5000.0
+2000.0
 1000
 1
 NIL
@@ -642,7 +649,7 @@ probability-hospitalized
 probability-hospitalized
 0
 1
-0.88
+0.05
 0.01
 1
 NIL
@@ -733,18 +740,18 @@ HORIZONTAL
 CHOOSER
 14
 265
-425
+292
 310
 reduce-diffusion?
 reduce-diffusion?
 "never" "from the start" "when the first case occurs" "when there are as many infected as hospital beds" "when the first hospitalization occurs" "when the ICU is at capacity"
-3
+0
 
 MONITOR
-336
-265
-508
-310
+320
+243
+492
+288
 NIL
 transmission-probability
 17
@@ -819,6 +826,17 @@ avg-mild-symptomes-duration
 1
 NIL
 HORIZONTAL
+
+MONITOR
+320
+287
+492
+332
+NIL
+duration-icu-overflow
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?

@@ -1,43 +1,59 @@
-patches-own [etat   ;; etat = 0 pour S,  1 pour I et 2 pour R
+patches-own [
+  state   ;; state = 0 pour S,  1 pour I et 2 pour R
   VoisI
-  age]      ;; age = 0 pour S, = -1 pour R et entre 1 et n pour I
-globals [Poptot nbI freq iteration ]
+  age
+]      ;; age = 0 pour S, = -1 pour R et entre 1 et n pour I
+
+globals [
+  population-size
+  nb-I
+  freq
+  iteration
+]
 
 to setup-centre
-   __clear-all-and-reset-ticks
- set Poptot ( world-width * world-height )
- ask patches [
-  set pcolor 67
-  set etat 0 ]
- ask patches [
-   if ( pxcor * pxcor + pycor * pycor < 80 )
-		[set age 5
-		 set etat 1
-		 set pcolor 100 set nbI nbI + 1]
-		]
+  clear-all
+  reset-ticks
+
+  set population-size count patches
+
+  ask patches [
+    set pcolor 67
+    set state "S"
+
+    if ( pxcor * pxcor + pycor * pycor < 80 ) [
+      set age 5
+      set state "I"
+      set pcolor 100
+      set nb-I nb-I + 1
+    ]
+  ]
 end
 
 to setup-aleatoire
-  __clear-all-and-reset-ticks
-set Poptot ( world-width * world-height )
+  clear-all
+  reset-ticks
 
-ask patches [set pcolor 67]
-   repeat Immunité / 100 * Poptot [
-  let b (random (world-width * world-height ) + 1 )
-   ask patch   (int (b / world-width) + min-pxcor) ((b mod world-width) + min-pycor) [
-   set age -1
-   set etat 0
- 	 set pcolor yellow
-	 ]
+  set population-size count patches
+
+  ask patches [ set pcolor 67 ]
+
+  repeat proportion-immunises / 100 * population-size [
+    let b (random (world-width * world-height ) + 1 )
+    ask patch   (int (b / world-width) + min-pxcor) ((b mod world-width) + min-pycor) [
+      set age -1
+      set state 0
+      	 set pcolor yellow
+    	 ]
   ]
-repeat graine [
-  let a (random (world-width * world-height ) + 1 )
-  ask patch   (int (a / world-width) + min-pxcor) ((a mod world-width) + min-pycor) [
-   set age 5
-   set etat 1
- 	 set pcolor 100
-	 set nbI nbI + 1]
-]
+  repeat graine [
+    let a (random (world-width * world-height ) + 1 )
+    ask patch   (int (a / world-width) + min-pxcor) ((a mod world-width) + min-pycor) [
+      set age 5
+      set state 1
+      	 set pcolor 100
+      	 set nb-I nb-I + 1]
+  ]
 end
 
 to nouvel-vague
@@ -45,9 +61,9 @@ to nouvel-vague
   let a (random (world-width * world-height ) + 1 )
   ask patch   (int (a / world-width) + min-pxcor) ((a mod world-width) + min-pycor) [
    set age 5
-   set etat 1
+   set state 1
  	 set pcolor 100
-	 set nbI nbI + 1]
+	 set nb-I nb-I + 1]
 ]
 end
 
@@ -57,18 +73,18 @@ set iteration iteration + 1
 ask patches [
 	ifelse (age > 0)
 	  [set age (age - 1)]
-	  [if age = 0 and etat = 1
-	    [set etat 0
+	  [if age = 0 and state = 1
+	    [set state 0
 	     set age -1
        set pcolor yellow
-	     set nbI (nbI - 1)]
+	     set nb-I (nb-I - 1)]
 	  ]
 ]
-ask patches [set VoisI sum [etat] of neighbors]
-ask patches [if (age != -1) and (etat != 1) and (VoisI > 0)
+ask patches [set VoisI sum [state] of neighbors]
+ask patches [if (age != -1) and (state != 1) and (VoisI > 0)
  [if ((random 100 ) <= (VoisI / 8) * r )
-   [set etat 1
-    set nbI (nbI + 1)
+   [set state 1
+    set nb-I (nb-I + 1)
     set age duree_de_vie
     let a 100 + (iteration / 20)
     ifelse a > 109
@@ -77,15 +93,15 @@ ask patches [if (age != -1) and (etat != 1) and (VoisI > 0)
    ]
  ]
 ]
-set freq ((nbI / Poptot) * 100)
-if nbI = 0 [stop]
+set freq ((nb-I / population-size) * 100)
+if nb-I = 0 [stop]
 Graphiques
 end
 
 to Graphiques
  set-current-plot "Nombre de contaminés"
- set-current-plot-pen "nbI"
- plotxy iteration nbI
+ set-current-plot-pen "nb-I"
+ plotxy iteration nb-I
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -166,7 +182,7 @@ MONITOR
 290
 158
 Nombre de contamine
-nbI
+nb-I
 0
 1
 11
@@ -177,7 +193,7 @@ MONITOR
 261
 105
 Population totale
-PopTot
+population-size
 0
 1
 11
@@ -267,8 +283,8 @@ SLIDER
 246
 290
 279
-Immunité
-Immunité
+proportion-immunises
+proportion-immunises
 0
 100
 50.0
