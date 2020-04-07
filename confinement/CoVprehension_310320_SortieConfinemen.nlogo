@@ -233,7 +233,7 @@ end
 
 to become-recovered
   set epidemic-state 3
-  set color gray
+  set color yellow
   if confiner-infectés-symptomatiques? [
     set confined? false
     set at-home? false]
