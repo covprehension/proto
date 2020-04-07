@@ -1,0 +1,57 @@
+// LES INPUTS
+val seed = Val[Int]
+val difficulty = Val[String]
+val init_conf = Val[Int]
+val duration_conf = Val[Int]
+val relesae_conf = Val[Int]
+// LES OUTPUTS
+val nbS = Val[Double]
+val nbR = Val[Double]
+val nbIr = Val[Double]
+val nb_confinement = Val[Double]
+
+/*
+Dans Netlogo on a :
+["niveau-difficulté" "Difficile"]
+["confinement-tick" [10 1 30]]
+["confinement-duree" [5 2 30]]
+["temps_entre_confinement" [4 2 30]]
+*/
+
+val cmds = Seq(
+    "random-seed ${seed}",
+    "setup",
+    "go"
+  )
+
+val model =
+  NetLogo6Task(workDirectory / "CoVprehension_300320_Confinement_Q6_explo.nlogo", cmds) set (
+      name := "confinement-stg",
+      // Map the OpenMOLE variables to NetLogo variables
+    inputs += seed,
+    //outputs += (seed, density, difficulty, init_conf, duration_conf, relesae_conf, nbS, nbR, nbIr, nb_confinement),
+    inputs += (difficulty mapped "niveau-difficulté"),
+    inputs += (init_conf mapped "confinement-tick"),
+    inputs += (duration_conf mapped "confinement-duree"),
+    inputs += (relesae_conf mapped "temps_entre_confinement"),
+    outputs += (nbS mapped "nb-S"),
+    outputs += (nbIr mapped "nb-Ir"),
+    outputs += (nbR mapped "nb-R"),
+    outputs += (nb_confinement mapped "nb-confinement"),
+    // fixed values
+    seed := 42,
+    difficulty := "Difficile",
+    //test model running
+    init_conf := 5,
+    duration_conf := 5, 
+    relesae_conf := 5
+  )
+ 
+ val exploration = 
+  DirectSampling(
+    evaluation = Replication(model hook (workDirectory / "result.csv", Seq(nbS, nbR, nbIr)), seed, 10),
+    sampling = init_conf in (5 to 10 by 1)
+  )
+ 
+
+exploration
