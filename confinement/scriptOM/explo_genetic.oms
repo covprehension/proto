@@ -5,10 +5,11 @@ val init_conf = Val[Int]
 val duration_conf = Val[Int]
 val relesae_conf = Val[Int]
 // LES OUTPUTS
-val nbS = Val[Int]
-val nbR = Val[Int]
-val nbIr = Val[Int]
-val nb_confinement = Val[Int]
+val nbS = Val[Double]
+val nbR = Val[Double]
+val nbIr = Val[Double]
+val nb_confinement = Val[Double]
+val pic_max = val[Double]
 
 /*
 Dans Netlogo on a :
@@ -21,7 +22,7 @@ Dans Netlogo on a :
 val cmds = Seq(
     "random-seed ${seed}",
     "setup",
-    "while any? citizens with [epidemic-state = 1][go]"
+    "go"
   )
 
 val model =
@@ -38,25 +39,46 @@ val model =
     outputs += (nbIr mapped "nb-Ir"),
     outputs += (nbR mapped "nb-R"),
     outputs += (nb_confinement mapped "nb-confinement"),
+    outputs += (pic_max mapped "max-Ir"),
     // fixed values
     seed := 42,
     difficulty := "Difficile"
   )
  
+
+//val env = LocalEnvironment(2)
+//exploration on env
+ 
+/* Obj : 
+1. réuduire la durée du confienemnt (économique) DONE
+2. réduire le nombre de persionne touché à la fin (santé publique) nbIR + nbR
+3. reduire la tail du pic épidemic (soin, pas engorger les hopitaux)
+*/
+
 val evolution =
   NSGA2Evolution(
     mu = 100, // mu is the size of the population
-    inputs = Seq(init_conf -> (5,20), duration_conf -> (5, 60), relesae_conf -> (5,20)),
-    genome = Seq(x in (0.0, 1.0), y in (0.0, 1.0)), // genome (of individuals) is the inputs prototype and their variation ranges
-    objectives = Seq(nbS), //ici, il n'y a qu'un objectif
+    genome = Seq(init_conf in (5,20), duration_conf in (5,60)), relesae_conf in (5,20), // genome (of individuals) is the inputs prototype and their variation ranges
+    objectives = Seq(-nb_confinement, nbS, -pic_max), //ici les 3 objectifs
     // OpenMOLE provide a seed for your stochastic model to use (it is optional)
     // 20% of the evaluations are used for replicating existing solutions
     // 100 replication are stored at max for each individual
     stochastic = Stochastic(seed = seed, reevaluate = 0.2, replications = 100),
     evaluation = model,
-    termination = 1000000
+    parallelism = 100,
+    termination = 20000,
+    distribution = Island(5 minutes)
+  )
+
+val env =
+  SGEEnvironment(
+    "login",
+    "domain",
+    workDirectory = "dir",
+    queue = "short.q",
+    wallTime = 4 hour
   )
   
-val env = LocalEnvironment(2)
 
-evolution on env
+calib hook (workDirectory / "calib_results/calibration", 100) on env
+
