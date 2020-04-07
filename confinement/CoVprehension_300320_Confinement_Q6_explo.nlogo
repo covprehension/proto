@@ -175,7 +175,6 @@ end
 
 to scenarios-confinement
   if ticks >= Confinement-tick [
-   show "proc confinement"
    set confinement? true
     set nb-confinement nb-confinement + 1
   ]
@@ -423,7 +422,7 @@ INPUTBOX
 1107
 325
 Confinement-tick
-185.0
+275.0
 1
 0
 Number
