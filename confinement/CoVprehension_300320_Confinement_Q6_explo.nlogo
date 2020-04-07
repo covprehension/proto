@@ -174,11 +174,11 @@ to become-recovered
 end
 
 to scenarios-confinement
-  if ticks >= Confinement-tick [
+  if confinement? = false and ticks >= Confinement-tick[
    set confinement? true
     set nb-confinement nb-confinement + 1
   ]
-  if ticks >= (Confinement-tick + Confinement-duree)[
+  if confinement? AND ticks >= (Confinement-tick + Confinement-duree)[
    set confinement? false
     set Confinement-tick ticks + temps_entre_confinement
   ]
@@ -422,7 +422,7 @@ INPUTBOX
 1107
 325
 Confinement-tick
-275.0
+70.0
 1
 0
 Number
