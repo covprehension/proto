@@ -94,12 +94,12 @@ to setup
 end
 
 to go
-  if not any? citizens with [epidemic-state = 1] [send-user-message stop]
+  if not any? citizens with [epidemic-state = 1] [stop]
   scenarios-confinement
   move-citizens
   update-epidemics
  update-max-Ir
-  wait 0.1
+  ;wait 0.1
   update-lockdown-date
   tick
 end
