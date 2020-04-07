@@ -10,6 +10,7 @@ val nbR = Val[Double]
 val nbIr = Val[Double]
 val nb_confinement = Val[Double]
 val pic_max = Val[Double]
+val jours_confinement = Val[Double]
 
 /*
 Dans Netlogo on a :
@@ -40,6 +41,7 @@ val model =
     outputs += (nbR mapped "nb-R"),
     outputs += (nb_confinement mapped "nb-confinement"),
     outputs += (pic_max mapped "max-Ir"),
+    outputs += (jours_confinement mapped "nb-day-confinement"),
     // fixed values
     seed := 42,
     difficulty := "Difficile"
@@ -62,7 +64,7 @@ val evolution =
         init_conf in (5,20), 
         duration_conf in (5,60),
         relesae_conf in (5,20)), // genome (of individuals) is the inputs prototype and their variation ranges
-    objectives = Seq(-nb_confinement, nbS, -pic_max), //ici les 3 objectifs
+    objectives = Seq(-jours_confinement, nbS, -pic_max), //ici les 3 objectifs
     // OpenMOLE provide a seed for your stochastic model to use (it is optional)
     // 20% of the evaluations are used for replicating existing solutions
     // 100 replication are stored at max for each individual
@@ -83,5 +85,5 @@ val env =
   )
   
 
-evolution hook (workDirectory / "calib_results/calibration", 100) on env
+evolution hook (workDirectory / "calibration", 100) on env
 
