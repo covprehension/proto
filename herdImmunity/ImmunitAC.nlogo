@@ -23,7 +23,7 @@ to generic-setup
 
   ask patches [
     set state "S"
-    set pcolor green
+    set pcolor 66
     set infectivity-counter -1
   ]
 end
@@ -49,7 +49,10 @@ to setup-aleatoire
   generic-setup
 
   let nb-immunised-init (headless-proportion-immunised / 100 * population-size)
-  ask n-of nb-immunised-init patches [ get-immunised ]
+  ifelse location and headless-proportion-immunised < 50
+  [ask n-of nb-immunised-init patches with [pxcor > 0] [ get-immunised ]]
+  [ask n-of nb-immunised-init patches [ get-immunised ]]
+ ; ask n-of nb-immunised-init patches [ get-immunised ]
 
   random-infection
 
@@ -62,7 +65,7 @@ to headless-setup
 
   ask patches [
     set state "S"
-    set pcolor green
+    set pcolor 66
     set infectivity-counter -1
   ]
 
@@ -74,16 +77,20 @@ to headless-setup
   reset-ticks
 end
 
+to select-location-patch-immunised
+
+end
+
 to get-infected
   set state "I"
-  set pcolor red
+  set pcolor 16
   set infectivity-counter headless-infectivity-duration
   set total-nb-I total-nb-I + 1
 end
 
 to get-immunised
   set state "R"
-  set pcolor black
+  set pcolor 96
   set infectivity-counter -1
 end
 
@@ -165,8 +172,8 @@ GRAPHICS-WINDOW
 1
 1
 0
-1
-1
+0
+0
 1
 -74
 74
@@ -196,10 +203,10 @@ NIL
 1
 
 BUTTON
-10
-129
-90
-162
+7
+101
+87
+134
 NIL
 go
 T
@@ -236,38 +243,38 @@ population-size
 
 SLIDER
 7
-193
+213
 286
-226
+246
 infectivity-duration
 infectivity-duration
 1
 30
-21.0
+26.0
 1
 1
 NIL
 HORIZONTAL
 
 PLOT
-6
-315
-287
-507
-Nombre de contaminés
+7
+294
+288
+486
+Évolution des états de santé de la population
 iteration
 nba
 0.0
 10.0
 0.0
-10.0
+100.0
 true
 true
 "" ""
 PENS
-"S" 1.0 0 -10899396 true "" "plot nb-S"
-"I" 1.0 0 -1184463 true "" "plot nb-I"
-"R" 1.0 0 -16777216 true "" "plot nb-R"
+"S" 1.0 0 -11085214 true "" "plot (nb-S / population-size ) * 100"
+"I" 1.0 0 -2139308 true "" "plot (nb-I / population-size ) * 100"
+"R" 1.0 0 -11033397 true "" "plot (nb-R  / population-size ) * 100"
 
 BUTTON
 8
@@ -287,10 +294,10 @@ NIL
 1
 
 SLIDER
-7
-235
-235
-268
+6
+253
+234
+286
 transmission-rate
 transmission-rate
 0
@@ -302,27 +309,27 @@ NIL
 HORIZONTAL
 
 SLIDER
-8
-275
-286
-308
+7
+174
+285
+207
 proportion-immunised
 proportion-immunised
 0
 100
-45.0
-5
+27.0
+1
 1
 NIL
 HORIZONTAL
 
 BUTTON
-106
-130
-233
-163
+94
+102
+221
+135
 new infection
-random-infection
+repeat Combien [random-infection]
 NIL
 1
 T
@@ -332,6 +339,46 @@ NIL
 NIL
 NIL
 1
+
+INPUTBOX
+224
+104
+286
+164
+Combien
+5.0
+1
+0
+Number
+
+PLOT
+8
+493
+288
+643
+Nombre de cas
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -2139308 true "" "plot nb-I"
+
+SWITCH
+7
+138
+117
+171
+Location
+Location
+0
+1
+-1000
 
 @#$#@#$#@
 @#$#@#$#@
