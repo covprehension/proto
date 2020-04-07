@@ -63,4 +63,4 @@ ggplot(data = small.df)+
                         "Probability of\ntransmission at\neach individual\ncontact")+
   xlim(0,300)+
   theme_classic()
-ggsave("img/pct_infected.png")  
+ggsave("img/pct_infected_eng.png")  
