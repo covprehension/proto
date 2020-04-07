@@ -9,7 +9,7 @@ val nbS = Val[Double]
 val nbR = Val[Double]
 val nbIr = Val[Double]
 val nb_confinement = Val[Double]
-val pic_max = val[Double]
+val pic_max = Val[Double]
 
 /*
 Dans Netlogo on a :
@@ -58,7 +58,10 @@ val model =
 val evolution =
   NSGA2Evolution(
     mu = 100, // mu is the size of the population
-    genome = Seq(init_conf in (5,20), duration_conf in (5,60)), relesae_conf in (5,20), // genome (of individuals) is the inputs prototype and their variation ranges
+    genome = Seq(
+        init_conf in (5,20), 
+        duration_conf in (5,60),
+        relesae_conf in (5,20)), // genome (of individuals) is the inputs prototype and their variation ranges
     objectives = Seq(-nb_confinement, nbS, -pic_max), //ici les 3 objectifs
     // OpenMOLE provide a seed for your stochastic model to use (it is optional)
     // 20% of the evaluations are used for replicating existing solutions
@@ -72,13 +75,13 @@ val evolution =
 
 val env =
   SGEEnvironment(
-    "login",
-    "domain",
-    workDirectory = "dir",
+    "delay",
+    "cc2-login.cirad.fr",
+    workDirectory = "/homedir/delay/work",
     queue = "short.q",
     wallTime = 4 hour
   )
   
 
-calib hook (workDirectory / "calib_results/calibration", 100) on env
+evolution hook (workDirectory / "calib_results/calibration", 100) on env
 
