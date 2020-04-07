@@ -1,19 +1,29 @@
 globals [ ;;global parameters
+  ;;population
   population-size
   nb-house
-  nb-infected-initialisation
+
+  ;;epidemics
+  nb-infected-initialisation ;; nb d'infectés asympatomatic au départ
   transmission-distance
   probability-transmission
-  probability-transmission-unreported-infected
-  walking-angle
-  speed
   current-nb-new-infections-reported
-  current-nb-new-infections-asymptomatic
-  transparency
-  wall
-  contagion-duration
+  recovered-duration
+  asymptomatic-duration
   nb-step-confinement
   nb-step-per-day
+  frequence-sortie-confinés
+  distance-from-home-pour-confinés
+  frequence-sortie-infectés
+  distance-from-home-pour-infectés
+  probability-transmission-at-home
+
+  ;;movement
+  walking-angle
+  speed
+
+  ;;pour gérer le décalage entre jours et nb d'itérations et faire en sorte que les jouors soient affichés sur les graphiques
+  nbsteps
 ]
 
 breed [citizens citizen]
@@ -21,26 +31,28 @@ breed [houses house]
 
 citizens-own
 [
-  epidemic-state;FA: 0 Susceptible 1 Infected 2 Asymptomatic Infected 3 Recovered
+  epidemic-state;FA: 0 Susceptible 1 Infected Asymptomatic 2 Infected symptomatic 32 Recovered
   infection-date
-  nb-other-infected
-  contagion-counter ;;counter to go from state 1 or 2 (infected) to state 3 recovered
+  recovered-counter ;;counter to go from state 2  to state 3 recovered
+  asymptomatic-counter ;;counter to go from state 1  to state 2 symptomatic
   my-house
   confined?
+  at-home?
 ]
 
 to setup-globals
-  set population-size 400
-  set nb-house (population-size / 2)
-  set nb-infected-initialisation 1
+  set population-size 500
+  set nb-house population-size / 2
+  set nb-infected-initialisation 1 ;;nb d'asymptomatic au départ
   set transmission-distance 1
-  set probability-transmission 1
-  set probability-transmission-unreported-infected 0.8
+  set probability-transmission 0.2
+  set probability-transmission-at-home probability-transmission / 2
   set walking-angle 50
   set speed 0.5
-  set transparency 145
   set nb-step-per-day 4
-  set contagion-duration 14 * nb-step-per-day
+  set recovered-duration 14 * nb-step-per-day
+  set asymptomatic-duration 8 * nb-step-per-day
+  set nbsteps 0
 end
 
 to setup-houses
@@ -48,7 +60,7 @@ to setup-houses
     set shape "house"
     setxy random-xcor random-ycor
     set size 2
-    set color lput transparency extract-rgb  white
+    set color lput 145 extract-rgb  white
   ]
 end
 
@@ -58,16 +70,18 @@ to setup-population
     setxy random-xcor random-ycor
     set shape "circle"
     set size 1
-    set color green ; lput transparency extract-rgb  green
+    set color green
     set epidemic-state 0
     set my-house one-of houses
+    set confined? false
+    set at-home? false
   ]
   set-infected-initialisation
 end
 
 to set-infected-initialisation
   ask n-of nb-infected-initialisation citizens [
-    become-infected
+    become-infected-asymptomatic
   ]
 end
 
@@ -84,16 +98,45 @@ to go
   move-citizens
   update-epidemics
   wait 0.1
-  tick
+  set nbsteps nbsteps + 1
+  if (nbsteps mod nb-step-per-day = 0)[
+    tick]
 end
 
 
 to update-confined
+  if pourcentage-confinés > 0 [
+    set confiner-infectés-symptomatiques? true
+
+  ifelse scenario-confinement = "Très Strict" [
+  set frequence-sortie-confinés 0.05
+  set distance-from-home-pour-confinés 0.5][
+  ifelse scenario-confinement = "Strict" [
+      set frequence-sortie-confinés 0.1
+  set distance-from-home-pour-confinés 1.0
+    ][;;scenario souple
+      set frequence-sortie-confinés 0.25
+  set distance-from-home-pour-confinés 2.0
+    ]
+  ]
+
+  set frequence-sortie-infectés 0.05
+  set distance-from-home-pour-infectés 0.5
+
+
   ;;on se base sur who pour que ceux qui sortent soient toujours les mêmes
   ;;les nb-house sont crées en premiers
   ;;les citizens sont numerotés de nb-house à nb-house + population-size - 1
   let threshold-who (nb-house + pourcentage-confinés * population-size / 100)
-  ask citizens[ifelse who > threshold-who  [set confined? false][set confined? true]]
+  ask citizens[ifelse who > threshold-who  [
+    set confined? false
+    set at-home? false ]
+    [set confined? true
+      set at-home? true]]
+  ]
+  if (confiner-infectés-symptomatiques?) [ask citizens with [epidemic-state = 2] [
+    set confined? true
+    set at-home? true]]
 end
 
 ;;MOVEMENT PROCEDURES
@@ -102,24 +145,38 @@ to move-citizens
     ifelse confined? [
       ;confined
       move-to my-house
-      if random-float 1 > frequence-sortie-confinés [
+      set at-home? true
+
+      ifelse epidemic-state = 2 [
+        ;;infectés symptomatic sortent un peu
+      if random-float 1 < (frequence-sortie-infectés * nb-step-per-day) [
         ;je sors
+        set at-home? false
         set heading heading + random walking-angle - random walking-angle
       avoid-walls
-      fd distance-from-home-pour-confinés * speed
+      fd distance-from-home-pour-infectés
+      ]][
+          ;;non infectés suivent scénario
+      if random-float 1 < (frequence-sortie-confinés * nb-step-per-day) [
+        ;je sors
+        set at-home? false
+        set heading heading + random walking-angle - random walking-angle
+      avoid-walls
+      fd distance-from-home-pour-confinés
       ]
-    ]
+    ]]
     [
      ;not confined
+      set at-home? false
       set heading heading + random walking-angle - random walking-angle
       avoid-walls
       fd speed
     ]
-   ]
+  ]
 end
 
 to avoid-walls
-  if abs [pxcor] of patch-ahead (wall + 1) = max-pxcor
+  if abs [pxcor] of patch-ahead (1) >= max-pxcor
     [ set heading (- heading) ]
   if abs [pycor] of patch-ahead 1 = max-pycor
     [ set heading (180 - heading) ]
@@ -129,11 +186,15 @@ end
 to update-epidemics
   ;;update the counters for the infected at this timestep
   set current-nb-new-infections-reported 0
-  set  current-nb-new-infections-asymptomatic 0
+  ;;update asymptomatic
+  ask citizens with [epidemic-state = 1][
+    set asymptomatic-counter (asymptomatic-counter - 1)
+    if asymptomatic-counter <= 0 [ become-infected-symptomatic ]
+  ]
   ;;update recovered
-  ask citizens with [epidemic-state = 1 or epidemic-state = 2][
-    set contagion-counter (contagion-counter - 1)
-    if contagion-counter <= 0 [ become-recovered ]
+  ask citizens with [epidemic-state = 2][
+    set recovered-counter (recovered-counter - 1)
+    if recovered-counter <= 0 [ become-recovered ]
   ]
   ;;spread virus
   ask citizens with [epidemic-state = 0][
@@ -142,34 +203,40 @@ to update-epidemics
 end
 
 to get-virus
-  let target one-of other citizens in-radius transmission-distance with [epidemic-state = 1 or epidemic-state = 2]
+ ifelse not at-home?[;;il ne peut être contaminé que par des indivs infectés qui ne sont pas chez eux
+  let target one-of other citizens in-radius transmission-distance with [(epidemic-state = 1 or epidemic-state = 2) and not at-home?]
   if is-agent? target[
-      if ([epidemic-state] of target = 1  and random-float 1 < probability-transmission)
-      or
-      ([epidemic-state] of target = 2 and random-float 1 < probability-transmission-unreported-infected)
-    [
-        become-infected
-        ask target [set nb-other-infected nb-other-infected + 1]
+      if (([epidemic-state] of target = 1 or [epidemic-state] of target = 2) and random-float 1 < probability-transmission)
+      [become-infected-asymptomatic]
+  ]][ ;; sinon il ne peuvent être contaminés que par des indivs qui sont contaminés et chez eux
+    let target one-of other citizens with [my-house = [my-house] of myself and at-home?]
+  if is-agent? target[
+      if (([epidemic-state] of target = 1 or [epidemic-state] of target = 2) and random-float 1 < probability-transmission-at-home)
+      [ become-infected-asymptomatic]
     ]]
 end
 
 ;;STATE TRANSITION PROCEDURES
-to become-infected
+to become-infected-asymptomatic
   set epidemic-state 1
-  set contagion-counter contagion-duration
+  set asymptomatic-counter asymptomatic-duration
   set infection-date ticks
-  set current-nb-new-infections-reported (current-nb-new-infections-reported + 1)
-  set color red ; lput transparency extract-rgb red
+  set color blue ;
 end
 
-to become-asymptotic-infected
+to become-infected-symptomatic
   set epidemic-state 2
-  set color blue ; lput transparency extract-rgb blue
+  set recovered-counter recovered-duration
+  set current-nb-new-infections-reported (current-nb-new-infections-reported + 1)
+  set color red ;
 end
 
 to become-recovered
   set epidemic-state 3
-  set color gray ; lput transparency extract-rgb gray
+  set color gray
+  if confiner-infectés-symptomatiques? [
+    set confined? false
+    set at-home? false]
 end
 
 ;###############################
@@ -180,42 +247,17 @@ to-report nb-S
   report count citizens with [epidemic-state = 0 ]
 end
 
-to-report nb-Ir
+to-report nb-IA ;asymptomatic
   report count citizens with [epidemic-state = 1 ]
 end
 
-to-report nb-Inr
-  report count citizens with [epidemic-state = 2 ]
-end
-
 to-report nb-I
-  report count citizens with [epidemic-state = 1 or epidemic-state = 2 ]
-end
-
-to-report nb-I-Total
-  report (nb-I + nb-R) / population-size * 100
+  report count citizens with [epidemic-state = 2 ]
 end
 
 to-report nb-R
   report count citizens with [epidemic-state = 3 ]
 end
-
-to-report nb-Day-Confinement
-  report nb-step-confinement / nb-step-per-day
-end
-
-
-
-;==============
-
-;TECHNICAL ADDS
-
-;===============
-
-to fix-seed
- random-seed 47822
-end
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 2
@@ -238,16 +280,16 @@ GRAPHICS-WINDOW
 30
 -20
 20
-1
-1
+0
+0
 1
 ticks
 30.0
 
 BUTTON
-496
+526
 424
-574
+651
 479
 Prêt  ?
 setup
@@ -262,11 +304,11 @@ NIL
 1
 
 BUTTON
-495
-483
-574
-532
-Partez !
+526
+485
+651
+543
+Partez ! / Pause
 go
 T
 1
@@ -284,7 +326,7 @@ PLOT
 972
 226
 Epidémie
-Temps
+Temps(nbjours)
 Nombre total de cas
 0.0
 10.0
@@ -295,17 +337,53 @@ true
 "" ""
 PENS
 "S" 1.0 0 -13840069 true "" "if nb-S > 0 [plot nb-S]"
-"Ia" 1.0 0 -2674135 true "" "plot nb-Ir"
-"R" 1.0 0 -7500403 true "" "plot nb-R"
+"I" 1.0 0 -2674135 true "" "plot nb-I"
+"R" 1.0 0 -1184463 true "" "plot nb-R"
+"Conf" 1.0 0 -955883 true "" "plot count citizens with [confined?]"
+
+TEXTBOX
+12
+420
+515
+546
+Pour exécuter la simulation :\n1 - Cliquez sur le bouton \"Prêt\"\n2 - Cliquez sur le bouton \"Partez !\" \nNB: si vous voulez mettre en Pause la simulation le temps de faire vos choix, cliquez à nouveau sur \"Partez !\"\nPour modifier les conditions de confinement vous pouvez jouer sur :\n- l'interrupteur permettant de ne confiner que les individus symptomatiques\n- le pourcentage de confinés\n- le scénario de confinement (Très Strict, Strict, Souple)\n
+11
+63.0
+1
+
+SLIDER
+657
+461
+906
+494
+pourcentage-confinés
+pourcentage-confinés
+0
+100
+0.0
+20
+1
+NIL
+HORIZONTAL
+
+CHOOSER
+657
+498
+907
+543
+scenario-confinement
+scenario-confinement
+"Très Strict" "Strict" "Souple"
+2
 
 PLOT
-593
-228
-972
-409
-Nouveaux cas identifiés
-Temps
-Nombre de cas
+597
+227
+1000
+406
+Scenarios Confinement
+NIL
+NIL
 0.0
 10.0
 0.0
@@ -314,75 +392,39 @@ true
 true
 "" ""
 PENS
-"I" 1.0 1 -2139308 true "" "plot current-nb-new-infections-reported\n +  current-nb-new-infections-asymptomatic"
+"Trés Strict" 1.0 1 -2674135 true "" "ifelse scenario-confinement = \"Très Strict\" [plot pourcentage-confinés][plot 0]"
+"Strict" 1.0 1 -955883 true "" "ifelse scenario-confinement = \"Strict\" [plot pourcentage-confinés][plot 0]"
+"Souple" 1.0 1 -987046 true "" "ifelse scenario-confinement = \"Souple\" [plot pourcentage-confinés][plot 0]"
 
-TEXTBOX
-13
-440
-355
-580
-Mode d'emploi en 3 étapes :\n1 - Cliquez sur le bouton \"Prêt\"\n2 - Cliquez sur le bouton \"Partez !\" \n\nPour modifier les conditions de confinement vous pouvez jouer sur :\n- le pourcentage de confinés (vous ne pourrez pas confiner tout le monde)\n- la fréquence des sorties autorisés pour les confinés\n- la distance de sortie autorisée pour les confinés
-11
-63.0
-1
-
-SLIDER
-660
-418
-852
-451
-pourcentage-confinés
-pourcentage-confinés
-0
-95
-95.0
+SWITCH
+657
+424
+905
+457
+confiner-infectés-symptomatiques?
+confiner-infectés-symptomatiques?
 1
 1
-NIL
-HORIZONTAL
-
-SLIDER
-661
-504
-853
-537
-distance-from-home-pour-confinés
-distance-from-home-pour-confinés
-0
-5
-1.5
-0.5
-1
-NIL
-HORIZONTAL
-
-SLIDER
-659
-461
-854
-494
-frequence-sortie-confinés
-frequence-sortie-confinés
-0
-1
-0.2
-0.05
-1
-NIL
-HORIZONTAL
+-1000
 
 @#$#@#$#@
-## THINGS TO TRY
+## DESCRIPTION DU MODELE
+Dans ce modèle les individus sont soit non-porteurs (verts), soit porteurs asymptomtiques (bleus) lorsqu'ils sont contaminés par contact avec un porteur, puis au bout de 8 jours (32 itérations) ils deviennent porteurs symptomatiques (rouges) et 14 jours plus tard (56 itérations) ils deviennent rémis. 
+ 
+## COMMENT AGIR ?
+Pour contrer le développement de l'épidémie, vous pouvez jouer sur deux mesures :
+1. Confiner les individus infectés, dans ce cas ce sont uniquement les porteurs symptomatiques qui seront confinés (les porteurs asymptomatiques se déplacent encore et propagent donc l'épidémie).
+2. Confiner une partie de la population quelquesoit son état. Vous pouvez dans ce cas sélectionner la proportion que vous souhaitez confiner (0,20%,40%,60%,80%,100%).
+Dans ce cas vous pouvez choisir un régime de confinement plus ou moins strict.
+a.Régime de confinement très strict : les individus confinés peuvent sortir en moyenne une fois toutes les 20 itérations et dans un rayon de 500m autour de chez eux.
+b.Régime de confinement strict : les individus confinés peuvent sortir en moyenne une fois toutes les 10 itérations dans un rayon d'1km autour de chez eux.
+c.Régime de confinement souple : les confinés peuvent sortir en moyenne une fois toutes les 5 itérations dans un rayon de 2km autour de chez eux.
+NB: si vous confinez une partie de la population (2.) la mesure de confinement des infectés sera automatiquement enclenchée. Ces derniers sont dans tous les cas dans un régime de confinement trés strict (sortie toute les 20 itérations, 500m autour de chez eux).
 
-Try first to launch a simulation and soon enough (after a first epidemical outbreak) check the confinement switch. You should observe a sudden burst of contagion due to the confinement together of infected and healthy citizens. After a while, once everybody infected recovered, you observe from the curves that the population does not evolve anymore. You can then stop the confinement and observe that the epidemics stopped.
-
-You can then test the following scenario where you stop the confinement before the recovering of every individual (when some people are still infected) then you can observe that the epidemics starts again in the population. In some cases when you have enough recovered persons then however there may be some persons who never contracted the virus, the epidemics may end. 
-
-
-## THINGS TO NOTICE
-
-Well managed the confinement enables to stop the epidemics as it plays directly on the contact rate between individuals. 
-However, confinement implies a relative burst of epidemics due to the confinement together of healthy and infected persons.
+## A REMARQUER
+Les individus asymptomatiques sont une des difficultés principales à gérer dans ce modèle. Vous vous rendrez compte que confiner uniquement les individus symptomatiques, ne change pas grand chose au développement de l'épidémie, les individus asymptomatiques (bleus) continuant de la propager.
+NB: les individus asymptomatiques sont figurés en bleu mais "normalement" vous ne devriez pas pouvoir les distinguer des individus sains (à moins de les tester).
+En pratique, sur ce modèle, seules des mesures drastiques dès les premiers cas symptomatiques détectés permettent un peu d'endiguer l'épidémie ou du moins d'applatir la courbe d'infection. Encore faut-il ne pas lever les mesures de confinement trop tôt.
 @#$#@#$#@
 default
 true
