@@ -24,6 +24,10 @@ globals [ ;;global parameters
 
   ;;pour gérer le décalage entre jours et nb d'itérations et faire en sorte que les jouors soient affichés sur les graphiques
   nbsteps
+
+  ;;pour gérer arrêt de simulation
+  oldNbSusceptibles
+  oldNbRecovered
 ]
 
 breed [citizens citizen]
@@ -31,7 +35,7 @@ breed [houses house]
 
 citizens-own
 [
-  epidemic-state;FA: 0 Susceptible 1 Infected Asymptomatic 2 Infected symptomatic 32 Recovered
+  epidemic-state;FA: 0 Susceptible 1 Infected Asymptomatic 2 Infected symptomatic 3 Recovered
   infection-date
   recovered-counter ;;counter to go from state 2  to state 3 recovered
   asymptomatic-counter ;;counter to go from state 1  to state 2 symptomatic
@@ -53,6 +57,8 @@ to setup-globals
   set recovered-duration 14 * nb-step-per-day
   set asymptomatic-duration 8 * nb-step-per-day
   set nbsteps 0
+  set oldNbSusceptibles population-size
+  set oldNbRecovered 0
 end
 
 to setup-houses
@@ -99,10 +105,23 @@ to go
   update-epidemics
   wait 0.1
   set nbsteps nbsteps + 1
+  ;;update des ticks et gestion de l'arrêt de simulation
   if (nbsteps mod nb-step-per-day = 0)[
-    tick]
+    tick
+    if (ticks mod 10 = 9)[
+      ifelse(oldNbSusceptibles = count citizens with [epidemic-state = 0] and oldNbRecovered = count citizens with [epidemic-state = 3])[
+        stop]
+      [ set oldNbSusceptibles count citizens with [epidemic-state = 0]
+        set oldNbRecovered count citizens with [epidemic-state = 3]]
+  ]]
 end
 
+to checkStop
+    ifelse(oldNbSusceptibles = count citizens with [epidemic-state = 0] and oldNbRecovered = count citizens with [epidemic-state = 3])[
+    stop]
+  [  set oldNbSusceptibles count citizens with [epidemic-state = 0]
+   set oldNbRecovered count citizens with [epidemic-state = 3]]
+end
 
 to update-confined
   if pourcentage-confinés > 0 [
@@ -291,7 +310,7 @@ BUTTON
 424
 651
 479
-Prêt  ?
+Ré-initialiser
 setup
 NIL
 1
@@ -323,7 +342,7 @@ NIL
 PLOT
 593
 10
-972
+1083
 226
 Epidémie
 Temps(nbjours)
@@ -336,10 +355,10 @@ true
 true
 "" ""
 PENS
-"S" 1.0 0 -13840069 true "" "if nb-S > 0 [plot nb-S]"
-"I" 1.0 0 -2674135 true "" "plot nb-I"
-"R" 1.0 0 -1184463 true "" "plot nb-R"
-"Conf" 1.0 0 -955883 true "" "plot count citizens with [confined?]"
+"Non-porteurs" 1.0 0 -13840069 true "" "if nb-S > 0 [plot nb-S]"
+"Porteurs symptomatiques" 1.0 0 -2674135 true "" "plot nb-I"
+"Rémis" 1.0 0 -1184463 true "" "plot nb-R"
+"Confinés" 1.0 0 -955883 true "" "plot count citizens with [confined?]"
 
 TEXTBOX
 12
@@ -381,7 +400,7 @@ PLOT
 227
 1000
 406
-Scenarios Confinement
+Scénarios de confinement
 NIL
 NIL
 0.0
