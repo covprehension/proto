@@ -15,10 +15,10 @@ data.df <- read.csv("data/CoVprehension transmission_sim1b-table.csv", header = 
 
 ggplot(data = data.df, aes(x = X.step., y=(nb_Ir/500)*100, colour = i.proba.transmission))+
   geom_point()+
-  labs( x = "temps", y = "% de personnes infectées")+
+  labs(x = "Time",y ="% Infected People")+
   xlim(0,350)+
   scale_colour_gradient(low = "yellow", high = "red", na.value = NA, 
-                        "probabilité de transmission\ndu virus à chaque contact")+
+                        "Probability of\ntransmission at\neach individual contact")+
   theme_classic()+
   transition_states(i.proba.transmission,
                     transition_length = 2,

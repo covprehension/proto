@@ -63,4 +63,4 @@ ggplot(data = small.df)+
                         "probabilité de\ntransmission\ndu virus à\nchaque contact")+
   xlim(0,300)+
   theme_classic()
-ggsave("img/pct_infected.png")  
+ggsave("img/pct_infecte_fr.png")  
