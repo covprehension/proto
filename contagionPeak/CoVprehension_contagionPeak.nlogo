@@ -47,6 +47,13 @@ globals [
   intervention-date
   intervention
   wall
+
+  ;; colors
+  color-susceptible
+  color-incubating
+  color-infected
+  color-hospitalized
+  color-recovered
   transparency
 
   ;; metrics
@@ -82,11 +89,10 @@ end
 
 ;; for openmole execution
 to headless-setup ;; observer procedure
-  reset-ticks
-
   setup-globals
   setup-world
   setup-hospital
+  reset-ticks
   setup-population
 end
 
@@ -113,7 +119,7 @@ to setup-globals ;; observer procedure
   set headless-transmission-distance 1
 
   set population-density 105 ;; average for France
-  set nb-icu-beds headless-nb-icu-beds-per-1000 * headless-population-size / 1000
+  set nb-icu-beds floor (headless-nb-icu-beds-per-1000 * headless-population-size / 1000)
   set nb-infected-initialisation 1
   set transmission-probability 0.12
   set transmission-reduced? ifelse-value headless-reduce-diffusion? = "never" [true] [false]
@@ -121,6 +127,20 @@ to setup-globals ;; observer procedure
   set intervention-date -1
   set intervention 0
   set wall 10
+
+  ;; colors
+  ;; viridis
+;  set color-susceptible [93 200 99]
+;  set color-incubating [33 144 140]
+;  set color-infected [59 82 139]
+;  set color-hospitalized [68 1 84]
+;  set color-recovered [253 231 37]
+  ;; BrBG
+  set color-susceptible [0 0 0]
+  set color-incubating [223 194 125]
+  set color-infected [166 97 26]
+  set color-hospitalized [1 133 113]
+  set color-recovered [128 205 193]
   set transparency 145
 
   ;;metric
@@ -141,13 +161,14 @@ end
 to setup-world
   let patch-side-size 100 ;; meters
   let width (sqrt (headless-population-size / population-density)) * 1000 / patch-side-size
-  let max-cor (width - 1) / 2
+  let max-cor floor ((width - 1) / 2)
   resize-world (- max-cor) (max-cor + wall) (- max-cor) (max-cor)
 end
 
 
 to setup-hospital
   ask patches [
+    set pcolor white
     set hospital? false
     set icu-bed? false
     set graveyard? false
@@ -156,12 +177,12 @@ to setup-hospital
   ;; hospital
   ask patches with [pxcor > max-pxcor - wall] [
     set hospital? true
-    set pcolor white
+    set pcolor 9
   ]
 
   ask min-n-of nb-icu-beds patches with [hospital?] [pxcor - pycor] [
     set icu-bed? true
-    set pcolor grey
+    set pcolor 7
   ]
 
   ;; graveyard
@@ -190,7 +211,7 @@ end
 
 to get-susceptible ;; turtle procedure
   set breed susceptibles
-  set color lput transparency extract-rgb green
+  set color lput transparency color-susceptible
   set contagious? false
   set state-duration -1
   set state-starting-date -1
@@ -200,7 +221,7 @@ end
 
 to get-incubating ;; turtle procedure
   set breed incubating
-  set color lput transparency extract-rgb blue
+  set color lput transparency color-incubating
   set contagious? true
   set state-duration law-incubation-duration
   set state-starting-date ticks
@@ -349,7 +370,7 @@ end
 
 to get-infected ;; turtle procedure
   set breed infected
-  set color lput transparency extract-rgb orange
+  set color lput transparency color-infected
   set contagious? true
   set severe-symptomes? ifelse-value random-float 1 < headless-probability-hospitalized [true] [false]
   set state-duration law-symptomes-duration
@@ -363,7 +384,7 @@ end
 to get-hospitalized ;; turtle procedure
   set breed hospitalized
   set shape "square"
-  set color lput transparency extract-rgb red
+  set color lput transparency color-hospitalized
   set contagious? true
   set state-duration law-hospitalized-duration
   set state-starting-date ticks
@@ -418,7 +439,7 @@ to get-recovered ;; turtle procedure
   ]
 
   set breed recovered
-  set color lput transparency extract-rgb grey
+  set color lput transparency color-recovered
   set contagious? false
   set state-duration -1
   set state-starting-date ticks
@@ -544,7 +565,7 @@ end
 GRAPHICS-WINDOW
 573
 197
-1180
+1181
 710
 -1
 -1
@@ -618,11 +639,11 @@ true
 true
 "" ""
 PENS
-"Susceptible" 1.0 0 -13840069 true "" "plot nb-S"
-"Incubating" 1.0 0 -13345367 true "" "plot nb-Incub"
-"Infected" 1.0 0 -955883 true "" "plot nb-Inf"
-"Hospitalized" 1.0 0 -2674135 true "" "plot nb-H"
-"Recovered" 1.0 0 -1184463 true "" "plot nb-R"
+"Susceptible" 1.0 0 -10899396 true "" "set-plot-pen-color color-susceptible plot nb-S"
+"Incubating" 1.0 0 -13345367 true "" "set-plot-pen-color color-incubating plot nb-Incub"
+"Infected" 1.0 0 -955883 true "" "set-plot-pen-color color-infected plot nb-Inf"
+"Hospitalized" 1.0 0 -2674135 true "" "set-plot-pen-color color-hospitalized plot nb-H"
+"Recovered" 1.0 0 -7500403 true "" "set-plot-pen-color color-recovered plot nb-R"
 
 INPUTBOX
 573
@@ -666,9 +687,10 @@ true
 true
 "" ""
 PENS
-"nb ICU beds needed" 1.0 0 -16777216 true "" "plot nb-H"
-"nb ICU beds occupied" 1.0 0 -2674135 true "" "plot count hospitalized with [icu?]"
-"intervention" 1.0 0 -7500403 true "" "plot intervention"
+"nb new infected cases" 1.0 0 -16777216 true "" "set-plot-pen-color color-infected plot nb-new-infections / 5"
+"nb ICU beds needed" 1.0 0 -2674135 true "" "set-plot-pen-color color-hospitalized plot nb-H"
+"nb ICU beds occupied" 1.0 0 -7500403 true "" "set-plot-pen-color color-recovered plot count hospitalized with [icu?]"
+"intervention" 1.0 0 -955883 true "" "set-plot-pen-color color-susceptible plot intervention"
 
 SLIDER
 13
@@ -723,7 +745,7 @@ CHOOSER
 reduce-diffusion?
 reduce-diffusion?
 "never" "from the start" "when the first infected case occurs" "when there are as many infected cases as hospital beds" "when the first hospitalization occurs" "when the ICU is at capacity"
-5
+2
 
 MONITOR
 138
