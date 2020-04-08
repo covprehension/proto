@@ -687,7 +687,7 @@ true
 true
 "" ""
 PENS
-"nb new infected cases" 1.0 0 -16777216 true "" "set-plot-pen-color color-infected plot nb-new-infections / headless-population-size * 100"
+"nb new infected cases" 1.0 0 -16777216 true "" "set-plot-pen-color color-infected plot nb-new-infections / 5"
 "nb ICU beds needed" 1.0 0 -2674135 true "" "set-plot-pen-color color-hospitalized plot nb-H"
 "nb ICU beds occupied" 1.0 0 -7500403 true "" "set-plot-pen-color color-recovered plot count hospitalized with [icu?]"
 "intervention" 1.0 0 -955883 true "" "set-plot-pen-color color-susceptible plot intervention"
