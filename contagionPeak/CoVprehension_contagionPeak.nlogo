@@ -14,7 +14,7 @@ turtles-own [
 ]
 
 
-infected-own [ severe-symptomes? ]
+infected-own [ severe-symptoms? ]
 
 hospitalized-own [ icu? ]
 
@@ -30,8 +30,8 @@ globals [
   headless-population-size
   headless-nb-icu-beds-per-1000
   headless-avg-incubation-duration
-  headless-avg-mild-symptomes-duration
-  headless-avg-severe-symptomes-duration
+  headless-avg-mild-symptoms-duration
+  headless-avg-severe-symptoms-duration
   headless-probability-hospitalized
   headless-avg-hospitalized-duration
   headless-travel-distance
@@ -80,7 +80,7 @@ globals [
 
 to setup ;; observer procedure
   clear-all
-  random-seed 42
+  random-seed 68
 
   setup-from-GUI
   headless-setup
@@ -102,8 +102,8 @@ to setup-from-GUI ;; observer procedure
 ;  set headless-population-size population-size
   set headless-nb-icu-beds-per-1000 nb-icu-beds-per-1000
   set headless-avg-incubation-duration avg-incubation-duration
-  set headless-avg-mild-symptomes-duration avg-mild-symptomes-duration
-  set headless-avg-severe-symptomes-duration avg-severe-symptomes-duration
+  set headless-avg-mild-symptoms-duration avg-mild-symptoms-duration
+  set headless-avg-severe-symptoms-duration avg-severe-symptoms-duration
 ;  set headless-probability-hospitalized probability-hospitalized
   set headless-avg-hospitalized-duration avg-hospitalized-duration
 ;  set headless-travel-distance travel-distance
@@ -113,7 +113,7 @@ end
 
 
 to setup-globals ;; observer procedure
-  set headless-population-size 3000
+  set headless-population-size 1000
   set headless-probability-hospitalized 0.05
   set headless-travel-distance 5
   set headless-transmission-distance 1
@@ -136,9 +136,9 @@ to setup-globals ;; observer procedure
 ;  set color-hospitalized [68 1 84]
 ;  set color-recovered [253 231 37]
   ;; BrBG
-  set color-susceptible [0 0 0]
-  set color-incubating [223 194 125]
-  set color-infected [166 97 26]
+  set color-susceptible [223 194 125]
+  set color-incubating [166 97 26]
+  set color-infected [0 0 0]
   set color-hospitalized [1 133 113]
   set color-recovered [128 205 193]
   set transparency 145
@@ -231,7 +231,7 @@ end
 
 to go ;; observer procedure
   ;; stop criterion
-  ifelse virus-present? and ticks < 250
+  ifelse virus-present? and ticks < 300
   [ headless-go ]
   [ stop ]
   final-metrics
@@ -357,7 +357,7 @@ to update-epidemic-states ;; observer procedure
       if breed = hospitalized [ get-recovered ]
 
       if breed = infected [
-        ifelse severe-symptomes?
+        ifelse severe-symptoms?
         [ get-hospitalized ]
         [ get-recovered ]
       ]
@@ -372,8 +372,8 @@ to get-infected ;; turtle procedure
   set breed infected
   set color lput transparency color-infected
   set contagious? true
-  set severe-symptomes? ifelse-value random-float 1 < headless-probability-hospitalized [true] [false]
-  set state-duration law-symptomes-duration
+  set severe-symptoms? ifelse-value random-float 1 < headless-probability-hospitalized [true] [false]
+  set state-duration law-symptoms-duration
   set state-starting-date ticks
   set my-travel-distance headless-travel-distance
 
@@ -482,10 +482,10 @@ to-report law-incubation-duration
   report random-gamma alpha lambda
 end
 
-to-report law-symptomes-duration
+to-report law-symptoms-duration
   (ifelse
-    severe-symptomes? [
-      let mean-duration headless-avg-severe-symptomes-duration
+    severe-symptoms? [
+      let mean-duration headless-avg-severe-symptoms-duration
       let var-duration 0.5
 
       let alpha mean-duration * mean-duration / var-duration
@@ -495,7 +495,7 @@ to-report law-symptomes-duration
     ]
     ;; else
     [
-      let mean-duration headless-avg-mild-symptomes-duration
+      let mean-duration headless-avg-mild-symptoms-duration
       let var-duration 4
 
       let alpha mean-duration * mean-duration / var-duration
@@ -563,10 +563,10 @@ to-report icu-saturated?
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-573
-197
-1181
-710
+571
+234
+950
+519
 -1
 -1
 9.525
@@ -579,10 +579,10 @@ GRAPHICS-WINDOW
 0
 0
 1
--26
-36
--26
-26
+-14
+24
+-14
+14
 1
 1
 1
@@ -634,7 +634,7 @@ Number of cases
 0.0
 10.0
 0.0
-10.0
+1050.0
 true
 true
 "" ""
@@ -644,11 +644,12 @@ PENS
 "Infected" 1.0 0 -955883 true "" "set-plot-pen-color color-infected plot nb-Inf"
 "Hospitalized" 1.0 0 -2674135 true "" "set-plot-pen-color color-hospitalized plot nb-H"
 "Recovered" 1.0 0 -7500403 true "" "set-plot-pen-color color-recovered plot nb-R"
+"intervention" 1.0 0 -7500403 true "" "plot intervention * 20"
 
 INPUTBOX
 573
 10
-1162
+950
 198
 EXPLICATION
 vert = susceptible\nbleu = asymptomatique (incubation)\norange = symptomatique\nzone blanche à droite du monde de simu = hôpital\ncarrés gris = lits de réa dispo\ncarrés rouge = hospitalisé en réa si dans un carré gris, sinon ailleurs dans l'hôpital car réa saturée\n1 patch = 100m²\n1 step = 1 jour
@@ -682,15 +683,15 @@ NIL
 0.0
 10.0
 0.0
-10.0
+20.0
 true
 true
 "" ""
 PENS
 "nb new infected cases" 1.0 0 -16777216 true "" "set-plot-pen-color color-infected plot nb-new-infections / 5"
 "nb ICU beds needed" 1.0 0 -2674135 true "" "set-plot-pen-color color-hospitalized plot nb-H"
-"nb ICU beds occupied" 1.0 0 -7500403 true "" "set-plot-pen-color color-recovered plot count hospitalized with [icu?]"
-"intervention" 1.0 0 -955883 true "" "set-plot-pen-color color-susceptible plot intervention"
+"nb ICU beds occupied" 1.0 0 -5825686 true "" "plot count hospitalized with [icu?]"
+"intervention" 1.0 0 -7500403 true "" "plot intervention"
 
 SLIDER
 13
@@ -712,8 +713,8 @@ SLIDER
 182
 290
 215
-avg-severe-symptomes-duration
-avg-severe-symptomes-duration
+avg-severe-symptoms-duration
+avg-severe-symptoms-duration
 0
 30
 4.0
@@ -745,7 +746,7 @@ CHOOSER
 reduce-diffusion?
 reduce-diffusion?
 "never" "from the start" "when the first infected case occurs" "when there are as many infected cases as hospital beds" "when the first hospitalization occurs" "when the ICU is at capacity"
-2
+0
 
 MONITOR
 138
@@ -763,8 +764,8 @@ SLIDER
 150
 290
 183
-avg-mild-symptomes-duration
-avg-mild-symptomes-duration
+avg-mild-symptoms-duration
+avg-mild-symptoms-duration
 0
 30
 21.0
@@ -774,10 +775,10 @@ days
 HORIZONTAL
 
 MONITOR
-312
-216
-557
-261
+306
+220
+551
+265
 duration of icu overflow
 duration-icu-overflow
 17
@@ -796,10 +797,10 @@ headless-population-size
 11
 
 MONITOR
-312
-161
-539
-206
+306
+165
+533
+210
 proportion of people who got infected
 final-proportion-infected
 1
@@ -807,10 +808,10 @@ final-proportion-infected
 11
 
 MONITOR
-312
-117
-539
-162
+306
+121
+533
+166
 cumulated number of infected
 total-nb-infected
 17
@@ -851,15 +852,35 @@ total-nb-turned-down
 11
 
 MONITOR
-312
-260
-557
-305
+306
+264
+551
+309
 proportion of people who got an ICU bed
 total-nb-icu-patients / total-nb-beds-needed * 100
 1
 1
 11
+
+TEXTBOX
+849
+522
+905
+540
+Hospital
+12
+0.0
+1
+
+TEXTBOX
+901
+204
+957
+234
+Transfer\nzone
+12
+0.0
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
