@@ -119,7 +119,7 @@ to setup-globals ;; observer procedure
   set headless-transmission-distance 1
 
   set population-density 105 ;; average for France
-  set nb-icu-beds headless-nb-icu-beds-per-1000 * headless-population-size / 1000
+  set nb-icu-beds floor (headless-nb-icu-beds-per-1000 * headless-population-size / 1000)
   set nb-infected-initialisation 1
   set transmission-probability 0.12
   set transmission-reduced? ifelse-value headless-reduce-diffusion? = "never" [true] [false]
@@ -161,7 +161,7 @@ end
 to setup-world
   let patch-side-size 100 ;; meters
   let width (sqrt (headless-population-size / population-density)) * 1000 / patch-side-size
-  let max-cor (width - 1) / 2
+  let max-cor floor ((width - 1) / 2)
   resize-world (- max-cor) (max-cor + wall) (- max-cor) (max-cor)
 end
 
@@ -637,7 +637,7 @@ Number of cases
 10.0
 true
 true
-"set-plot-background-color white" ""
+"" ""
 PENS
 "Susceptible" 1.0 0 -10899396 true "" "set-plot-pen-color color-susceptible plot nb-S"
 "Incubating" 1.0 0 -13345367 true "" "set-plot-pen-color color-incubating plot nb-Incub"
