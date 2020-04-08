@@ -125,7 +125,7 @@ to diffusion
     let contacts n-of random count neighbors neighbors
     let infected-contacts contacts with [state = "I"]
     repeat count infected-contacts [
-      if random-float 1 < headless-transmission-rate [ get-infected ]
+      if random-float 1 < headless-transmission-rate [ get-infected stop]
     ]
   ]
 end
@@ -186,10 +186,10 @@ ticks
 30.0
 
 BUTTON
-17
-49
-120
-82
+8
+85
+111
+118
 NIL
 setup-centre
 NIL
@@ -204,9 +204,9 @@ NIL
 
 BUTTON
 7
-101
+119
 87
-134
+152
 NIL
 go
 T
@@ -250,7 +250,7 @@ infectivity-duration
 infectivity-duration
 1
 30
-26.0
+23.0
 1
 1
 NIL
@@ -317,7 +317,7 @@ proportion-immunised
 proportion-immunised
 0
 100
-27.0
+55.0
 1
 1
 NIL
@@ -325,9 +325,9 @@ HORIZONTAL
 
 BUTTON
 94
-102
+120
 221
-135
+153
 new infection
 repeat Combien [random-infection]
 NIL
@@ -370,13 +370,13 @@ PENS
 "default" 1.0 0 -2139308 true "" "plot nb-I"
 
 SWITCH
-7
-138
-117
-171
+9
+46
+119
+79
 Location
 Location
-0
+1
 1
 -1000
 
