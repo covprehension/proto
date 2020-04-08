@@ -15,10 +15,10 @@ data.df <- read.csv("data/CoVprehension transmission_sim1b-table.csv", header = 
 
 ggplot(data = data.df, aes(x = X.step., y=(nb_Ir/500)*100, colour = i.proba.transmission))+
   geom_point()+
-  labs( x = "temps", y = "% de personnes infectées")+
+  labs(x = "Time",y ="% Infected People")+
   xlim(0,350)+
   scale_colour_gradient(low = "yellow", high = "red", na.value = NA, 
-                        "probabilité de transmission\ndu virus à chaque contact")+
+                        "Probability of\ntransmission at\neach individual contact")+
   theme_classic()+
   transition_states(i.proba.transmission,
                     transition_length = 2,
@@ -49,18 +49,18 @@ ggplot(data = small2.df,aes(x = X.step.1,
                            y = med.contamination, 
                            colour = as.factor(i.proba.transmission)))+
   geom_smooth(alpha = 1/5)+
-  scale_fill_discrete("probabilité de\ntransmission\ndu virus à\nchaque contact")+
+  scale_fill_discrete("Probability of\ntransmission at\neach individual contact")+
   # geom_line(aes(group = as.factor(i.proba.transmission)), position = "stack")+
-  labs(x = "temps",y =" contaminés")+
+  labs(x = "Time",y ="% Infected People")+
   xlim(0,300)+
   theme_classic()
 ggsave("img/pct_contamines.png") 
 
 ggplot(data = small.df)+
   geom_line(aes(x = X.step., y = med.Ir/500*100, group = i.proba.transmission, colour = i.proba.transmission))+
-  labs(x = "temps", y = "% de personnes infectées")+
+  labs(x = "Time",y ="% Infected People")+
   scale_colour_gradient(low = "yellow", high = "red", na.value = NA, 
-                        "probabilité de\ntransmission\ndu virus à\nchaque contact")+
+                        "Probability of\ntransmission at\neach individual\ncontact")+
   xlim(0,300)+
   theme_classic()
-ggsave("img/pct_infecte_fr.png")  
+ggsave("img/pct_infected_eng.png")  

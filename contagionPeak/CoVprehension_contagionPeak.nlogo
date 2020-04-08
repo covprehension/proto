@@ -3,6 +3,7 @@ breed [ incubating an-incubating ]
 breed [ infected a-infected ]
 breed [ hospitalized a-hospitalized ]
 breed [ recovered a-recovered ]
+breed [ dead a-dead ]
 
 
 turtles-own [
@@ -13,12 +14,15 @@ turtles-own [
 ]
 
 
-infected-own [ severe-symptomes? ]
+infected-own [ severe-symptoms? ]
+
+hospitalized-own [ icu? ]
 
 
 patches-own [
   hospital?
   icu-bed?
+  graveyard?
 ]
 
 
@@ -26,18 +30,13 @@ globals [
   headless-population-size
   headless-nb-icu-beds-per-1000
   headless-avg-incubation-duration
-  headless-avg-mild-symptomes-duration
-  headless-avg-severe-symptomes-duration
+  headless-avg-mild-symptoms-duration
+  headless-avg-severe-symptoms-duration
   headless-probability-hospitalized
   headless-avg-hospitalized-duration
   headless-travel-distance
   headless-transmission-distance
   headless-reduce-diffusion?
-
-  population-size
-  probability-hospitalized
-  travel-distance
-  transmission-distance
 
   population-density
   nb-icu-beds
@@ -48,30 +47,40 @@ globals [
   intervention-date
   intervention
   wall
+
+  ;; colors
+  color-susceptible
+  color-incubating
+  color-infected
+  color-hospitalized
+  color-recovered
   transparency
 
   ;; metrics
   nb-new-infections
   nb-new-hospitalized
   nb-new-icu
-  nb-new-hospital
+  nb-new-beds-needed
   nb-new-turned-down
 
   total-nb-infected
-  final-proportion-infected
+  total-nb-beds-needed
+  total-nb-icu-patients
+  total-nb-turned-down
   duration-icu-overflow
+  final-proportion-infected
 
-  timeseries-incidence-infections
-  timeseries-S
-  timeseries-I
-  timeseries-H
-  timeseries-R
+;  timeseries-incidence-infections
+;  timeseries-S
+;  timeseries-I
+;  timeseries-H
+;  timeseries-R
 ]
 
 
 to setup ;; observer procedure
   clear-all
-;  random-seed 12
+  random-seed 68
 
   setup-from-GUI
   headless-setup
@@ -80,11 +89,10 @@ end
 
 ;; for openmole execution
 to headless-setup ;; observer procedure
-  reset-ticks
-
   setup-globals
   setup-world
   setup-hospital
+  reset-ticks
   setup-population
 end
 
@@ -94,8 +102,8 @@ to setup-from-GUI ;; observer procedure
 ;  set headless-population-size population-size
   set headless-nb-icu-beds-per-1000 nb-icu-beds-per-1000
   set headless-avg-incubation-duration avg-incubation-duration
-  set headless-avg-mild-symptomes-duration avg-mild-symptomes-duration
-  set headless-avg-severe-symptomes-duration avg-severe-symptomes-duration
+  set headless-avg-mild-symptoms-duration avg-mild-symptoms-duration
+  set headless-avg-severe-symptoms-duration avg-severe-symptoms-duration
 ;  set headless-probability-hospitalized probability-hospitalized
   set headless-avg-hospitalized-duration avg-hospitalized-duration
 ;  set headless-travel-distance travel-distance
@@ -105,54 +113,82 @@ end
 
 
 to setup-globals ;; observer procedure
-  set headless-population-size 4000
+  set headless-population-size 1000
   set headless-probability-hospitalized 0.05
   set headless-travel-distance 5
   set headless-transmission-distance 1
 
   set population-density 105 ;; average for France
-  set nb-icu-beds headless-nb-icu-beds-per-1000 * headless-population-size / 1000
+  set nb-icu-beds floor (headless-nb-icu-beds-per-1000 * headless-population-size / 1000)
   set nb-infected-initialisation 1
   set transmission-probability 0.12
   set transmission-reduced? ifelse-value headless-reduce-diffusion? = "never" [true] [false]
   set reduction-factor 10
   set intervention-date -1
   set intervention 0
-  set wall 5
+  set wall 10
+
+  ;; colors
+  ;; viridis
+;  set color-susceptible [93 200 99]
+;  set color-incubating [33 144 140]
+;  set color-infected [59 82 139]
+;  set color-hospitalized [68 1 84]
+;  set color-recovered [253 231 37]
+  ;; BrBG
+  set color-susceptible [223 194 125]
+  set color-incubating [166 97 26]
+  set color-infected [0 0 0]
+  set color-hospitalized [1 133 113]
+  set color-recovered [128 205 193]
   set transparency 145
 
   ;;metric
-  set total-nb-infected nb-infected-initialisation
+  set total-nb-infected 0
+  set total-nb-beds-needed 0
+  set total-nb-icu-patients 0
+  set total-nb-turned-down 0
   set duration-icu-overflow 0
 
-  set timeseries-incidence-infections []
-  set timeseries-S []
-  set timeseries-I []
-  set timeseries-H []
-  set timeseries-R []
+;  set timeseries-incidence-infections []
+;  set timeseries-S []
+;  set timeseries-I []
+;  set timeseries-H []
+;  set timeseries-R []
 end
 
 
 to setup-world
   let patch-side-size 100 ;; meters
   let width (sqrt (headless-population-size / population-density)) * 1000 / patch-side-size
-  let max-cor (width - 1) / 2
+  let max-cor floor ((width - 1) / 2)
   resize-world (- max-cor) (max-cor + wall) (- max-cor) (max-cor)
 end
 
 
 to setup-hospital
   ask patches [
+    set pcolor white
     set hospital? false
     set icu-bed? false
+    set graveyard? false
   ]
+
+  ;; hospital
   ask patches with [pxcor > max-pxcor - wall] [
     set hospital? true
-    set pcolor white
+    set pcolor 9
   ]
-  ask max-n-of nb-icu-beds patches with [hospital?] [pxcor + pycor] [
+
+  ask min-n-of nb-icu-beds patches with [hospital?] [pxcor - pycor] [
     set icu-bed? true
-    set pcolor grey
+    set pcolor 7
+  ]
+
+  ;; graveyard
+  ask patches with [pxcor > max-pxcor - (wall / 2)] [
+    set graveyard? true
+    set pcolor 8
   ]
 end
 
@@ -175,7 +211,7 @@ end
 
 to get-susceptible ;; turtle procedure
   set breed susceptibles
-  set color lput transparency extract-rgb green
+  set color lput transparency color-susceptible
   set contagious? false
   set state-duration -1
   set state-starting-date -1
@@ -185,7 +221,7 @@ end
 
 to get-incubating ;; turtle procedure
   set breed incubating
-  set color lput transparency extract-rgb blue
+  set color lput transparency color-incubating
   set contagious? true
   set state-duration law-incubation-duration
   set state-starting-date ticks
@@ -195,9 +231,10 @@ end
 
 to go ;; observer procedure
   ;; stop criterion
-  ifelse virus-present?
+  ifelse virus-present? and ticks < 300
   [ headless-go ]
   [ stop ]
+  final-metrics
 end
 
 
@@ -227,7 +264,7 @@ to reset-epidemic-counts ;; observer procedure
   set nb-new-infections 0
   set nb-new-hospitalized 0
   set nb-new-icu 0
-  set nb-new-hospital 0
+  set nb-new-beds-needed 0
   set nb-new-turned-down 0
   set intervention 0
 end
@@ -239,33 +276,33 @@ to reduce-diffusion ;; observer procedure
       set transmission-probability transmission-probability / reduction-factor
       set transmission-reduced? true
       set intervention-date ticks
-      set intervention 100
+      set intervention 25
     ]
 
-    headless-reduce-diffusion? = "when the first case occurs" [
-      if nb-Inf = 1 [
+    headless-reduce-diffusion? = "when the first infected case occurs" [
+      if nb-Inf >= 1 [
         set transmission-probability transmission-probability / reduction-factor
         set transmission-reduced? true
         set intervention-date ticks
-        set intervention 100
+        set intervention 25
       ]
     ]
 
-    headless-reduce-diffusion? = "when there are as many infected as hospital beds" [
+    headless-reduce-diffusion? = "when there are as many infected cases as hospital beds" [
       if nb-Inf >= nb-icu-beds [
         set transmission-probability transmission-probability / reduction-factor
         set transmission-reduced? true
         set intervention-date ticks
-        set intervention 100
+        set intervention 25
       ]
     ]
 
     headless-reduce-diffusion? = "when the first hospitalization occurs" [
-      if nb-H = 1 [
+      if nb-H >= 1 [
         set transmission-probability transmission-probability / reduction-factor
         set transmission-reduced? true
         set intervention-date ticks
-        set intervention 100
+        set intervention 25
       ]
     ]
 
@@ -274,7 +311,7 @@ to reduce-diffusion ;; observer procedure
         set transmission-probability transmission-probability / reduction-factor
         set transmission-reduced? true
         set intervention-date ticks
-        set intervention 100
+        set intervention 25
       ]
     ]
   )
@@ -303,38 +340,42 @@ to move-randomly ;; turtle procedure
     set my-travel-distance my-travel-distance - 1
   ]
 
-  set my-travel-distance travel-distance
+  set my-travel-distance headless-travel-distance
 end
 
 
 to update-epidemic-states ;; observer procedure
   ask turtles [
+    if breed = hospitalized and [not icu-bed?] of patch-here [
+      find-hospital-spot
+      if [not icu-bed?] of patch-here [ go-to-graveyard ]
+    ]
+
     if ticks > state-starting-date + state-duration [
+      if breed = dead [ get-dead ]
+
       if breed = hospitalized [ get-recovered ]
 
       if breed = infected [
-        ifelse severe-symptomes?
+        ifelse severe-symptoms?
         [ get-hospitalized ]
         [ get-recovered ]
       ]
 
       if breed = incubating [ get-infected ]
     ]
-
-    if breed = hospitalized and [not hospital?] of patch-here [ find-hospital-spot ]
   ]
 end
 
 
 to get-infected ;; turtle procedure
   set breed infected
-  set color lput transparency extract-rgb orange
+  set color lput transparency color-infected
   set contagious? true
-  set severe-symptomes? ifelse-value random-float 1 < headless-probability-hospitalized [true] [false]
-  set state-duration law-symptomes-duration
+  set severe-symptoms? ifelse-value random-float 1 < headless-probability-hospitalized [true] [false]
+  set state-duration law-symptoms-duration
   set state-starting-date ticks
   set my-travel-distance headless-travel-distance
-
 
   set nb-new-infections nb-new-infections + 1
 end
@@ -343,11 +384,12 @@ end
 to get-hospitalized ;; turtle procedure
   set breed hospitalized
   set shape "square"
-  set color lput transparency extract-rgb red
+  set color lput transparency color-hospitalized
   set contagious? true
   set state-duration law-hospitalized-duration
   set state-starting-date ticks
   set my-travel-distance 0
+  set icu? false
 
   find-hospital-spot
 
@@ -356,23 +398,37 @@ end
 
 
 to find-hospital-spot ;; turtle procedure
-  let icu-bed min-one-of patches with [icu-bed? and not any? turtles-here] [pxcor]
-  let hospital-spot one-of patches with [hospital? and not any? turtles-here]
+  let icu-bed one-of patches with [icu-bed? and not any? turtles-here]
+  let hospital-spot one-of patches with [hospital? and not graveyard? and not any? turtles-here]
 
   (ifelse
     is-agent? icu-bed [
       move-to icu-bed
+      set icu? true
       set nb-new-icu nb-new-icu + 1
       stop
     ]
     is-agent? hospital-spot [
       move-to hospital-spot
-      set nb-new-hospital nb-new-hospital + 1
       stop
     ]
-    ;; no place in ICU or hospital
-    [ set nb-new-turned-down nb-new-turned-down + 1 ]
   )
+end
+
+
+to go-to-graveyard
+  set breed dead
+  move-to one-of patches with [graveyard? and not any? turtles-here]
+
+  set nb-new-turned-down nb-new-turned-down + 1
+end
+
+
+to get-dead
+  set color lput transparency extract-rgb black
+  set contagious? false
+  set state-duration -1
+  set state-starting-date ticks
 end
 
 
@@ -383,7 +439,7 @@ to get-recovered ;; turtle procedure
   ]
 
   set breed recovered
-  set color lput transparency extract-rgb grey
+  set color lput transparency color-recovered
   set contagious? false
   set state-duration -1
   set state-starting-date ticks
@@ -392,13 +448,16 @@ end
 
 to update-epidemic-counts ;; observer procedure
   set total-nb-infected total-nb-infected + nb-new-infections
+  set total-nb-beds-needed total-nb-beds-needed + nb-new-hospitalized
+  set total-nb-icu-patients total-nb-icu-patients + nb-new-icu
+  set total-nb-turned-down total-nb-turned-down + nb-new-turned-down
   if icu-saturated? [ set duration-icu-overflow duration-icu-overflow + 1 ]
 
-  set timeseries-incidence-infections lput nb-new-infections timeseries-incidence-infections
-  set timeseries-S lput nb-S timeseries-S
-  set timeseries-I lput nb-I timeseries-I
-  set timeseries-H lput nb-H timeseries-H
-  set timeseries-R lput nb-R timeseries-R
+;  set timeseries-incidence-infections lput nb-new-infections timeseries-incidence-infections
+;  set timeseries-S lput nb-S timeseries-S
+;  set timeseries-I lput nb-I timeseries-I
+;  set timeseries-H lput nb-H timeseries-H
+;  set timeseries-R lput nb-R timeseries-R
 end
 
 
@@ -423,10 +482,10 @@ to-report law-incubation-duration
   report random-gamma alpha lambda
 end
 
-to-report law-symptomes-duration
+to-report law-symptoms-duration
   (ifelse
-    severe-symptomes? [
-      let mean-duration headless-avg-severe-symptomes-duration
+    severe-symptoms? [
+      let mean-duration headless-avg-severe-symptoms-duration
       let var-duration 0.5
 
       let alpha mean-duration * mean-duration / var-duration
@@ -436,7 +495,7 @@ to-report law-symptomes-duration
     ]
     ;; else
     [
-      let mean-duration headless-avg-mild-symptomes-duration
+      let mean-duration headless-avg-mild-symptoms-duration
       let var-duration 4
 
       let alpha mean-duration * mean-duration / var-duration
@@ -483,17 +542,17 @@ to-report nb-I
   report nb-Incub + nb-Inf + nb-H
 end
 
-to-report nb-ICU
-  report count (patches with [icu-bed? and any? turtles-here])
-end
+;to-report nb-ICU
+;  report count (patches with [icu-bed? and any? turtles-here])
+;end
 
-to-report nb-hospital
-  report count (patches with [hospital? and not icu-bed? and any? turtles-here])
-end
-
-to-report nb-turned-down
-  report count (hospitalized-on patches with [not hospital?])
-end
+;to-report nb-hospital
+;  report count (patches with [hospital? and not icu-bed? and any? turtles-here])
+;end
+;
+;to-report nb-turned-down
+;  report count (hospitalized-on patches with [not hospital?])
+;end
 
 to-report virus-present?
   report nb-I > 0
@@ -504,10 +563,10 @@ to-report icu-saturated?
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-535
-197
-1171
-786
+571
+234
+950
+519
 -1
 -1
 9.525
@@ -520,10 +579,10 @@ GRAPHICS-WINDOW
 0
 0
 1
--30
-35
--30
-30
+-14
+24
+-14
+14
 1
 1
 1
@@ -531,10 +590,10 @@ ticks
 30.0
 
 BUTTON
-356
-125
-438
-180
+314
+10
+396
+59
 Ready?
 setup
 NIL
@@ -548,10 +607,10 @@ NIL
 1
 
 BUTTON
-356
-179
-438
-228
+417
+10
+499
+59
 Go!
 go
 T
@@ -565,31 +624,32 @@ NIL
 1
 
 PLOT
-14
-360
-517
-576
+16
+491
+519
+707
 Prevalence
 Days
 Number of cases
 0.0
 10.0
 0.0
-10.0
+1050.0
 true
 true
 "" ""
 PENS
-"Susceptible" 1.0 0 -13840069 true "" "plot nb-S"
-"Incubating" 1.0 0 -13345367 true "" "plot nb-Incub"
-"Infected" 1.0 0 -955883 true "" "plot nb-Inf"
-"Hospitalized" 1.0 0 -2674135 true "" "plot nb-H"
-"Recovered" 1.0 0 -7500403 true "" "plot nb-R"
+"Susceptible" 1.0 0 -10899396 true "" "set-plot-pen-color color-susceptible plot nb-S"
+"Incubating" 1.0 0 -13345367 true "" "set-plot-pen-color color-incubating plot nb-Incub"
+"Infected" 1.0 0 -955883 true "" "set-plot-pen-color color-infected plot nb-Inf"
+"Hospitalized" 1.0 0 -2674135 true "" "set-plot-pen-color color-hospitalized plot nb-H"
+"Recovered" 1.0 0 -7500403 true "" "set-plot-pen-color color-recovered plot nb-R"
+"intervention" 1.0 0 -7500403 true "" "plot intervention * 20"
 
 INPUTBOX
-535
+573
 10
-1124
+950
 198
 EXPLICATION
 vert = susceptible\nbleu = asymptomatique (incubation)\norange = symptomatique\nzone blanche à droite du monde de simu = hôpital\ncarrés gris = lits de réa dispo\ncarrés rouge = hospitalisé en réa si dans un carré gris, sinon ailleurs dans l'hôpital car réa saturée\n1 patch = 100m²\n1 step = 1 jour
@@ -613,25 +673,24 @@ NIL
 HORIZONTAL
 
 PLOT
-14
-576
-517
-826
+16
+706
+519
+956
 ICU overflow
 NIL
 NIL
 0.0
 10.0
 0.0
-10.0
+20.0
 true
 true
 "" ""
 PENS
-"nb beds needed" 1.0 0 -16777216 true "" "plot nb-H"
-"incidence new cases" 1.0 0 -955883 true "" "plot nb-new-infections"
-"incidence new hospitalized" 1.0 0 -2674135 true "" "plot nb-new-hospitalized"
-"ICU capacity" 1.0 0 -5825686 true "" "plot nb-icu-beds"
+"nb new infected cases" 1.0 0 -16777216 true "" "set-plot-pen-color color-infected plot nb-new-infections / 5"
+"nb ICU beds needed" 1.0 0 -2674135 true "" "set-plot-pen-color color-hospitalized plot nb-H"
+"nb ICU beds occupied" 1.0 0 -5825686 true "" "plot count hospitalized with [icu?]"
 "intervention" 1.0 0 -7500403 true "" "plot intervention"
 
 SLIDER
@@ -654,8 +713,8 @@ SLIDER
 182
 290
 215
-avg-severe-symptomes-duration
-avg-severe-symptomes-duration
+avg-severe-symptoms-duration
+avg-severe-symptoms-duration
 0
 30
 4.0
@@ -680,87 +739,33 @@ days
 HORIZONTAL
 
 CHOOSER
-13
-259
-291
-304
+12
+265
+289
+310
 reduce-diffusion?
 reduce-diffusion?
-"never" "from the start" "when the first case occurs" "when there are as many infected as hospital beds" "when the first hospitalization occurs" "when the ICU is at capacity"
+"never" "from the start" "when the first infected case occurs" "when there are as many infected cases as hospital beds" "when the first hospitalization occurs" "when the ICU is at capacity"
 0
 
 MONITOR
-319
-272
-491
-317
+138
+10
+293
+55
 transmission probability
 transmission-probability
 17
 1
 11
 
-PLOT
-14
-805
-332
-1042
-distribution of incubation duration
-NIL
-NIL
-0.0
-40.0
-0.0
-10.0
-true
-false
-"" ""
-PENS
-"default" 1.0 1 -16777216 true "" "histogram [state-duration] of incubating"
-
-PLOT
-331
-805
-649
-1042
-distribution of symptomes duration
-NIL
-NIL
-0.0
-40.0
-0.0
-10.0
-true
-false
-"" ""
-PENS
-"default" 1.0 1 -16777216 true "" "histogram [state-duration] of infected"
-
-PLOT
-648
-805
-966
-1042
-distribution of hospitalization duration
-NIL
-NIL
-0.0
-40.0
-0.0
-10.0
-true
-false
-"" ""
-PENS
-"default" 1.0 1 -16777216 true "" "histogram [state-duration] of hospitalized"
-
 SLIDER
 13
 150
 290
 183
-avg-mild-symptomes-duration
-avg-mild-symptomes-duration
+avg-mild-symptoms-duration
+avg-mild-symptoms-duration
 0
 30
 21.0
@@ -770,10 +775,10 @@ days
 HORIZONTAL
 
 MONITOR
-319
-316
-491
-361
+306
+220
+551
+265
 duration of icu overflow
 duration-icu-overflow
 17
@@ -790,6 +795,92 @@ headless-population-size
 17
 1
 11
+
+MONITOR
+306
+165
+533
+210
+proportion of people who got infected
+final-proportion-infected
+1
+1
+11
+
+MONITOR
+306
+121
+533
+166
+cumulated number of infected
+total-nb-infected
+17
+1
+11
+
+MONITOR
+16
+330
+346
+375
+cumulated number of people needing an ICU bed
+total-nb-beds-needed
+17
+1
+11
+
+MONITOR
+16
+374
+346
+419
+cumulated number of people who got an ICU bed
+total-nb-icu-patients
+17
+1
+11
+
+MONITOR
+16
+418
+346
+463
+cumulated number of people who didn't get an ICU bed
+total-nb-turned-down
+17
+1
+11
+
+MONITOR
+306
+264
+551
+309
+proportion of people who got an ICU bed
+total-nb-icu-patients / total-nb-beds-needed * 100
+1
+1
+11
+
+TEXTBOX
+849
+522
+905
+540
+Hospital
+12
+0.0
+1
+
+TEXTBOX
+901
+204
+957
+234
+Transfer\nzone
+12
+0.0
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
