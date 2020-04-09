@@ -28,6 +28,14 @@ globals [ ;;global parameters
   ;;pour gérer arrêt de simulation
   oldNbSusceptibles
   oldNbRecovered
+
+  ;;couleurs
+  color-susceptible
+  color-incubating
+  color-infected
+  color-hospitalized
+  color-recovered
+  color-houses
 ]
 
 breed [citizens citizen]
@@ -59,6 +67,17 @@ to setup-globals
   set nbsteps 0
   set oldNbSusceptibles population-size
   set oldNbRecovered 0
+  setup-colors
+end
+
+to setup-colors
+  set color-susceptible [223 194 125] ; beige
+  set color-incubating [166 97 26] ; marron
+  set color-infected [0 0 0] ; noir
+  set color-hospitalized [1 133 113] ; turquoise foncé
+  set color-recovered [128 205 193] ; turquoise clair
+  set color-houses  [175 141 195] ;violet
+  ask patches [set pcolor white]
 end
 
 to setup-houses
@@ -66,7 +85,7 @@ to setup-houses
     set shape "house"
     setxy random-xcor random-ycor
     set size 2
-    set color lput 145 extract-rgb  white
+    set color color-houses
   ]
 end
 
@@ -76,7 +95,7 @@ to setup-population
     setxy random-xcor random-ycor
     set shape "circle"
     set size 1
-    set color green
+    set color color-susceptible
     set epidemic-state 0
     set my-house one-of houses
     set confined? false
@@ -240,19 +259,19 @@ to become-infected-asymptomatic
   set epidemic-state 1
   set asymptomatic-counter asymptomatic-duration
   set infection-date ticks
-  set color blue ;
+  set color color-incubating
 end
 
 to become-infected-symptomatic
   set epidemic-state 2
   set recovered-counter recovered-duration
   set current-nb-new-infections-reported (current-nb-new-infections-reported + 1)
-  set color red ;
+  set color color-infected
 end
 
 to become-recovered
   set epidemic-state 3
-  set color yellow
+  set color color-recovered
   if confiner-infectés-symptomatiques? [
     set confined? false
     set at-home? false]
@@ -355,17 +374,17 @@ true
 true
 "" ""
 PENS
-"Non-porteurs" 1.0 0 -13840069 true "" "if nb-S > 0 [plot nb-S]"
-"Porteurs symptomatiques" 1.0 0 -2674135 true "" "plot nb-I"
-"Rémis" 1.0 0 -1184463 true "" "plot nb-R"
-"Confinés" 1.0 0 -955883 true "" "plot count citizens with [confined?]"
+"Non-porteurs" 1.0 0 -2570826 true "" "if nb-S > 0 [set-plot-pen-color color-susceptible plot nb-S]"
+"Porteurs symptomatiques" 1.0 0 -16514302 true "" "set-plot-pen-color color-infected plot nb-I"
+"Rémis" 1.0 0 -8990512 true "" "set-plot-pen-color color-recovered plot nb-R"
+"Confinés" 1.0 0 -6917194 true "" "set-plot-pen-color color-houses plot count citizens with [confined?]"
 
 TEXTBOX
 12
 420
 515
 546
-Pour exécuter la simulation :\n1 - Cliquez sur le bouton \"Prêt\"\n2 - Cliquez sur le bouton \"Partez !\" \nNB: si vous voulez mettre en Pause la simulation le temps de faire vos choix, cliquez à nouveau sur \"Partez !\"\nPour modifier les conditions de confinement vous pouvez jouer sur :\n- l'interrupteur permettant de ne confiner que les individus symptomatiques\n- le pourcentage de confinés\n- le scénario de confinement (Très Strict, Strict, Souple)\n
+Pour exécuter la simulation :\n1 - Cliquez sur le bouton \"Ré-initialiser\"\n2 - Cliquez sur le bouton \"Partez ! / Pause\" \nNB: si vous voulez mettre en Pause la simulation le temps de faire vos choix, cliquez à nouveau sur \"Partez ! / Pause\"\nPour modifier les conditions de confinement vous pouvez jouer sur :\n- l'interrupteur permettant de ne confiner que les individus symptomatiques\n- le pourcentage de confinés\n- le scénario de confinement (Très Strict, Strict, Souple)\n
 11
 63.0
 1
@@ -411,7 +430,7 @@ true
 true
 "" ""
 PENS
-"Trés Strict" 1.0 1 -2674135 true "" "ifelse scenario-confinement = \"Très Strict\" [plot pourcentage-confinés][plot 0]"
+"Très Strict" 1.0 1 -2674135 true "" "ifelse scenario-confinement = \"Très Strict\" [plot pourcentage-confinés][plot 0]"
 "Strict" 1.0 1 -955883 true "" "ifelse scenario-confinement = \"Strict\" [plot pourcentage-confinés][plot 0]"
 "Souple" 1.0 1 -987046 true "" "ifelse scenario-confinement = \"Souple\" [plot pourcentage-confinés][plot 0]"
 
