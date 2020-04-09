@@ -81,7 +81,7 @@ globals [
 
 to setup ;; observer procedure
   clear-all
-  random-seed 68
+  random-seed 384
 
   setup-from-GUI
   headless-setup
