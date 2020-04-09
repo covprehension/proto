@@ -81,7 +81,7 @@ globals [
 
 to setup ;; observer procedure
   clear-all
-  random-seed 68
+  random-seed 384
 
   setup-from-GUI
   headless-setup
@@ -636,7 +636,7 @@ Number of cases
 0.0
 10.0
 0.0
-1050.0
+1000.0
 true
 true
 "" ""
@@ -685,7 +685,7 @@ Number of cases
 0.0
 10.0
 0.0
-20.0
+10.0
 true
 true
 "" ""
