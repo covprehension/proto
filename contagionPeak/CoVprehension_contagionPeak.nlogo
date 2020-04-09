@@ -46,6 +46,7 @@ globals [
   reduction-factor
   intervention-date
   intervention
+  intervention-height
   wall
 
   ;; colors
@@ -105,7 +106,7 @@ to setup-from-GUI ;; observer procedure
   set headless-avg-mild-symptoms-duration avg-mild-symptoms-duration
   set headless-avg-severe-symptoms-duration avg-severe-symptoms-duration
 ;  set headless-probability-hospitalized probability-hospitalized
-  set headless-avg-hospitalized-duration avg-hospitalized-duration
+  set headless-avg-hospitalized-duration avg-hospitalization-duration
 ;  set headless-travel-distance travel-distance
 ;  set headless-transmission-distance transmission-distance
   set headless-reduce-diffusion? reduce-diffusion?
@@ -126,6 +127,7 @@ to setup-globals ;; observer procedure
   set reduction-factor 10
   set intervention-date -1
   set intervention 0
+  set intervention-height 10
   set wall 10
 
   ;; colors
@@ -137,10 +139,10 @@ to setup-globals ;; observer procedure
 ;  set color-recovered [253 231 37]
   ;; BrBG
   set color-susceptible [223 194 125]
-  set color-incubating [166 97 26]
-  set color-infected [0 0 0]
+  set color-incubating [0 0 0]
+  set color-infected [128 205 193]
   set color-hospitalized [1 133 113]
-  set color-recovered [128 205 193]
+  set color-recovered [166 97 26]
   set transparency 145
 
   ;;metric
@@ -276,7 +278,7 @@ to reduce-diffusion ;; observer procedure
       set transmission-probability transmission-probability / reduction-factor
       set transmission-reduced? true
       set intervention-date ticks
-      set intervention 25
+      set intervention intervention-height
     ]
 
     headless-reduce-diffusion? = "when the first infected case occurs" [
@@ -284,16 +286,16 @@ to reduce-diffusion ;; observer procedure
         set transmission-probability transmission-probability / reduction-factor
         set transmission-reduced? true
         set intervention-date ticks
-        set intervention 25
+        set intervention intervention-height
       ]
     ]
 
-    headless-reduce-diffusion? = "when there are as many infected cases as hospital beds" [
+    headless-reduce-diffusion? = "when there are as many infected cases as ICU beds" [
       if nb-Inf >= nb-icu-beds [
         set transmission-probability transmission-probability / reduction-factor
         set transmission-reduced? true
         set intervention-date ticks
-        set intervention 25
+        set intervention intervention-height
       ]
     ]
 
@@ -302,7 +304,7 @@ to reduce-diffusion ;; observer procedure
         set transmission-probability transmission-probability / reduction-factor
         set transmission-reduced? true
         set intervention-date ticks
-        set intervention 25
+        set intervention intervention-height
       ]
     ]
 
@@ -311,7 +313,7 @@ to reduce-diffusion ;; observer procedure
         set transmission-probability transmission-probability / reduction-factor
         set transmission-reduced? true
         set intervention-date ticks
-        set intervention 25
+        set intervention intervention-height
       ]
     ]
   )
@@ -563,10 +565,10 @@ to-report icu-saturated?
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-571
-234
-950
-519
+570
+40
+949
+325
 -1
 -1
 9.525
@@ -590,9 +592,9 @@ ticks
 30.0
 
 BUTTON
-314
+335
 10
-396
+417
 59
 Ready?
 setup
@@ -607,9 +609,9 @@ NIL
 1
 
 BUTTON
-417
+438
 10
-499
+520
 59
 Go!
 go
@@ -639,20 +641,20 @@ true
 true
 "" ""
 PENS
-"Susceptible" 1.0 0 -10899396 true "" "set-plot-pen-color color-susceptible plot nb-S"
-"Incubating" 1.0 0 -13345367 true "" "set-plot-pen-color color-incubating plot nb-Incub"
-"Infected" 1.0 0 -955883 true "" "set-plot-pen-color color-infected plot nb-Inf"
-"Hospitalized" 1.0 0 -2674135 true "" "set-plot-pen-color color-hospitalized plot nb-H"
-"Recovered" 1.0 0 -7500403 true "" "set-plot-pen-color color-recovered plot nb-R"
-"intervention" 1.0 0 -7500403 true "" "plot intervention * 20"
+"Susceptible" 1.0 0 -16777216 true "" "set-plot-pen-color color-susceptible plot nb-S"
+"Incubating" 1.0 0 -16777216 true "" "set-plot-pen-color color-incubating plot nb-Incub"
+"Infected" 1.0 0 -16777216 true "" "set-plot-pen-color color-infected plot nb-Inf"
+"Hospitalized" 1.0 0 -16777216 true "" "set-plot-pen-color color-hospitalized plot nb-H"
+"Recovered" 1.0 0 -16777216 true "" "set-plot-pen-color color-recovered plot nb-R"
+"Intervention date" 1.0 0 -7500403 true "" "plot intervention * 50"
 
 INPUTBOX
-573
-10
-950
-198
-EXPLICATION
-vert = susceptible\nbleu = asymptomatique (incubation)\norange = symptomatique\nzone blanche à droite du monde de simu = hôpital\ncarrés gris = lits de réa dispo\ncarrés rouge = hospitalisé en réa si dans un carré gris, sinon ailleurs dans l'hôpital car réa saturée\n1 patch = 100m²\n1 step = 1 jour
+569
+359
+969
+627
+EXPLANATION
+Central white area:\n- beige circle = susceptible\n- black circle = incubating\n- light blue circle = infected\n- brown circle = recovered\n\nRight-side area:\n- dark blue square = hospitalized in an ICU bed (dark grey box) or waiting for an ICU bed (light grey box) \n- dark blue circle = hospitalized in transfer because no ICU bed was available \n\nspace unit = 100m²\ntime unit = 1 day
 1
 1
 String
@@ -677,9 +679,9 @@ PLOT
 706
 519
 956
-ICU overflow
-NIL
-NIL
+ICU beds overflow
+Days
+Number of cases
 0.0
 10.0
 0.0
@@ -688,15 +690,14 @@ true
 true
 "" ""
 PENS
-"nb new infected cases" 1.0 0 -16777216 true "" "set-plot-pen-color color-infected plot nb-new-infections / 5"
-"nb ICU beds needed" 1.0 0 -2674135 true "" "set-plot-pen-color color-hospitalized plot nb-H"
-"nb ICU beds occupied" 1.0 0 -5825686 true "" "plot count hospitalized with [icu?]"
-"intervention" 1.0 0 -7500403 true "" "plot intervention"
+"ICU beds needed" 1.0 0 -16777216 true "" "set-plot-pen-color color-hospitalized plot nb-H"
+"ICU beds occupied" 1.0 0 -5825686 true "" "plot count hospitalized with [icu?]"
+"Intervention date" 1.0 0 -7500403 true "" "plot intervention"
 
 SLIDER
 13
 118
-290
+282
 151
 avg-incubation-duration
 avg-incubation-duration
@@ -711,7 +712,7 @@ HORIZONTAL
 SLIDER
 13
 182
-290
+282
 215
 avg-severe-symptoms-duration
 avg-severe-symptoms-duration
@@ -726,10 +727,10 @@ HORIZONTAL
 SLIDER
 13
 214
-290
+282
 247
-avg-hospitalized-duration
-avg-hospitalized-duration
+avg-hospitalization-duration
+avg-hospitalization-duration
 0
 30
 12.0
@@ -741,11 +742,11 @@ HORIZONTAL
 CHOOSER
 12
 265
-289
+282
 310
 reduce-diffusion?
 reduce-diffusion?
-"never" "from the start" "when the first infected case occurs" "when there are as many infected cases as hospital beds" "when the first hospitalization occurs" "when the ICU is at capacity"
+"never" "from the start" "when the first infected case occurs" "when there are as many infected cases as ICU beds" "when the first hospitalization occurs" "when the ICU is at capacity"
 0
 
 MONITOR
@@ -762,7 +763,7 @@ transmission-probability
 SLIDER
 13
 150
-290
+282
 183
 avg-mild-symptoms-duration
 avg-mild-symptoms-duration
@@ -775,11 +776,11 @@ days
 HORIZONTAL
 
 MONITOR
-306
-220
-551
-265
-duration of icu overflow
+295
+221
+540
+266
+duration of icu overflow (days)
 duration-icu-overflow
 17
 1
@@ -797,21 +798,21 @@ headless-population-size
 11
 
 MONITOR
-306
-165
-533
-210
-proportion of people who got infected
+295
+162
+563
+207
+proportion of people who have been infected
 final-proportion-infected
 1
 1
 11
 
 MONITOR
-306
-121
-533
-166
+295
+118
+563
+163
 cumulated number of infected
 total-nb-infected
 17
@@ -852,10 +853,10 @@ total-nb-turned-down
 11
 
 MONITOR
-306
-264
-551
-309
+295
+265
+540
+310
 proportion of people who got an ICU bed
 total-nb-icu-patients / total-nb-beds-needed * 100
 1
@@ -863,20 +864,20 @@ total-nb-icu-patients / total-nb-beds-needed * 100
 11
 
 TEXTBOX
-849
-522
-905
-540
+848
+328
+904
+346
 Hospital
 12
 0.0
 1
 
 TEXTBOX
-901
-204
-957
-234
+900
+10
+956
+40
 Transfer\nzone
 12
 0.0
