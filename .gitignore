@@ -1,3 +1,4 @@
 .Rhistory
 .tmp.netlogo
 *.tmp*
+.DS_Store
