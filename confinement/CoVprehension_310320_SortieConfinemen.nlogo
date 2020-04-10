@@ -325,10 +325,10 @@ ticks
 30.0
 
 BUTTON
-526
-424
-651
-479
+623
+411
+748
+466
 Ré-initialiser
 setup
 NIL
@@ -342,10 +342,10 @@ NIL
 1
 
 BUTTON
-526
-485
-651
-543
+623
+471
+748
+529
 Partez ! / Pause
 go
 T
@@ -361,7 +361,7 @@ NIL
 PLOT
 593
 10
-1083
+1000
 226
 Epidémie
 Temps(nbjours)
@@ -374,15 +374,15 @@ true
 true
 "" ""
 PENS
-"Non-porteurs" 1.0 0 -2570826 true "" "if nb-S > 0 [set-plot-pen-color color-susceptible plot nb-S]"
-"Porteurs symptomatiques" 1.0 0 -16514302 true "" "set-plot-pen-color color-infected plot nb-I"
-"Rémis" 1.0 0 -8990512 true "" "set-plot-pen-color color-recovered plot nb-R"
+"Sains" 1.0 0 -2570826 true "" "if nb-S > 0 [set-plot-pen-color color-susceptible plot nb-S]"
+"Infectés" 1.0 0 -16514302 true "" "set-plot-pen-color color-infected plot nb-I"
+"Guéris" 1.0 0 -8990512 true "" "set-plot-pen-color color-recovered plot nb-R"
 "Confinés" 1.0 0 -6917194 true "" "set-plot-pen-color color-houses plot count citizens with [confined?]"
 
 TEXTBOX
 12
 420
-515
+584
 546
 Pour exécuter la simulation :\n1 - Cliquez sur le bouton \"Ré-initialiser\"\n2 - Cliquez sur le bouton \"Partez ! / Pause\" \nNB: si vous voulez mettre en Pause la simulation le temps de faire vos choix, cliquez à nouveau sur \"Partez ! / Pause\"\nPour modifier les conditions de confinement vous pouvez jouer sur :\n- l'interrupteur permettant de ne confiner que les individus symptomatiques\n- le pourcentage de confinés\n- le scénario de confinement (Très Strict, Strict, Souple)\n
 11
@@ -390,10 +390,10 @@ Pour exécuter la simulation :\n1 - Cliquez sur le bouton \"Ré-initialiser\"\n2
 1
 
 SLIDER
-657
-461
-906
-494
+753
+448
+1002
+481
 pourcentage-confinés
 pourcentage-confinés
 0
@@ -405,10 +405,10 @@ NIL
 HORIZONTAL
 
 CHOOSER
-657
-498
-907
-543
+752
+485
+1002
+530
 scenario-confinement
 scenario-confinement
 "Très Strict" "Strict" "Souple"
@@ -435,19 +435,29 @@ PENS
 "Souple" 1.0 1 -987046 true "" "ifelse scenario-confinement = \"Souple\" [plot pourcentage-confinés][plot 0]"
 
 SWITCH
-657
-424
-905
-457
+753
+411
+1001
+444
 confiner-infectés-symptomatiques?
 confiner-infectés-symptomatiques?
 1
 1
 -1000
 
+TEXTBOX
+521
+540
+1014
+558
+Un mode d'emploi plus complet est disponible dans l'onglet Model Info sous la simulation
+11
+26.0
+1
+
 @#$#@#$#@
 ## DESCRIPTION DU MODELE
-Dans ce modèle les individus sont soit non-porteurs (verts), soit porteurs asymptomtiques (bleus) lorsqu'ils sont contaminés par contact avec un porteur, puis au bout de 8 jours (32 itérations) ils deviennent porteurs symptomatiques (rouges) et 14 jours plus tard (56 itérations) ils deviennent rémis. 
+Dans ce modèle les individus sont soit sains (beige), soit porteurs asymptomtiques (marron) lorsqu'ils sont contaminés par contact avec un porteur, puis au bout de 8 jours (32 itérations) ils deviennent infectés (symptomatiques) (noir) et 14 jours plus tard (56 itérations) ils deviennent guéris (bleu turquoise). 
  
 ## COMMENT AGIR ?
 Pour contrer le développement de l'épidémie, vous pouvez jouer sur deux mesures :
@@ -460,8 +470,8 @@ c.Régime de confinement souple : les confinés peuvent sortir en moyenne une fo
 NB: si vous confinez une partie de la population (2.) la mesure de confinement des infectés sera automatiquement enclenchée. Ces derniers sont dans tous les cas dans un régime de confinement trés strict (sortie toute les 20 itérations, 500m autour de chez eux).
 
 ## A REMARQUER
-Les individus asymptomatiques sont une des difficultés principales à gérer dans ce modèle. Vous vous rendrez compte que confiner uniquement les individus symptomatiques, ne change pas grand chose au développement de l'épidémie, les individus asymptomatiques (bleus) continuant de la propager.
-NB: les individus asymptomatiques sont figurés en bleu mais "normalement" vous ne devriez pas pouvoir les distinguer des individus sains (à moins de les tester).
+Les individus asymptomatiques sont une des difficultés principales à gérer dans ce modèle. Vous vous rendrez compte que confiner uniquement les individus symptomatiques, ne change pas grand chose au développement de l'épidémie, les individus asymptomatiques (marron) continuant de la propager.
+NB: les individus asymptomatiques sont figurés en marron mais "normalement" vous ne devriez pas pouvoir les distinguer des individus sains (à moins de les tester).
 En pratique, sur ce modèle, seules des mesures drastiques dès les premiers cas symptomatiques détectés permettent un peu d'endiguer l'épidémie ou du moins d'applatir la courbe d'infection. Encore faut-il ne pas lever les mesures de confinement trop tôt.
 @#$#@#$#@
 default

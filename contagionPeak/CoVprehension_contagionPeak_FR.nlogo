@@ -81,7 +81,7 @@ globals [
 
 to setup ;; observer procedure
   clear-all
-  random-seed 68
+  random-seed 384
 
   setup-from-GUI
   headless-setup
@@ -101,15 +101,15 @@ end
 ;; setup global variables from GUI variables
 to setup-from-GUI ;; observer procedure
 ;  set headless-population-size population-size
-  set headless-nb-icu-beds-per-1000 nb-icu-beds-per-1000
-  set headless-avg-incubation-duration avg-incubation-duration
-  set headless-avg-mild-symptoms-duration avg-mild-symptoms-duration
-  set headless-avg-severe-symptoms-duration avg-severe-symptoms-duration
+  set headless-nb-icu-beds-per-1000 nb-lits-rea-pour-1000
+  set headless-avg-incubation-duration duree-moy-incubation
+  set headless-avg-mild-symptoms-duration duree-moy-symptomes-legers
+  set headless-avg-severe-symptoms-duration duree-moy-symptomes-graves
 ;  set headless-probability-hospitalized probability-hospitalized
-  set headless-avg-hospitalized-duration avg-hospitalization-duration
+  set headless-avg-hospitalized-duration duree-moy-hospitalisation
 ;  set headless-travel-distance travel-distance
 ;  set headless-transmission-distance transmission-distance
-  set headless-reduce-diffusion? reduce-diffusion?
+  set headless-reduce-diffusion? ralentir-la-diffusion?
 end
 
 
@@ -274,14 +274,14 @@ end
 
 to reduce-diffusion ;; observer procedure
   (ifelse
-    headless-reduce-diffusion? = "from the start" [
+    headless-reduce-diffusion? = "dès le début" [
       set transmission-probability transmission-probability / reduction-factor
       set transmission-reduced? true
       set intervention-date ticks
       set intervention intervention-height
     ]
 
-    headless-reduce-diffusion? = "when the first infected case occurs" [
+    headless-reduce-diffusion? = "au premier cas infecté" [
       if nb-Inf >= 1 [
         set transmission-probability transmission-probability / reduction-factor
         set transmission-reduced? true
@@ -290,7 +290,7 @@ to reduce-diffusion ;; observer procedure
       ]
     ]
 
-    headless-reduce-diffusion? = "when there are as many infected cases as ICU beds" [
+    headless-reduce-diffusion? = "quand il y a autant de cas infectés que de lits en réa" [
       if nb-Inf >= nb-icu-beds [
         set transmission-probability transmission-probability / reduction-factor
         set transmission-reduced? true
@@ -299,7 +299,7 @@ to reduce-diffusion ;; observer procedure
       ]
     ]
 
-    headless-reduce-diffusion? = "when the first hospitalization occurs" [
+    headless-reduce-diffusion? = "à la première hospitalisation" [
       if nb-H >= 1 [
         set transmission-probability transmission-probability / reduction-factor
         set transmission-reduced? true
@@ -308,7 +308,7 @@ to reduce-diffusion ;; observer procedure
       ]
     ]
 
-    headless-reduce-diffusion? = "when the ICU is at capacity" [
+    headless-reduce-diffusion? = "quand tous les lits de réa sont occupés" [
       if count patches with [icu-bed? and not any? turtles-here] = 0 [
         set transmission-probability transmission-probability / reduction-factor
         set transmission-reduced? true
@@ -594,9 +594,9 @@ ticks
 BUTTON
 335
 10
-417
+431
 59
-Ready?
+Initialiser
 setup
 NIL
 1
@@ -611,9 +611,9 @@ NIL
 BUTTON
 438
 10
-520
+533
 59
-Go!
+Simuler !
 go
 T
 1
@@ -630,31 +630,31 @@ PLOT
 491
 519
 707
-Prevalence
-Days
-Number of cases
+Prévalence
+Jours
+Nombre de cas
 0.0
 10.0
 0.0
-1050.0
+1000.0
 true
 true
 "" ""
 PENS
-"Susceptible" 1.0 0 -16777216 true "" "set-plot-pen-color color-susceptible plot nb-S"
-"Incubating" 1.0 0 -16777216 true "" "set-plot-pen-color color-incubating plot nb-Incub"
-"Infected" 1.0 0 -16777216 true "" "set-plot-pen-color color-infected plot nb-Inf"
-"Hospitalized" 1.0 0 -16777216 true "" "set-plot-pen-color color-hospitalized plot nb-H"
-"Recovered" 1.0 0 -16777216 true "" "set-plot-pen-color color-recovered plot nb-R"
-"Intervention date" 1.0 0 -7500403 true "" "plot intervention * 50"
+"Personne saine" 1.0 0 -16777216 true "" "set-plot-pen-color color-susceptible plot nb-S"
+"Personne en incubation" 1.0 0 -16777216 true "" "set-plot-pen-color color-incubating plot nb-Incub"
+"Personne infectée" 1.0 0 -16777216 true "" "set-plot-pen-color color-infected plot nb-Inf"
+"Personne hospitalisée en réa" 1.0 0 -16777216 true "" "set-plot-pen-color color-hospitalized plot nb-H"
+"Personne guérie" 1.0 0 -16777216 true "" "set-plot-pen-color color-recovered plot nb-R"
+"Date de l'intervention" 1.0 0 -7500403 true "" "plot intervention * 50"
 
 INPUTBOX
 569
 359
-969
-627
-EXPLANATION
-Central white area:\n- beige circle = susceptible\n- black circle = incubating\n- light blue circle = infected\n- brown circle = recovered\n\nRight-side area:\n- dark blue square = hospitalized in an ICU bed (dark grey box) or waiting for an ICU bed (light grey box) \n- dark blue circle = hospitalized in transfer because no ICU bed was available \n\nspace unit = 100m²\ntime unit = 1 day
+973
+639
+EXPLICATION
+Dans le carré blanc central :\n- rond beige = personne saine\n- rond noir = personne en incubation\n- rond bleu clair = personne infectée\n- rond marron = personne guérie\n\nZone sur la droite :\n- carré bleu foncé = personne hospitalisée en réanimation (zone en gris foncé) ou en attente d'un lit en réanimation (zone gris clair) \n- rond bleu foncé = personne hospitalisée en transfert car aucun lit de réanimation n'est disponible\n\nunité d'espace = 100m²\nunité de temps = 1 jour
 1
 1
 String
@@ -664,8 +664,8 @@ SLIDER
 71
 236
 104
-nb-icu-beds-per-1000
-nb-icu-beds-per-1000
+nb-lits-rea-pour-1000
+nb-lits-rea-pour-1000
 1
 10
 3.0
@@ -679,34 +679,34 @@ PLOT
 706
 519
 956
-ICU beds overflow
-Days
-Number of cases
+Saturation des lits en réanimation ?
+Jours
+Nombre de cas
 0.0
 10.0
 0.0
-20.0
+10.0
 true
 true
 "" ""
 PENS
-"ICU beds needed" 1.0 0 -16777216 true "" "set-plot-pen-color color-hospitalized plot nb-H"
-"ICU beds occupied" 1.0 0 -5825686 true "" "plot count hospitalized with [icu?]"
-"Intervention date" 1.0 0 -7500403 true "" "plot intervention"
+"Lits de réa nécessaires" 1.0 0 -16777216 true "" "set-plot-pen-color color-hospitalized plot nb-H"
+"Lits de réa occupés" 1.0 0 -5825686 true "" "plot count hospitalized with [icu?]"
+"Date de l'intervention" 1.0 0 -7500403 true "" "plot intervention"
 
 SLIDER
 13
 118
 282
 151
-avg-incubation-duration
-avg-incubation-duration
+duree-moy-incubation
+duree-moy-incubation
 0
 30
 6.0
 1
 1
-days
+jours
 HORIZONTAL
 
 SLIDER
@@ -714,14 +714,14 @@ SLIDER
 182
 282
 215
-avg-severe-symptoms-duration
-avg-severe-symptoms-duration
+duree-moy-symptomes-graves
+duree-moy-symptomes-graves
 0
 30
 4.0
 1
 1
-days
+jours
 HORIZONTAL
 
 SLIDER
@@ -729,32 +729,32 @@ SLIDER
 214
 282
 247
-avg-hospitalization-duration
-avg-hospitalization-duration
+duree-moy-hospitalisation
+duree-moy-hospitalisation
 0
 30
 12.0
 1
 1
-days
+jours
 HORIZONTAL
 
 CHOOSER
 12
 265
-282
+283
 310
-reduce-diffusion?
-reduce-diffusion?
-"never" "from the start" "when the first infected case occurs" "when there are as many infected cases as ICU beds" "when the first hospitalization occurs" "when the ICU is at capacity"
+ralentir-la-diffusion?
+ralentir-la-diffusion?
+"jamais" "dès le début" "au premier cas infecté" "quand il y a autant de cas infectés que de lits en réa" "à la première hospitalisation" "quand tous les lits de réa sont occupés"
 0
 
 MONITOR
-138
+148
 10
-293
+320
 55
-transmission probability
+probabilité de transmission
 transmission-probability
 17
 1
@@ -765,55 +765,55 @@ SLIDER
 150
 282
 183
-avg-mild-symptoms-duration
-avg-mild-symptoms-duration
+duree-moy-symptomes-legers
+duree-moy-symptomes-legers
 0
 30
 21.0
 1
 1
-days
+jours
 HORIZONTAL
 
 MONITOR
-295
+288
 221
-540
+567
 266
-duration of icu overflow (days)
+durée de saturation de la réa
 duration-icu-overflow
 17
 1
 11
 
 MONITOR
-14
+13
 10
-125
+149
 55
-population size
+taille de la population
 headless-population-size
 17
 1
 11
 
 MONITOR
-295
+288
 162
-563
+554
 207
-proportion of people who have been infected
+proportion de personnes ayant été infectées
 final-proportion-infected
 1
 1
 11
 
 MONITOR
-295
+288
 118
-563
+554
 163
-cumulated number of infected
+nb cumulé de personnes infectées
 total-nb-infected
 17
 1
@@ -822,9 +822,9 @@ total-nb-infected
 MONITOR
 16
 330
-346
+362
 375
-cumulated number of people needing an ICU bed
+nb cumulé de personnes ayant eu besoin d'un lit en réa
 total-nb-beds-needed
 17
 1
@@ -833,9 +833,9 @@ total-nb-beds-needed
 MONITOR
 16
 374
-346
+362
 419
-cumulated number of people who got an ICU bed
+nb cumulé de personnes ayant pu avoir un lit en réa
 total-nb-icu-patients
 17
 1
@@ -844,41 +844,41 @@ total-nb-icu-patients
 MONITOR
 16
 418
-346
+362
 463
-cumulated number of people who didn't get an ICU bed
+nb cumulé de personnes n'ayant pas pu avoir de lit en réa
 total-nb-turned-down
 17
 1
 11
 
 MONITOR
-295
+288
 265
-540
+567
 310
-proportion of people who got an ICU bed
+proportion de personnes ayant eu un lit en réa
 total-nb-icu-patients / total-nb-beds-needed * 100
 1
 1
 11
 
 TEXTBOX
-848
-328
-904
-346
-Hospital
+852
+326
+908
+344
+Hôpital
 12
 0.0
 1
 
 TEXTBOX
-900
+896
 10
-956
+952
 40
-Transfer\nzone
+Zone de\ntransfert
 12
 0.0
 1
