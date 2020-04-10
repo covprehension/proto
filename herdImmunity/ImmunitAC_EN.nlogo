@@ -4,105 +4,98 @@ patches-own [
 ]
 
 globals [
-  population-size
-  total-nb-I
-
+  headless-proportion-immunised
+  headless-spatialised-world?
   headless-infectivity-duration
   headless-transmission-rate
-  headless-proportion-immunised
+
+  population-size
+  new-I
+  total-nb-I
+
+  ;; colors
+  color-susceptible
+  color-infected
+  color-recovered
 ]
 
-to generic-setup
+to setup
   clear-all
 
-  setup-GUI-variables
-  set population-size count patches
-  set total-nb-I 0
+  setup-globals
+  setup-patches
 
-  ask patches [
-    set state "S"
-    set pcolor 66
-    set infectivity-counter -1
-  ]
+  reset-ticks
 end
 
-to setup-GUI-variables
+to setup-globals
+  set headless-proportion-immunised proportion-immunised
+  set headless-spatialised-world? spatialised-world?
   set headless-infectivity-duration infectivity-duration
   set headless-transmission-rate transmission-rate
-  set headless-proportion-immunised proportion-immunised
-end
 
-
-to Initialisation
-  generic-setup
-  let nb-immunised-init (headless-proportion-immunised / 100 * population-size)
-  ifelse Est/Ouest and headless-proportion-immunised < 50
-    [ask n-of nb-immunised-init patches with [pxcor > 0] [ get-immunised ]]
-    [ask n-of nb-immunised-init patches [ get-immunised ]]
-
-random-infection
-
-  reset-ticks
-end
-
-to headless-setup
   set population-size count patches
+  set new-I 0
   set total-nb-I 0
 
+  set color-susceptible [223 194 125]
+  set color-infected [128 205 193]
+  set color-recovered [166 97 26]
+end
+
+to setup-patches
+  ;; susceptibles
   ask patches [
     set state "S"
-    set pcolor 66
+    set pcolor color-susceptible
     set infectivity-counter -1
   ]
 
-  let nb-immunised-init (headless-proportion-immunised / 100 * population-size)
-  ask n-of nb-immunised-init patches [ get-immunised ]
+  ;; immunised
+  let nb-immunised-init floor (headless-proportion-immunised / 100 * population-size)
+  ifelse headless-spatialised-world? and headless-proportion-immunised < 50
+  [ ask n-of nb-immunised-init patches with [pxcor > 0] [ get-immunised ] ]
+  [ ask n-of nb-immunised-init patches [ get-immunised ] ]
 
+  ;; import virus
   random-infection
-
-  reset-ticks
-end
-
-to select-location-patch-immunised
-
-end
-
-to get-infected
-  set state "I"
-  set pcolor 16
-  set infectivity-counter headless-infectivity-duration
-  set total-nb-I total-nb-I + 1
 end
 
 to get-immunised
   set state "R"
-  set pcolor 96
+  set pcolor color-recovered
   set infectivity-counter -1
 end
 
+to get-infected
+  set state "I"
+  set pcolor color-infected
+  set infectivity-counter headless-infectivity-duration
+  set new-I new-I + 1
+end
+
 to random-infection
-  ask one-of patches with [state = "S"] [ get-infected ]
+  let target one-of patches with [state = "S"]
+  if is-agent? target [ ask target [ get-infected ] ]
 end
 
 to go
   ifelse virus-present?
-  [ headless-go ]
+  [
+    set new-I 0
+    diffusion
+    update-states
+    tick
+  ]
   [ stop ]
 end
-
-to headless-go
-  diffusion
-  update-states
-  tick
-end
-
 
 to diffusion
   ask patches with [state = "S"] [
     let contacts n-of random count neighbors neighbors
     let infected-contacts contacts with [state = "I"]
     repeat count infected-contacts [
-      if random-float 1 < headless-transmission-rate [ get-infected stop]
+      if random-float 1 < headless-transmission-rate [ get-infected stop ]
     ]
   ]
 end
@@ -114,6 +107,8 @@ to update-states
       infectivity-counter = 0 [ get-immunised ]
     )
   ]
+
+  set total-nb-I total-nb-I + new-I
 end
 
 
@@ -136,10 +131,10 @@ to-report virus-present?
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-288
-13
-933
-659
+379
+10
+1024
+656
 -1
 -1
 4.28
@@ -163,11 +158,11 @@ ticks
 30.0
 
 BUTTON
-8
-265
-77
-298
-NIL
+200
+397
+305
+430
+Simulate
 go
 T
 1
@@ -180,28 +175,28 @@ NIL
 1
 
 SLIDER
-6
-154
-283
-187
+14
+266
+227
+299
 infectivity-duration
 infectivity-duration
 1
 30
-7.0
+12.0
 1
 1
-NIL
+days
 HORIZONTAL
 
 PLOT
-10
-388
-282
-509
-Etats de santé de la population (en%)
-iteration
-nba
+16
+741
+408
+995
+Prevalence
+Days
+% of cases
 0.0
 10.0
 0.0
@@ -210,17 +205,17 @@ true
 true
 "" ""
 PENS
-"S" 1.0 0 -11085214 true "" "plot (nb-S / population-size ) * 100"
-"I" 1.0 0 -2139308 true "" "plot (nb-I / population-size ) * 100"
-"R" 1.0 0 -11033397 true "" "plot (nb-R  / population-size ) * 100"
+"Susceptible" 1.0 0 -16777216 true "" "set-plot-pen-color color-susceptible plot (nb-S / population-size ) * 100"
+"Infected" 1.0 0 -16777216 true "" "set-plot-pen-color color-infected plot (nb-I / population-size ) * 100"
+"Recovered" 1.0 0 -16777216 true "" "set-plot-pen-color color-recovered plot (nb-R  / population-size ) * 100"
 
 BUTTON
-7
-228
-112
-261
-NIL
-Initialisation
+15
+396
+120
+429
+Initialise
+setup
 NIL
 1
 T
@@ -232,10 +227,10 @@ NIL
 1
 
 SLIDER
-6
-191
-283
-224
+14
+298
+227
+331
 transmission-rate
 transmission-rate
 0
@@ -247,27 +242,27 @@ NIL
 HORIZONTAL
 
 SLIDER
-8
-26
-283
-59
+12
+37
+287
+70
 proportion-immunised
 proportion-immunised
 0
 100
-26.0
+10.0
+5
 1
-1
-NIL
+%
 HORIZONTAL
 
 BUTTON
-200
-265
-282
-298
-new infection
-repeat Combien? [random-infection]
+201
+533
+336
+566
+new infections
+repeat nb-new-infections [random-infection]
 NIL
 1
 T
@@ -279,13 +274,13 @@ NIL
 1
 
 PLOT
-9
-514
-282
-660
-Nombre de nouveaux cas
-NIL
-NIL
+407
+741
+799
+995
+Number of new cases per day
+Days
+Number of cases
 0.0
 10.0
 0.0
@@ -294,145 +289,155 @@ true
 false
 "" ""
 PENS
-"default" 1.0 0 -2139308 true "" "plot nb-I"
+"default" 1.0 0 -16777216 true "" "set-plot-pen-color color-infected plot new-I"
 
 SWITCH
-178
-90
-283
-123
-Est/Ouest
-Est/Ouest
-1
+14
+156
+181
+189
+spatialised-world?
+spatialised-world?
+0
 1
 -1000
 
 SLIDER
-104
-265
-196
-298
-Combien?
-Combien?
+17
+533
+183
+566
+nb-new-infections
+nb-new-infections
 1
 10
-1.0
+4.0
 1
 1
 NIL
 HORIZONTAL
 
 TEXTBOX
-9
-10
-290
-28
-1 - Choisir la proportion de personnes immunisées
+14
 11
+317
+29
+1 - Choose the proportion of immunised people
+12
 105.0
 1
 
 TEXTBOX
-9
-63
-310
-91
-2 - Sa localisation aléatoire (off) ou à l'Est (on)
-11
+14
+90
+296
+135
+2 - Do you want the immunised individuals to be spatialised, i.e. all located on the right-hand side of the world?
+12
 105.0
 1
 
 TEXTBOX
-7
-75
-176
-138
-Attention: si vous choisissez une localisation à l'Est, alors le taux de personnes immunisées global doit être inférieur à 50%
-11
+189
+145
+380
+220
+Be careful: if you choose a spatialised world, the proportion of immunised individuals need to be under 50%.
+12
 15.0
 1
 
 TEXTBOX
-8
-136
-293
-164
-3 - Définissez les valeurs des paramètres
-11
+15
+237
+260
+255
+3 - Choose values for the parameters
+12
 105.0
 1
 
 TEXTBOX
-123
-231
-282
-259
-<-- Cliquez pour initialiser votre simulation
-11
-105.0
-1
-
-TEXTBOX
-10
-303
-286
-338
-Vous pouvez générer (new infection) des nouveaux cas (combien?) pour voir si l'épidémie repart (go)
-11
+17
+355
+140
+385
+4 - Click to initialise the simulation
+12
 105.0
 1
 
 MONITOR
-9
-338
-72
-383
-Sains
+16
+671
+168
+716
+nb of susceptible people
 nb-S
 0
 1
 11
 
 MONITOR
-119
-338
-181
-383
-Infectés
+221
+671
+352
+716
+nb of infected people
 nb-I
 17
 1
 11
 
 MONITOR
-223
-339
-280
-384
-Guéris
+407
+671
+551
+716
+nb of recovered people
 Nb-R
 17
 1
 11
 
 TEXTBOX
-75
-356
-129
-374
+180
+688
+217
+706
 ----->
-11
-14.0
+12
+0.0
 1
 
 TEXTBOX
-184
-355
-249
-373
+364
+688
+399
+706
 ----->
-11
-95.0
+12
+0.0
+1
+
+TEXTBOX
+202
+355
+304
+385
+5 - Click to start the simulation
+12
+105.0
+1
+
+TEXTBOX
+18
+459
+323
+519
+6 - Optional: Choose a number and then click to infect new individuals with the virus.\n\nDoes the epidemic start again or does it die off?
+12
+105.0
 1
 
 @#$#@#$#@
