@@ -15,9 +15,6 @@ globals [
 to generic-setup
   clear-all
 
-  ifelse Configuration_Initiale = "Toujours pareille"
-    [random-seed 12]
-    []
   setup-GUI-variables
   set population-size count patches
   set total-nb-I 0
@@ -35,18 +32,8 @@ to setup-GUI-variables
   set headless-proportion-immunised proportion-immunised
 end
 
-;to setup-centre
-;  generic-setup
-;
-;  ask patches with [pxcor * pxcor + pycor * pycor < 80] [
-;      get-infected
-;;      set infectivity-counter random headless-infectivity-duration
-;  ]
-;
-;  reset-ticks
-;end
 
-to setup-aleatoire
+to Initialisation
   generic-setup
   let nb-immunised-init (headless-proportion-immunised / 100 * population-size)
   ifelse Est/Ouest and headless-proportion-immunised < 50
@@ -109,15 +96,6 @@ to headless-go
   tick
 end
 
-;to diffusion
-;  ask patches with [state = "S"] [
-;    let contacts n-of random count neighbors neighbors
-;    if count contacts > 0 [
-;      let risk-infection count contacts with [state = "I"] / count contacts * headless-transmission-rate
-;      if random-float 1 < risk-infection [ get-infected ]
-;    ]
-;  ]
-;end
 
 to diffusion
   ask patches with [state = "S"] [
@@ -158,13 +136,13 @@ to-report virus-present?
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-261
-10
-865
-615
+288
+13
+933
+659
 -1
 -1
-4.0
+4.28
 1
 10
 1
@@ -185,10 +163,10 @@ ticks
 30.0
 
 BUTTON
-185
-84
-254
-117
+8
+265
+77
+298
 NIL
 go
 T
@@ -203,25 +181,25 @@ NIL
 
 SLIDER
 6
-168
-256
-201
+154
+283
+187
 infectivity-duration
 infectivity-duration
 1
 30
-10.0
+7.0
 1
 1
 NIL
 HORIZONTAL
 
 PLOT
-5
-243
-255
-435
-Etats de santé de la population
+10
+388
+282
+509
+Etats de santé de la population (en%)
 iteration
 nba
 0.0
@@ -237,12 +215,12 @@ PENS
 "R" 1.0 0 -11033397 true "" "plot (nb-R  / population-size ) * 100"
 
 BUTTON
-132
-48
-255
-81
+7
+228
+112
+261
 NIL
-setup-aleatoire
+Initialisation
 NIL
 1
 T
@@ -255,9 +233,9 @@ NIL
 
 SLIDER
 6
-205
-256
-238
+191
+283
+224
 transmission-rate
 transmission-rate
 0
@@ -269,25 +247,25 @@ NIL
 HORIZONTAL
 
 SLIDER
-5
-10
-257
-43
+8
+26
+283
+59
 proportion-immunised
 proportion-immunised
 0
 100
-40.0
+26.0
 1
 1
 NIL
 HORIZONTAL
 
 BUTTON
-100
-131
-182
-164
+200
+265
+282
+298
 new infection
 repeat Combien? [random-infection]
 NIL
@@ -301,10 +279,10 @@ NIL
 1
 
 PLOT
-6
-440
-255
-590
+9
+514
+282
+660
 Nombre de nouveaux cas
 NIL
 NIL
@@ -319,31 +297,21 @@ PENS
 "default" 1.0 0 -2139308 true "" "plot nb-I"
 
 SWITCH
-5
-47
-127
-80
+178
+90
+283
+123
 Est/Ouest
 Est/Ouest
-0
+1
 1
 -1000
 
-CHOOSER
-6
-84
-182
-129
-Configuration_Initiale
-Configuration_Initiale
-"Toujours pareille" "Aléatoire"
-0
-
 SLIDER
-6
-131
-98
-164
+104
+265
+196
+298
 Combien?
 Combien?
 1
@@ -353,6 +321,119 @@ Combien?
 1
 NIL
 HORIZONTAL
+
+TEXTBOX
+9
+10
+290
+28
+1 - Choisir la proportion de personnes immunisées
+11
+105.0
+1
+
+TEXTBOX
+9
+63
+310
+91
+2 - Sa localisation aléatoire (off) ou à l'Est (on)
+11
+105.0
+1
+
+TEXTBOX
+7
+75
+176
+138
+Attention: si vous choisissez une localisation à l'Est, alors le taux de personnes immunisées global doit être inférieur à 50%
+11
+15.0
+1
+
+TEXTBOX
+8
+136
+293
+164
+3 - Définissez les valeurs des paramètres
+11
+105.0
+1
+
+TEXTBOX
+123
+231
+282
+259
+<-- Cliquez pour initialiser votre simulation
+11
+105.0
+1
+
+TEXTBOX
+10
+303
+286
+338
+Vous pouvez générer (new infection) des nouveaux cas (combien?) pour voir si l'épidémie repart (go)
+11
+105.0
+1
+
+MONITOR
+9
+338
+72
+383
+Sains
+nb-S
+0
+1
+11
+
+MONITOR
+119
+338
+181
+383
+Infectés
+nb-I
+17
+1
+11
+
+MONITOR
+223
+339
+280
+384
+Guéris
+Nb-R
+17
+1
+11
+
+TEXTBOX
+75
+356
+129
+374
+----->
+11
+14.0
+1
+
+TEXTBOX
+184
+355
+249
+373
+----->
+11
+95.0
+1
 
 @#$#@#$#@
 @#$#@#$#@
