@@ -48,11 +48,10 @@ end
 
 to setup-aleatoire
   generic-setup
-  ifelse Est/Ouest
-    [let nb-immunised-init (headless-proportion-immunised / 100 * (population-size / 2))
-     ask n-of nb-immunised-init patches with [pxcor > 0] [ get-immunised ]]
-    [let nb-immunised-init (headless-proportion-immunised / 100 * population-size)
-    ask n-of nb-immunised-init patches [ get-immunised ]]
+  let nb-immunised-init (headless-proportion-immunised / 100 * population-size)
+  ifelse Est/Ouest and headless-proportion-immunised < 50
+    [ask n-of nb-immunised-init patches with [pxcor > 0] [ get-immunised ]]
+    [ask n-of nb-immunised-init patches [ get-immunised ]]
 
 random-infection
 
@@ -278,7 +277,7 @@ proportion-immunised
 proportion-immunised
 0
 100
-25.0
+40.0
 1
 1
 NIL
@@ -326,7 +325,7 @@ SWITCH
 80
 Est/Ouest
 Est/Ouest
-1
+0
 1
 -1000
 
