@@ -293,12 +293,12 @@ PENS
 
 SWITCH
 14
-156
+166
 181
-189
+199
 spatialised-world?
 spatialised-world?
-0
+1
 1
 -1000
 
@@ -311,7 +311,7 @@ nb-new-infections
 nb-new-infections
 1
 10
-4.0
+5.0
 1
 1
 NIL
@@ -332,7 +332,7 @@ TEXTBOX
 90
 296
 135
-2 - Do you want the immunised individuals to be spatialised, i.e. all located on the right-hand side of the world?
+2 - Do you want the world to be spatialised? All immunised individuals will then be located on the right-hand side of the world.
 12
 105.0
 1
@@ -439,6 +439,17 @@ TEXTBOX
 12
 105.0
 1
+
+MONITOR
+631
+671
+798
+716
+final proportion of infected
+total-nb-I / population-size * 100
+1
+1
+11
 
 @#$#@#$#@
 @#$#@#$#@

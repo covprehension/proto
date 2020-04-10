@@ -250,7 +250,7 @@ proportion-personnes-immunisees
 proportion-personnes-immunisees
 0
 100
-40.0
+10.0
 5
 1
 %
@@ -298,7 +298,7 @@ SWITCH
 200
 monde-spatialise?
 monde-spatialise?
-0
+1
 1
 -1000
 
@@ -311,7 +311,7 @@ nb-nouvelles-infections
 nb-nouvelles-infections
 1
 10
-4.0
+5.0
 1
 1
 NIL
@@ -439,6 +439,17 @@ TEXTBOX
 12
 105.0
 1
+
+MONITOR
+611
+671
+799
+716
+% final de personnes infectées
+total-nb-I / population-size * 100
+1
+1
+11
 
 @#$#@#$#@
 @#$#@#$#@
