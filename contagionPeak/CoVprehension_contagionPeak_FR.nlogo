@@ -101,7 +101,7 @@ end
 ;; setup global variables from GUI variables
 to setup-from-GUI ;; observer procedure
 ;  set headless-population-size population-size
-  set headless-nb-icu-beds-per-1000 nb-lits-rea-pour-1000
+  set headless-nb-icu-beds-per-1000 nb-lits-rea-pour-1000-personnes
   set headless-avg-incubation-duration duree-moy-incubation
   set headless-avg-mild-symptoms-duration duree-moy-symptomes-legers
   set headless-avg-severe-symptoms-duration duree-moy-symptomes-graves
@@ -641,12 +641,12 @@ true
 true
 "" ""
 PENS
-"Personne saine" 1.0 0 -16777216 true "" "set-plot-pen-color color-susceptible plot nb-S"
-"Personne en incubation" 1.0 0 -16777216 true "" "set-plot-pen-color color-incubating plot nb-Incub"
-"Personne infectée" 1.0 0 -16777216 true "" "set-plot-pen-color color-infected plot nb-Inf"
-"Personne hospitalisée en réa" 1.0 0 -16777216 true "" "set-plot-pen-color color-hospitalized plot nb-H"
-"Personne guérie" 1.0 0 -16777216 true "" "set-plot-pen-color color-recovered plot nb-R"
-"Date de l'intervention" 1.0 0 -7500403 true "" "plot intervention * 50"
+"Personnes saines" 1.0 0 -16777216 true "" "set-plot-pen-color color-susceptible plot nb-S"
+"Personnes en incubation" 1.0 0 -16777216 true "" "set-plot-pen-color color-incubating plot nb-Incub"
+"Personnes infectées" 1.0 0 -16777216 true "" "set-plot-pen-color color-infected plot nb-Inf"
+"Personnes hospitalisées en réa" 1.0 0 -16777216 true "" "set-plot-pen-color color-hospitalized plot nb-H"
+"Personnes guéries" 1.0 0 -16777216 true "" "set-plot-pen-color color-recovered plot nb-R"
+"Date intervention" 1.0 0 -7500403 true "" "plot intervention * 50"
 
 INPUTBOX
 569
@@ -662,10 +662,10 @@ String
 SLIDER
 13
 71
-236
+294
 104
-nb-lits-rea-pour-1000
-nb-lits-rea-pour-1000
+nb-lits-rea-pour-1000-personnes
+nb-lits-rea-pour-1000-personnes
 1
 10
 3.0
@@ -692,7 +692,7 @@ true
 PENS
 "Lits de réa nécessaires" 1.0 0 -16777216 true "" "set-plot-pen-color color-hospitalized plot nb-H"
 "Lits de réa occupés" 1.0 0 -5825686 true "" "plot count hospitalized with [icu?]"
-"Date de l'intervention" 1.0 0 -7500403 true "" "plot intervention"
+"Date intervention" 1.0 0 -7500403 true "" "plot intervention"
 
 SLIDER
 13
@@ -780,7 +780,7 @@ MONITOR
 221
 567
 266
-durée de saturation de la réa
+durée de saturation de la réa (jours)
 duration-icu-overflow
 17
 1
