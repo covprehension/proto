@@ -1,15 +1,16 @@
 // LES INPUTS
 val seed = Val[Int]
 val difficulty = Val[String]
-val init_conf = Val[Int]
-val duration_conf = Val[Int]
-val relesae_conf = Val[Int]
+val init_conf = Val[Double]
+val duration_conf = Val[Double]
+val relesae_conf = Val[Double]
 // LES OUTPUTS
 val nbS = Val[Double]
 val nbR = Val[Double]
 val nbIr = Val[Double]
 val nb_confinement = Val[Double]
-
+val pic_max = Val[Double]
+val jours_confinement = Val[Double]
 /*
 Dans Netlogo on a :
 ["niveau-difficulté" "Difficile"]
@@ -20,37 +21,44 @@ Dans Netlogo on a :
 
 val cmds = Seq(
     "random-seed ${seed}",
-    "setup",
-    "go"
+    "setup_om",
+    "while [any? citizens with [epidemic-state = 1]][go]"
   )
 
 val model =
   NetLogo6Task(workDirectory / "CoVprehension_300320_Confinement_Q6_explo.nlogo", cmds) set (
-      name := "confinement-stg",
-      // Map the OpenMOLE variables to NetLogo variables
-    inputs += seed,
-    //outputs += (seed, density, difficulty, init_conf, duration_conf, relesae_conf, nbS, nbR, nbIr, nb_confinement),
-    inputs += (difficulty mapped "niveau-difficulté"),
-    inputs += (init_conf mapped "confinement-tick"),
-    inputs += (duration_conf mapped "confinement-duree"),
-    inputs += (relesae_conf mapped "temps_entre_confinement"),
-    outputs += (nbS mapped "nb-S"),
-    outputs += (nbIr mapped "nb-Ir"),
-    outputs += (nbR mapped "nb-R"),
-    outputs += (nb_confinement mapped "nb-confinement"),
+        name := "confinement-stg",
+        // Map the OpenMOLE variables to NetLogo variables
+        inputs += seed,
+        //outputs += (seed, density, difficulty, init_conf, duration_conf, relesae_conf, nbS, nbR, nbIr, nb_confinement),
+        inputs += (difficulty mapped "niveau-difficulté"),
+        inputs += (init_conf mapped "confinement-tick"),
+        inputs += (duration_conf mapped "confinement-duree"),
+        inputs += (relesae_conf mapped "temps_entre_confinement"),
+        outputs += (nbS mapped "nb-S"),
+        outputs += (nbIr mapped "nb-Ir"),
+        outputs += (nbR mapped "nb-R"),
+        outputs += (nb_confinement mapped "nb-confinement"),
+        outputs += (pic_max mapped "max-Ir"),
+        outputs += (jours_confinement mapped "nb-j-conf"),
+        outputs += (duration_conf mapped "confinement-duree"),
+        outputs += (relesae_conf mapped "temps_entre_confinement"),
+        outputs += (init_conf mapped "confinement-tick"),
     // fixed values
     seed := 42,
     difficulty := "Difficile",
     //test model running
-    init_conf := 5,
-    duration_conf := 5, 
-    relesae_conf := 5
+    //init_conf := 5,
+    duration_conf := 5.0, 
+    relesae_conf := 5.0
   )
  
+
+  
  val exploration = 
   DirectSampling(
-    evaluation = Replication(model hook (workDirectory / "result.csv", Seq(nbS, nbR, nbIr)), seed, 10),
-    sampling = init_conf in (5 to 10 by 1)
+    evaluation = Replication(model hook (workDirectory / "result.csv", Seq(init_conf,jours_confinement,nbS, nbR, nbIr)), seed, 10),
+    sampling = init_conf in (5.0 to 10.0 by 1.0)
   )
  
 
