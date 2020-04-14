@@ -6,6 +6,7 @@ patches-own [
 globals [
   headless-proportion-immunised
   headless-spatialised-world?
+  headless-first-case-west?
   headless-infectivity-duration
   headless-transmission-rate
 
@@ -31,6 +32,7 @@ end
 to setup-globals
   set headless-proportion-immunised proportion-immunised
   set headless-spatialised-world? spatialised-world?
+  set headless-first-case-west? first-case-west?
   set headless-infectivity-duration infectivity-duration
   set headless-transmission-rate transmission-rate
 
@@ -75,7 +77,12 @@ to get-infected
 end
 
 to random-infection
-  let target one-of patches with [state = "S"]
+  let target  ifelse-value headless-spatialised-world? and headless-first-case-west?
+;  [ one-of patches with [pxcor < 0] ]
+  [ patch (- max-pxcor + 20) 0 ]
+;  [ one-of patches with [pxcor > 0 and state = "S"] ]
+  [ patch (max-pxcor - 20) 0 ]
+
   if is-agent? target [ ask target [ get-infected ] ]
 end
 
@@ -158,10 +165,10 @@ ticks
 30.0
 
 BUTTON
-200
-397
-305
-430
+202
+425
+307
+458
 Simulate
 go
 T
@@ -175,15 +182,15 @@ NIL
 1
 
 SLIDER
-14
-266
-227
-299
+16
+294
+229
+327
 infectivity-duration
 infectivity-duration
 1
 30
-12.0
+21.0
 1
 1
 days
@@ -210,10 +217,10 @@ PENS
 "Recovered" 1.0 0 -16777216 true "" "set-plot-pen-color color-recovered plot (nb-R  / population-size ) * 100"
 
 BUTTON
-15
-396
-120
-429
+17
+424
+122
+457
 Initialise
 setup
 NIL
@@ -227,10 +234,10 @@ NIL
 1
 
 SLIDER
-14
-298
-227
-331
+16
+326
+229
+359
 transmission-rate
 transmission-rate
 0
@@ -257,11 +264,11 @@ proportion-immunised
 HORIZONTAL
 
 BUTTON
-201
-533
-336
-566
-new infections
+203
+561
+362
+594
+infect new people
 repeat nb-new-infections [random-infection]
 NIL
 1
@@ -293,9 +300,9 @@ PENS
 
 SWITCH
 14
-166
+177
 181
-199
+210
 spatialised-world?
 spatialised-world?
 1
@@ -303,10 +310,10 @@ spatialised-world?
 -1000
 
 SLIDER
-17
-533
-183
-566
+19
+561
+185
+594
 nb-new-infections
 nb-new-infections
 1
@@ -331,37 +338,37 @@ TEXTBOX
 14
 90
 296
-135
-2 - Do you want the world to be spatialised? All immunised individuals will then be located on the right-hand side of the world.
+165
+2 - Do you want the world to be spatialised? All immunised individuals will then be located on the east side of the world.\nWhere should the first infection occur, east or west? 
 12
 105.0
 1
 
 TEXTBOX
-189
-145
-380
-220
-Be careful: if you choose a spatialised world, the proportion of immunised individuals need to be under 50%.
+190
+172
+381
+247
+Be careful: if you choose a spatialised world, the proportion of immunised individuals must be under 50%.
 12
 15.0
 1
 
 TEXTBOX
-15
-237
-260
-255
+17
+265
+262
+283
 3 - Choose values for the parameters
 12
 105.0
 1
 
 TEXTBOX
-17
-355
-140
-385
+19
+383
+142
+413
 4 - Click to initialise the simulation
 12
 105.0
@@ -421,35 +428,57 @@ TEXTBOX
 1
 
 TEXTBOX
-202
-355
-304
-385
+204
+383
+306
+413
 5 - Click to start the simulation
 12
 105.0
 1
 
 TEXTBOX
-18
-459
-323
-519
+20
+487
+325
+547
 6 - Optional: Choose a number and then click to infect new individuals with the virus.\n\nDoes the epidemic start again or does it die off?
 12
 105.0
 1
 
 MONITOR
-631
-671
-798
-716
-final proportion of infected
+813
+741
+1025
+786
+final % of infected
 total-nb-I / population-size * 100
 1
 1
 11
+
+MONITOR
+813
+785
+1025
+830
+% of susceptibles who got infected
+total-nb-I / ((1 - (proportion-immunised / 100)) * population-size) * 100
+1
+1
+11
+
+SWITCH
+14
+209
+181
+242
+first-case-west?
+first-case-west?
+1
+1
+-1000
 
 @#$#@#$#@
 @#$#@#$#@

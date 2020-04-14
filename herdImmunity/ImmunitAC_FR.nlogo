@@ -1,4 +1,4 @@
-extensions [ vid ]
+;extensions [ vid ]
 
 patches-own [
   state
@@ -24,13 +24,13 @@ globals [
 
 to setup
   clear-all
-  random-seed 25
+;  random-seed 25
 
   setup-globals
   setup-patches
 
   reset-ticks
-  (vid:start-recorder 1080 1080)
+;  (vid:start-recorder 1080 1080)
 end
 
 to setup-globals
@@ -82,7 +82,7 @@ end
 
 to random-infection
   let target ifelse-value headless-spatialised-world? and headless-first-case-west?
-; [ one-of patches with [pxcor < 0] ]
+;  [ one-of patches with [pxcor < 0] ]
   [ patch (- max-pxcor + 20) 0 ]
 ;  [ one-of patches with [pxcor > 0 and state = "S"] ]
   [ patch (max-pxcor - 20) 0 ]
@@ -97,10 +97,10 @@ to go
     diffusion
     update-states
     tick
-    vid:record-view
+;    vid:record-view
   ]
   [
-    vid:save-recording (word "simu_" headless-proportion-immunised "_" headless-spatialised-world? "_" headless-first-case-west? "_FR.mp4")
+;    vid:save-recording (word "simu_" headless-proportion-immunised "_" headless-spatialised-world? "_" headless-first-case-west? "_FR.mp4")
     stop
   ]
 end
@@ -265,7 +265,7 @@ proportion-personnes-immunisees
 proportion-personnes-immunisees
 0
 100
-40.0
+10.0
 5
 1
 %
@@ -347,7 +347,7 @@ TEXTBOX
 90
 328
 165
-2 - Voulez-vous que le monde soit spatialisé ? Toutes les personnes immunisées seront alors réparties dans la moitié Est du monde.\nOù doit se situer la première infection, est ou ouest ?
+2 - Voulez-vous que le monde soit spatialisé ? Toutes les personnes immunisées seront alors réparties dans la moitié est du monde.\nOù doit se situer la première infection, est ou ouest ?
 12
 105.0
 1
@@ -456,32 +456,15 @@ TEXTBOX
 1
 
 MONITOR
-611
-671
-799
-716
+808
+741
+996
+786
 % final de personnes infectées
 total-nb-I / population-size * 100
-2
+1
 1
 11
-
-BUTTON
-853
-744
-1014
-777
-NIL
-vid:reset-recorder
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
 
 SWITCH
 14
@@ -495,24 +478,13 @@ premier-cas-ouest?
 -1000
 
 MONITOR
-818
-672
-889
-717
-NIL
-total-nb-I
-17
-1
-11
-
-MONITOR
 808
-794
-994
-839
+785
+996
+830
 % personnes saines infectées
 total-nb-I / ((1 - (proportion-personnes-immunisees / 100)) * population-size) * 100
-2
+1
 1
 11
 
