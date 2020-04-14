@@ -1,3 +1,5 @@
+extensions [ vid ]
+
 patches-own [
   state
   infectivity-counter
@@ -6,6 +8,7 @@ patches-own [
 globals [
   headless-proportion-immunised
   headless-spatialised-world?
+  headless-first-case-west?
   headless-infectivity-duration
   headless-transmission-rate
 
@@ -21,16 +24,19 @@ globals [
 
 to setup
   clear-all
+  random-seed 42
 
   setup-globals
   setup-patches
 
   reset-ticks
+  (vid:start-recorder 250 250)
 end
 
 to setup-globals
   set headless-proportion-immunised proportion-personnes-immunisees
   set headless-spatialised-world? monde-spatialise?
+  set headless-first-case-west? premier-cas-ouest?
   set headless-infectivity-duration duree-de-contagiosite
   set headless-transmission-rate taux-de-transmission
 
@@ -75,7 +81,12 @@ to get-infected
 end
 
 to random-infection
-  let target one-of patches with [state = "S"]
+  let target ifelse-value headless-spatialised-world? and headless-first-case-west?
+; [ one-of patches with [pxcor < 0] ]
+  [ patch (- max-pxcor + 20) 0 ]
+;  [ one-of patches with [pxcor > 0 and state = "S"] ]
+  [ patch (max-pxcor - 20) 0 ]
+
   if is-agent? target [ ask target [ get-infected ] ]
 end
 
@@ -86,8 +97,12 @@ to go
     diffusion
     update-states
     tick
+    vid:record-view
   ]
-  [ stop ]
+  [
+    vid:save-recording (word "simu_" headless-proportion-immunised "_" headless-spatialised-world? "_" headless-first-case-west? "_FR.mp4")
+    stop
+  ]
 end
 
 to diffusion
@@ -159,9 +174,9 @@ ticks
 
 BUTTON
 200
-397
+422
 305
-430
+455
 Simuler
 go
 T
@@ -176,14 +191,14 @@ NIL
 
 SLIDER
 14
-266
+291
 245
-299
+324
 duree-de-contagiosite
 duree-de-contagiosite
 1
 30
-12.0
+21.0
 1
 1
 days
@@ -211,9 +226,9 @@ PENS
 
 BUTTON
 15
-396
+421
 120
-429
+454
 Initialiser
 setup
 NIL
@@ -228,9 +243,9 @@ NIL
 
 SLIDER
 14
-298
+323
 245
-331
+356
 taux-de-transmission
 taux-de-transmission
 0
@@ -250,7 +265,7 @@ proportion-personnes-immunisees
 proportion-personnes-immunisees
 0
 100
-10.0
+20.0
 5
 1
 %
@@ -258,9 +273,9 @@ HORIZONTAL
 
 BUTTON
 17
-578
+603
 264
-611
+636
 infecter de nouvelles personnes
 repeat nb-nouvelles-infections [random-infection]
 NIL
@@ -293,20 +308,20 @@ PENS
 
 SWITCH
 14
-167
-174
-200
+176
+183
+209
 monde-spatialise?
 monde-spatialise?
-1
+0
 1
 -1000
 
 SLIDER
 17
-533
+558
 264
-566
+591
 nb-nouvelles-infections
 nb-nouvelles-infections
 1
@@ -331,17 +346,17 @@ TEXTBOX
 14
 90
 328
-133
-2 - Voulez-vous que le monde soit spatialisé ? Toutes les personnes immunisées seront alors réparties dans la moitié droite du monde ?
+165
+2 - Voulez-vous que le monde soit spatialisé ? Toutes les personnes immunisées seront alors réparties dans la moitié Est du monde.\nOù doit se situer la première infection, est ou ouest ?
 12
 105.0
 1
 
 TEXTBOX
 189
-145
+170
 380
-220
+245
 Attention : si vous choisissez un monde spatialisé, la proportion de personnes immunisées doit être inférieure à 50%.
 12
 15.0
@@ -349,9 +364,9 @@ Attention : si vous choisissez un monde spatialisé, la proportion de personnes 
 
 TEXTBOX
 15
-237
+262
 295
-267
+292
 3 - Choisir des valeurs pour les paramètres
 12
 105.0
@@ -359,9 +374,9 @@ TEXTBOX
 
 TEXTBOX
 17
-355
+380
 169
-383
+408
 4 - Cliquer pour initialiser la simulation
 12
 105.0
@@ -422,9 +437,9 @@ TEXTBOX
 
 TEXTBOX
 202
-355
+380
 363
-400
+425
 5 - Cliquer pour commencer la simulation
 12
 105.0
@@ -432,9 +447,9 @@ TEXTBOX
 
 TEXTBOX
 18
-459
+484
 323
-519
+544
 6 - Optionnel: Choiser un nombre et cliquer pour infecter de nouvelles personnes avec le virus.\n\nL'épidémie repart-elle ou disparaît-elle ?
 12
 105.0
@@ -447,7 +462,46 @@ MONITOR
 716
 % final de personnes infectées
 total-nb-I / population-size * 100
+2
 1
+11
+
+BUTTON
+853
+744
+1014
+777
+NIL
+vid:reset-recorder
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+SWITCH
+14
+208
+183
+241
+premier-cas-ouest?
+premier-cas-ouest?
+1
+1
+-1000
+
+MONITOR
+818
+672
+889
+717
+NIL
+total-nb-I
+17
 1
 11
 
