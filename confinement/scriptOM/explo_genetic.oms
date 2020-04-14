@@ -20,31 +20,35 @@ Dans Netlogo on a :
 ["temps_entre_confinement" [4 2 30]]
 */
 
-val cmds = Seq(
+/*val cmds = Seq(
     "random-seed ${seed}",
     "setup",
     "go"
-  )
+  )*/
 
 val model =
-  NetLogo6Task(workDirectory / "CoVprehension_300320_Confinement_Q6_explo.nlogo", cmds) set (
+  NetLogo6Task(workDirectory / "CoVprehension_300320_Confinement_Q6_explo.nlogo", 
+  setup = Seq("random-seed ${seed}", "setup_om"),
+  go = Seq("while [any? citizens with [epidemic-state = 1]][go]")) set (
       name := "confinement-stg",
       // Map the OpenMOLE variables to NetLogo variables
-    inputs += seed,
-    //outputs += (seed, density, difficulty, init_conf, duration_conf, relesae_conf, nbS, nbR, nbIr, nb_confinement),
-    inputs += (difficulty mapped "niveau-difficulté"),
-    inputs += (init_conf mapped "confinement-tick"),
-    inputs += (duration_conf mapped "confinement-duree"),
-    inputs += (relesae_conf mapped "temps_entre_confinement"),
-    outputs += (nbS mapped "nb-S"),
-    outputs += (nbIr mapped "nb-Ir"),
-    outputs += (nbR mapped "nb-R"),
-    outputs += (nb_confinement mapped "nb-confinement"),
-    outputs += (pic_max mapped "max-Ir"),
-    outputs += (jours_confinement mapped "nb-day-confinement"),
-    // fixed values
-    seed := 42,
-    difficulty := "Difficile"
+        inputs += seed,
+        //outputs += (seed, density, difficulty, init_conf, duration_conf, relesae_conf, nbS, nbR, nbIr, nb_confinement),
+        inputs += (difficulty mapped "niveau-difficulté"),
+        inputs += (init_conf mapped "confinement-tick"),
+        inputs += (duration_conf mapped "confinement-duree"),
+        inputs += (relesae_conf mapped "temps_entre_confinement"),
+        outputs += (nbS mapped "nb-S"),
+        outputs += (nbIr mapped "nb-Ir"),
+        outputs += (nbR mapped "nb-R"),
+        outputs += (nb_confinement mapped "nb-confinement"),
+        outputs += (pic_max mapped "max-Ir"),
+        outputs += (jours_confinement mapped "nb-j-conf"),
+        //outputs += (duration_conf mapped "confinement-duree"),
+        //outputs += (relesae_conf mapped "temps_entre_confinement"),
+        // fixed values
+        seed := 42,
+        difficulty := "Difficile"
   )
  
 
@@ -61,10 +65,10 @@ val evolution =
   NSGA2Evolution(
     mu = 100, // mu is the size of the population
     genome = Seq(
-        init_conf in (5,20), 
-        duration_conf in (5,60),
-        relesae_conf in (5,20)), // genome (of individuals) is the inputs prototype and their variation ranges
-    objectives = Seq(-jours_confinement, nbS, -pic_max), //ici les 3 objectifs
+        init_conf in (20,80), // one day it's 4 ticks 
+        duration_conf in (20,240),
+        relesae_conf in (20,80)), // genome (of individuals) is the inputs prototype and their variation ranges
+    objectives = Seq(jours_confinement, -nbS, pic_max), //ici les 3 objectifs, par defaud OM minimise les obj. Pour les maximisé il faut utiliser "-"
     // OpenMOLE provide a seed for your stochastic model to use (it is optional)
     // 20% of the evaluations are used for replicating existing solutions
     // 100 replication are stored at max for each individual
@@ -77,8 +81,8 @@ val evolution =
 
 val env =
   SGEEnvironment(
-    "delay",
-    "cc2-login.cirad.fr",
+    "login",
+    "domain.fr",
     workDirectory = "/homedir/delay/work",
     queue = "short.q",
     wallTime = 4 hour
