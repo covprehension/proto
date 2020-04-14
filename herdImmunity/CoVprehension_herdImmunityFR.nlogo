@@ -1,18 +1,24 @@
-extensions [ vid ]
+;extensions [ vid ]
 
-patches-own [
-  state
-  infectivity-counter
-]
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;; GLOBAL VARIABLES ;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 globals [
   headless-proportion-immunised
-  headless-spatialised-world?
-  headless-first-case-west?
   headless-infectivity-duration
   headless-transmission-rate
 
   population-size
+  population-density
+  nb-infected-initialisation
+  transmission-distance
+  nb-contacts
+  travel-distance
+  walking-angle
+  speed
+  transparency
+
   new-I
   total-nb-I
 
@@ -22,104 +28,165 @@ globals [
   color-recovered
 ]
 
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;; AGENTS AND THEIR VARIABLES ;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+breed [ citizens citizen ]
+
+
+citizens-own [
+  state
+  infection-counter
+  my-travel-distance
+]
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;; SCENARIO-DEPENDENT SETUP ;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 to setup
   clear-all
   random-seed 25
 
   setup-globals
-  setup-patches
+  setup-world
+  setup-population
 
   reset-ticks
-  (vid:start-recorder 1080 1080)
+;  (vid:start-recorder 1080 1080)
 end
+
 
 to setup-globals
   set headless-proportion-immunised proportion-personnes-immunisees
-  set headless-spatialised-world? monde-spatialise?
-  set headless-first-case-west? premier-cas-ouest?
   set headless-infectivity-duration duree-de-contagiosite
   set headless-transmission-rate taux-de-transmission
 
-  set population-size count patches
-  set new-I 0
-  set total-nb-I 0
+  set population-size 10000
+  set population-density 105 ;; average for France
+  set nb-infected-initialisation 1
+  set transmission-distance 1
+  set travel-distance 5
+  set walking-angle 50
+  set speed 0.5
 
+  ;; colors
   set color-susceptible [223 194 125]
   set color-infected [128 205 193]
   set color-recovered [166 97 26]
+  set transparency 145
 end
 
-to setup-patches
+
+to setup-world
+  let patch-side-size 100 ;; meters
+  let width (sqrt (population-size / population-density)) * 1000 / patch-side-size
+  let max-cor floor ((width - 1) / 2)
+  resize-world (- max-cor) (max-cor) (- max-cor) (max-cor)
+end
+
+
+to setup-population
+  ask patches [ set pcolor white ]
   ;; susceptibles
-  ask patches [
+  create-citizens population-size [
+    setxy random-xcor random-ycor
+    set shape "circle white"
+    set size 0.75
     set state "S"
-    set pcolor color-susceptible
-    set infectivity-counter -1
+    set color lput transparency color-susceptible
+    set infection-counter -1
+    set my-travel-distance travel-distance
   ]
 
   ;; immunised
   let nb-immunised-init floor (headless-proportion-immunised / 100 * population-size)
-  ifelse headless-spatialised-world? and headless-proportion-immunised < 50
-  [ ask n-of nb-immunised-init patches with [pxcor > 0] [ get-immunised ] ]
-  [ ask n-of nb-immunised-init patches [ get-immunised ] ]
+  ask n-of nb-immunised-init citizens [ get-immunised ]
 
   ;; import virus
-  random-infection
+  ask n-of nb-infected-initialisation citizens with [state = "S"] [ get-infected ]
 end
 
 to get-immunised
   set state "R"
-  set pcolor color-recovered
-  set infectivity-counter -1
+  set color lput transparency color-recovered
+  set infection-counter -1
 end
+
 
 to get-infected
   set state "I"
-  set pcolor color-infected
-  set infectivity-counter headless-infectivity-duration
+  set color lput transparency color-infected
+  set infection-counter headless-infectivity-duration
   set new-I new-I + 1
 end
 
-to random-infection
-  let target ifelse-value headless-spatialised-world? and headless-first-case-west?
-; [ one-of patches with [pxcor < 0] ]
-  [ patch (- max-pxcor + 20) 0 ]
-;  [ one-of patches with [pxcor > 0 and state = "S"] ]
-  [ patch (max-pxcor - 20) 0 ]
 
-  if is-agent? target [ ask target [ get-infected ] ]
-end
+
+;;;;;;;;;;;;;;;;;;;;;;
+;;;;; PROCEDURES ;;;;;
+;;;;;;;;;;;;;;;;;;;;;;
 
 to go
   ifelse virus-present?
   [
     set new-I 0
-    diffusion
+
+    ;; movement
+    ask citizens [ move-randomly ]
+
+    ;; transmission
+    ask citizens with [state = "S"] [ get-virus ]
+
     update-states
+
     tick
-    vid:record-view
+;    vid:record-view
   ]
   [
-    vid:save-recording (word "simu_" headless-proportion-immunised "_" headless-spatialised-world? "_" headless-first-case-west? "_FR.mp4")
+;    vid:save-recording (word "simu_" headless-proportion-immunised "_" headless-spatialised-world? "_" headless-first-case-west? "_FR.mp4")
     stop
   ]
 end
 
-to diffusion
-  ask patches with [state = "S"] [
-    let contacts n-of random count neighbors neighbors
-    let infected-contacts contacts with [state = "I"]
-    repeat count infected-contacts [
-      if random-float 1 < headless-transmission-rate [ get-infected stop ]
-    ]
+
+to move-randomly ;; turtle procedure
+  right random 360
+
+  while [my-travel-distance > 0] [
+    while [patch-ahead 1 = nobody] [ right random 360 ]
+    jump 1
+    set my-travel-distance my-travel-distance - 1
+  ]
+
+  set my-travel-distance travel-distance
+end
+
+
+;; virus transmission
+to get-virus
+  let target one-of other citizens in-radius transmission-distance with [state = "I"]
+  if is-agent? target and [state] of target = "I" and random-float 1 < headless-transmission-rate [
+    get-infected
   ]
 end
 
+
+
+;;;;;;;;;;;;;;;;;;;
+;;;;; UPDATES ;;;;;
+;;;;;;;;;;;;;;;;;;;
+
 to update-states
-  ask patches [
+  ask citizens with [state = "I"] [
     (ifelse
-      infectivity-counter > 0 [ set infectivity-counter infectivity-counter - 1 ]
-      infectivity-counter = 0 [ get-immunised ]
+      infection-counter > 0 [ set infection-counter infection-counter - 1 ]
+      infection-counter = 0 [ get-immunised ]
     )
   ]
 
@@ -127,18 +194,21 @@ to update-states
 end
 
 
-;;;;; Reporters ;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;
+;;;;; REPORTERS ;;;;;
+;;;;;;;;;;;;;;;;;;;;;
 
 to-report nb-S
-  report count patches with [state = "S"]
+  report count citizens with [state = "S"]
 end
 
 to-report nb-I
-  report count patches with [state = "I"]
+  report count citizens with [state = "I"]
 end
 
 to-report nb-R
-  report count patches with [state = "R"]
+  report count citizens with [state = "R"]
 end
 
 to-report virus-present?
@@ -146,13 +216,13 @@ to-report virus-present?
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-379
+671
 10
-1024
-656
+1552
+892
 -1
 -1
-4.28
+9.525
 1
 10
 1
@@ -162,73 +232,21 @@ GRAPHICS-WINDOW
 0
 0
 1
--74
-74
--74
-74
-0
-0
+-48
+48
+-48
+48
+1
+1
 1
 ticks
 30.0
 
 BUTTON
-200
-422
-305
-455
-Simuler
-go
-T
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-SLIDER
-14
-291
-245
-324
-duree-de-contagiosite
-duree-de-contagiosite
-1
-30
-21.0
-1
-1
-days
-HORIZONTAL
-
-PLOT
-16
-741
-408
-995
-Prévalence
-Jours
-% de cas
-0.0
-10.0
-0.0
-100.0
-true
-true
-"" ""
-PENS
-"Personnes saines" 1.0 0 -16777216 true "" "set-plot-pen-color color-susceptible plot (nb-S / population-size ) * 100"
-"Personnes infectées" 1.0 0 -16777216 true "" "set-plot-pen-color color-infected plot (nb-I / population-size ) * 100"
-"Personnes guéries" 1.0 0 -16777216 true "" "set-plot-pen-color color-recovered plot (nb-R  / population-size ) * 100"
-
-BUTTON
-15
-421
-120
-454
+23
+172
+117
+227
 Initialiser
 setup
 NIL
@@ -241,44 +259,14 @@ NIL
 NIL
 1
 
-SLIDER
-14
-323
-245
-356
-taux-de-transmission
-taux-de-transmission
-0
-1
-0.12
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-12
-37
-330
-70
-proportion-personnes-immunisees
-proportion-personnes-immunisees
-0
-100
-40.0
-5
-1
-%
-HORIZONTAL
-
 BUTTON
-17
-603
-264
-636
-infecter de nouvelles personnes
-repeat nb-nouvelles-infections [random-infection]
-NIL
+23
+230
+117
+279
+Simuler
+go
+T
 1
 T
 OBSERVER
@@ -289,10 +277,75 @@ NIL
 1
 
 PLOT
-407
-741
-799
-995
+19
+382
+458
+645
+Dynamique épidémique
+Jours
+% de cas
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"Personnes saines" 1.0 0 -16777216 true "" "set-plot-pen-color color-susceptible plot (nb-S / population-size ) * 100"
+"Personnes infectées" 1.0 0 -16777216 true "" "set-plot-pen-color color-infected plot (nb-I / population-size ) * 100"
+"Personnes guéries" 1.0 0 -16777216 true "" "set-plot-pen-color color-recovered plot (nb-R / population-size ) * 100"
+
+SLIDER
+19
+27
+341
+60
+proportion-personnes-immunisees
+proportion-personnes-immunisees
+0
+100
+40.0
+5
+1
+%
+HORIZONTAL
+
+SLIDER
+24
+75
+281
+108
+duree-de-contagiosite
+duree-de-contagiosite
+1
+30
+21.0
+1
+1
+jours
+HORIZONTAL
+
+SLIDER
+23
+117
+231
+150
+taux-de-transmission
+taux-de-transmission
+0
+1
+0.12
+0.01
+1
+NIL
+HORIZONTAL
+
+PLOT
+19
+644
+458
+907
 Nombre de nouveaux cas par jour
 Jours
 Nombre de cas
@@ -306,98 +359,22 @@ false
 PENS
 "default" 1.0 0 -16777216 true "" "set-plot-pen-color color-infected plot new-I"
 
-SWITCH
-14
-176
-183
-209
-monde-spatialise?
-monde-spatialise?
-1
-1
--1000
-
-SLIDER
-17
-558
-264
-591
-nb-nouvelles-infections
-nb-nouvelles-infections
-1
-10
-5.0
-1
-1
-NIL
-HORIZONTAL
-
-TEXTBOX
-14
-11
-335
-41
-1 - Choisir la proportion de personnes immunisées
-12
-105.0
-1
-
-TEXTBOX
-14
-90
-328
-165
-2 - Voulez-vous que le monde soit spatialisé ? Toutes les personnes immunisées seront alors réparties dans la moitié Est du monde.\nOù doit se situer la première infection, est ou ouest ?
-12
-105.0
-1
-
-TEXTBOX
-189
-170
-380
-245
-Attention : si vous choisissez un monde spatialisé, la proportion de personnes immunisées doit être inférieure à 50%.
-12
-15.0
-1
-
-TEXTBOX
-15
-262
-295
-292
-3 - Choisir des valeurs pour les paramètres
-12
-105.0
-1
-
-TEXTBOX
-17
-380
-169
-408
-4 - Cliquer pour initialiser la simulation
-12
-105.0
-1
-
 MONITOR
-16
-671
-167
-716
+20
+304
+171
+349
 nb de personnes saines
 nb-S
-0
+17
 1
 11
 
 MONITOR
-221
-671
-385
-716
+190
+305
+355
+350
 nb de personnes infectées
 nb-I
 17
@@ -405,111 +382,32 @@ nb-I
 11
 
 MONITOR
-433
-671
-591
-716
+378
+305
+533
+350
 nb de personnes guéries
-Nb-R
+nb-R
 17
 1
 11
 
-TEXTBOX
-179
-689
-216
-707
------>
-12
-0.0
-1
-
-TEXTBOX
-394
-687
-429
-705
------>
-12
-0.0
-1
-
-TEXTBOX
-202
-380
-363
-425
-5 - Cliquer pour commencer la simulation
-12
-105.0
-1
-
-TEXTBOX
-18
-484
-323
-544
-6 - Optionnel: Choiser un nombre et cliquer pour infecter de nouvelles personnes avec le virus.\n\nL'épidémie repart-elle ou disparaît-elle ?
-12
-105.0
-1
-
 MONITOR
-611
-671
-799
-716
+473
+385
+661
+430
 % final de personnes infectées
 total-nb-I / population-size * 100
 2
 1
 11
 
-BUTTON
-853
-744
-1014
-777
-NIL
-vid:reset-recorder
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-SWITCH
-14
-208
-183
-241
-premier-cas-ouest?
-premier-cas-ouest?
-1
-1
--1000
-
 MONITOR
-818
-672
-889
-717
-NIL
-total-nb-I
-17
-1
-11
-
-MONITOR
-808
-794
-994
-839
+473
+438
+659
+483
 % personnes saines infectées
 total-nb-I / ((1 - (proportion-personnes-immunisees / 100)) * population-size) * 100
 2
@@ -517,6 +415,18 @@ total-nb-I / ((1 - (proportion-personnes-immunisees / 100)) * population-size) *
 11
 
 @#$#@#$#@
+## Qu'est-ce que c'est ?
+
+Ce modèle propose d'explorer différents processus liés à la diffusion d'un virus dans une population d'individus sains et non immunisés. Les guérisons et décés ne sont pas pris en compte.
+
+## Comment ça marche ?
+
+Il suffit de choisir une simulation dans le menu déroulant, de l'initialiser (bouton "Prêt ?" et de la lancer (bouton "Partez!")
+
+
+## CREDITS AND REFERENCES
+
+Modèle développé par Arnaud Banos pour le site https://covprehension.org/
 @#$#@#$#@
 default
 true
@@ -584,6 +494,12 @@ false
 0
 Circle -7500403 true true 0 0 300
 Circle -16777216 true false 30 30 240
+
+circle white
+false
+0
+Circle -7500403 true true 0 0 300
+Circle -1 true false 30 30 240
 
 cow
 false
@@ -684,17 +600,6 @@ true
 0
 Line -7500403 true 150 0 150 150
 
-link
-true
-0
-Line -7500403 true 150 0 150 300
-
-link direction
-true
-0
-Line -7500403 true 150 150 30 225
-Line -7500403 true 150 150 270 225
-
 pentagon
 false
 0
@@ -720,6 +625,27 @@ Polygon -7500403 true true 165 180 165 210 225 180 255 120 210 135
 Polygon -7500403 true true 135 105 90 60 45 45 75 105 135 135
 Polygon -7500403 true true 165 105 165 135 225 105 255 45 210 60
 Polygon -7500403 true true 135 90 120 45 150 15 180 45 165 90
+
+sheep
+false
+15
+Circle -1 true true 203 65 88
+Circle -1 true true 70 65 162
+Circle -1 true true 150 105 120
+Polygon -7500403 true false 218 120 240 165 255 165 278 120
+Circle -7500403 true false 214 72 67
+Rectangle -1 true true 164 223 179 298
+Polygon -1 true true 45 285 30 285 30 240 15 195 45 210
+Circle -1 true true 3 83 150
+Rectangle -1 true true 65 221 80 296
+Polygon -1 true true 195 285 210 285 210 240 240 210 195 210
+Polygon -7500403 true false 276 85 285 105 302 99 294 83
+Polygon -7500403 true false 219 85 210 105 193 99 201 83
+
+sploch
+true
+0
+Polygon -2674135 true false 60 105 45 60 90 75 120 15 150 90 240 45 240 90 285 165 210 225 210 165 180 195 165 255 135 240 135 180 45 225 120 120 30 135
 
 square
 false
@@ -805,6 +731,13 @@ Line -7500403 true 40 84 269 221
 Line -7500403 true 40 216 269 79
 Line -7500403 true 84 40 221 269
 
+wolf
+false
+0
+Polygon -16777216 true false 253 133 245 131 245 133
+Polygon -7500403 true true 2 194 13 197 30 191 38 193 38 205 20 226 20 257 27 265 38 266 40 260 31 253 31 230 60 206 68 198 75 209 66 228 65 243 82 261 84 268 100 267 103 261 77 239 79 231 100 207 98 196 119 201 143 202 160 195 166 210 172 213 173 238 167 251 160 248 154 265 169 264 178 247 186 240 198 260 200 271 217 271 219 262 207 258 195 230 192 198 210 184 227 164 242 144 259 145 284 151 277 141 293 140 299 134 297 127 273 119 270 105
+Polygon -7500403 true true -1 195 14 180 36 166 40 153 53 140 82 131 134 133 159 126 188 115 227 108 236 102 238 98 268 86 269 92 281 87 269 103 269 113
+
 x
 false
 0
@@ -815,24 +748,6 @@ NetLogo 6.1.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
-<experiments>
-  <experiment name="experiment" repetitions="50" runMetricsEveryStep="true">
-    <setup>setup</setup>
-    <go>go</go>
-    <exitCondition>nba - 0</exitCondition>
-    <metric>count nba</metric>
-    <enumeratedValueSet variable="r">
-      <value value="10"/>
-      <value value="5"/>
-      <value value="100"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="duree_de_vie">
-      <value value="1"/>
-      <value value="1"/>
-      <value value="10"/>
-    </enumeratedValueSet>
-  </experiment>
-</experiments>
 @#$#@#$#@
 @#$#@#$#@
 default
