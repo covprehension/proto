@@ -11,6 +11,7 @@ globals [
   headless-first-case-west?
   headless-infectivity-duration
   headless-transmission-rate
+  headless-nb-new-infections
 
   population-size
   new-I
@@ -24,7 +25,7 @@ globals [
 
 to setup
   clear-all
-;  random-seed 25
+  random-seed 25
 
   setup-globals
   setup-patches
@@ -39,6 +40,7 @@ to setup-globals
   set headless-first-case-west? premier-cas-ouest?
   set headless-infectivity-duration duree-de-contagiosite
   set headless-transmission-rate taux-de-transmission
+  set headless-nb-new-infections nb-nouvelles-infections
 
   set population-size count patches
   set new-I 0
@@ -81,11 +83,12 @@ to get-infected
 end
 
 to random-infection
-  let target ifelse-value headless-spatialised-world? and headless-first-case-west?
-;  [ one-of patches with [pxcor < 0] ]
-  [ patch (- max-pxcor + 20) 0 ]
-;  [ one-of patches with [pxcor > 0 and state = "S"] ]
-  [ patch (max-pxcor - 20) 0 ]
+  let target (ifelse-value
+    headless-spatialised-world? and headless-first-case-west? [ patch (- max-pxcor + 20) 0 ]
+    headless-spatialised-world? [ patch (max-pxcor - 20) 0 ]
+    ;; else
+    [ one-of patches with [state = "S"] ]
+  )
 
   if is-agent? target [ ask target [ get-infected ] ]
 end
@@ -124,6 +127,10 @@ to update-states
   ]
 
   set total-nb-I total-nb-I + new-I
+end
+
+to new-infections
+  ask up-to-n-of headless-nb-new-infections patches with [state = "S"] [ get-infected ]
 end
 
 
@@ -265,7 +272,7 @@ proportion-personnes-immunisees
 proportion-personnes-immunisees
 0
 100
-10.0
+60.0
 5
 1
 %
@@ -277,7 +284,7 @@ BUTTON
 264
 636
 infecter de nouvelles personnes
-repeat nb-nouvelles-infections [random-infection]
+new-infections
 NIL
 1
 T
@@ -400,7 +407,7 @@ MONITOR
 716
 nb de personnes infectées
 nb-I
-17
+0
 1
 11
 
@@ -410,8 +417,8 @@ MONITOR
 591
 716
 nb de personnes guéries
-Nb-R
-17
+nb-R
+0
 1
 11
 
@@ -462,7 +469,7 @@ MONITOR
 786
 % final de personnes infectées
 total-nb-I / population-size * 100
-1
+2
 1
 11
 
@@ -484,7 +491,7 @@ MONITOR
 830
 % personnes saines infectées
 total-nb-I / ((1 - (proportion-personnes-immunisees / 100)) * population-size) * 100
-1
+2
 1
 11
 
