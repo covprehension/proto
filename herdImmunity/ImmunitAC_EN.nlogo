@@ -9,6 +9,7 @@ globals [
   headless-first-case-west?
   headless-infectivity-duration
   headless-transmission-rate
+  headless-nb-new-infections
 
   population-size
   new-I
@@ -22,6 +23,7 @@ globals [
 
 to setup
   clear-all
+;  random-seed 25
 
   setup-globals
   setup-patches
@@ -35,6 +37,7 @@ to setup-globals
   set headless-first-case-west? first-case-west?
   set headless-infectivity-duration infectivity-duration
   set headless-transmission-rate transmission-rate
+  set headless-nb-new-infections nb-new-infections
 
   set population-size count patches
   set new-I 0
@@ -55,9 +58,9 @@ to setup-patches
 
   ;; immunised
   let nb-immunised-init floor (headless-proportion-immunised / 100 * population-size)
-  ifelse headless-spatialised-world? and headless-proportion-immunised < 50
-  [ ask n-of nb-immunised-init patches with [pxcor > 0] [ get-immunised ] ]
-  [ ask n-of nb-immunised-init patches [ get-immunised ] ]
+  ifelse headless-spatialised-world?
+  [ ask up-to-n-of nb-immunised-init patches with [pxcor > 0] [ get-immunised ] ]
+  [ ask up-to-n-of nb-immunised-init patches [ get-immunised ] ]
 
   ;; import virus
   random-infection
@@ -77,11 +80,12 @@ to get-infected
 end
 
 to random-infection
-  let target  ifelse-value headless-spatialised-world? and headless-first-case-west?
-;  [ one-of patches with [pxcor < 0] ]
-  [ patch (- max-pxcor + 20) 0 ]
-;  [ one-of patches with [pxcor > 0 and state = "S"] ]
-  [ patch (max-pxcor - 20) 0 ]
+  let target (ifelse-value
+    headless-spatialised-world? and headless-first-case-west? [ patch (- max-pxcor + 20) 0 ]
+    headless-spatialised-world? [ patch (max-pxcor - 20) 0 ]
+    ;; else
+    [ one-of patches with [state = "S"] ]
+  )
 
   if is-agent? target [ ask target [ get-infected ] ]
 end
@@ -116,6 +120,10 @@ to update-states
   ]
 
   set total-nb-I total-nb-I + new-I
+end
+
+to new-infections
+  ask up-to-n-of headless-nb-new-infections patches with [state = "S"] [ get-infected ]
 end
 
 
@@ -257,7 +265,7 @@ proportion-immunised
 proportion-immunised
 0
 100
-10.0
+20.0
 5
 1
 %
@@ -269,7 +277,7 @@ BUTTON
 362
 594
 infect new people
-repeat nb-new-infections [random-infection]
+new-infections
 NIL
 1
 T
@@ -454,7 +462,7 @@ MONITOR
 786
 final % of infected
 total-nb-I / population-size * 100
-1
+2
 1
 11
 
@@ -465,7 +473,7 @@ MONITOR
 830
 % of susceptibles who got infected
 total-nb-I / ((1 - (proportion-immunised / 100)) * population-size) * 100
-1
+2
 1
 11
 

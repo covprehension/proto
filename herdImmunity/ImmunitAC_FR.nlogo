@@ -25,7 +25,7 @@ globals [
 
 to setup
   clear-all
-  random-seed 25
+;  random-seed 25
 
   setup-globals
   setup-patches
@@ -61,9 +61,9 @@ to setup-patches
 
   ;; immunised
   let nb-immunised-init floor (headless-proportion-immunised / 100 * population-size)
-  ifelse headless-spatialised-world? and headless-proportion-immunised < 50
-  [ ask n-of nb-immunised-init patches with [pxcor > 0] [ get-immunised ] ]
-  [ ask n-of nb-immunised-init patches [ get-immunised ] ]
+  ifelse headless-spatialised-world?
+  [ ask up-to-n-of nb-immunised-init patches with [pxcor > 0] [ get-immunised ] ]
+  [ ask up-to-n-of nb-immunised-init patches [ get-immunised ] ]
 
   ;; import virus
   random-infection
@@ -228,7 +228,7 @@ true
 "" ""
 PENS
 "Personnes saines" 1.0 0 -16777216 true "" "set-plot-pen-color color-susceptible plot (nb-S / population-size ) * 100"
-"Personnes infectées" 1.0 0 -16777216 true "" "set-plot-pen-color color-infected plot (nb-I / population-size ) * 100"
+"Personnes infectées" 1.0 0 -16777216 true "" "set-plot-pen-color color-infected plot (nb-I / population-size ) * 100 * 10"
 "Personnes guéries" 1.0 0 -16777216 true "" "set-plot-pen-color color-recovered plot (nb-R  / population-size ) * 100"
 
 BUTTON
@@ -272,7 +272,7 @@ proportion-personnes-immunisees
 proportion-personnes-immunisees
 0
 100
-60.0
+20.0
 5
 1
 %
@@ -795,21 +795,11 @@ NetLogo 6.1.1
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
-  <experiment name="experiment" repetitions="50" runMetricsEveryStep="true">
+  <experiment name="tauxImmunColl" repetitions="100" runMetricsEveryStep="false">
     <setup>setup</setup>
     <go>go</go>
-    <exitCondition>nba - 0</exitCondition>
-    <metric>count nba</metric>
-    <enumeratedValueSet variable="r">
-      <value value="10"/>
-      <value value="5"/>
-      <value value="100"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="duree_de_vie">
-      <value value="1"/>
-      <value value="1"/>
-      <value value="10"/>
-    </enumeratedValueSet>
+    <metric>total-nb-I / ((1 - (proportion-personnes-immunisees / 100)) * population-size) * 100</metric>
+    <steppedValueSet variable="proportion-personnes-immunisees" first="0" step="5" last="75"/>
   </experiment>
 </experiments>
 @#$#@#$#@
