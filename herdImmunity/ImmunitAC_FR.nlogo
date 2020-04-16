@@ -312,6 +312,7 @@ false
 "" ""
 PENS
 "default" 1.0 0 -16777216 true "" "set-plot-pen-color color-infected plot new-I"
+"pen-1" 1.0 0 -7500403 true "" "plot nb-I"
 
 SWITCH
 14
