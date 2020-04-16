@@ -228,7 +228,7 @@ true
 "" ""
 PENS
 "Personnes saines" 1.0 0 -16777216 true "" "set-plot-pen-color color-susceptible plot (nb-S / population-size ) * 100"
-"Personnes infectées" 1.0 0 -16777216 true "" "set-plot-pen-color color-infected plot (nb-I / population-size ) * 100 * 10"
+"Personnes infectées" 1.0 0 -16777216 true "" "set-plot-pen-color color-infected plot (nb-I / population-size ) * 100"
 "Personnes guéries" 1.0 0 -16777216 true "" "set-plot-pen-color color-recovered plot (nb-R  / population-size ) * 100"
 
 BUTTON
@@ -312,6 +312,7 @@ false
 "" ""
 PENS
 "default" 1.0 0 -16777216 true "" "set-plot-pen-color color-infected plot new-I"
+"pen-1" 1.0 0 -7500403 true "" "plot nb-I"
 
 SWITCH
 14
