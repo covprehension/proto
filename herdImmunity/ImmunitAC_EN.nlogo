@@ -23,7 +23,7 @@ globals [
 
 to setup
   clear-all
-;  random-seed 25
+  random-seed 42
 
   setup-globals
   setup-patches
@@ -84,7 +84,8 @@ to random-infection
     headless-spatialised-world? and headless-first-case-west? [ patch (- max-pxcor + 20) 0 ]
     headless-spatialised-world? [ patch (max-pxcor - 20) 0 ]
     ;; else
-    [ one-of patches with [state = "S"] ]
+;    [ one-of patches with [state = "S"] ]
+    [ patch 0 0 ]
   )
 
   if is-agent? target [ ask target [ get-infected ] ]
@@ -103,16 +104,18 @@ end
 
 to diffusion
   ask patches with [state = "S"] [
-    let contacts n-of random count neighbors neighbors
+    let contacts n-of (random count neighbors) neighbors
     let infected-contacts contacts with [state = "I"]
-    repeat count infected-contacts [
-      if random-float 1 < headless-transmission-rate [ get-infected stop ]
+    if any? infected-contacts [
+      repeat count infected-contacts [
+        if random-float 1 < headless-transmission-rate [ get-infected stop ]
+      ]
     ]
   ]
 end
 
 to update-states
-  ask patches [
+  ask patches with [state = "I"] [
     (ifelse
       infectivity-counter > 0 [ set infectivity-counter infectivity-counter - 1 ]
       infectivity-counter = 0 [ get-immunised ]
@@ -288,24 +291,6 @@ NIL
 NIL
 1
 
-PLOT
-407
-741
-799
-995
-Number of new cases per day
-Days
-Number of cases
-0.0
-10.0
-0.0
-10.0
-true
-false
-"" ""
-PENS
-"default" 1.0 0 -16777216 true "" "set-plot-pen-color color-infected plot new-I"
-
 SWITCH
 14
 177
@@ -411,7 +396,7 @@ MONITOR
 716
 nb of recovered people
 Nb-R
-17
+0
 1
 11
 
@@ -456,10 +441,10 @@ TEXTBOX
 1
 
 MONITOR
-813
-741
-1025
-786
+601
+671
+714
+716
 final % of infected
 total-nb-I / population-size * 100
 2
@@ -467,10 +452,10 @@ total-nb-I / population-size * 100
 11
 
 MONITOR
-813
-785
-1025
-830
+713
+671
+925
+716
 % of susceptibles who got infected
 total-nb-I / ((1 - (proportion-immunised / 100)) * population-size) * 100
 2
@@ -487,6 +472,24 @@ first-case-west?
 1
 1
 -1000
+
+PLOT
+415
+741
+807
+995
+Number of new cases per day
+Days
+Number of cases
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "set-plot-pen-color color-infected plot new-I"
 
 @#$#@#$#@
 @#$#@#$#@

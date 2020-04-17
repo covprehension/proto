@@ -25,7 +25,7 @@ globals [
 
 to setup
   clear-all
-;  random-seed 25
+  random-seed 42
 
   setup-globals
   setup-patches
@@ -87,7 +87,8 @@ to random-infection
     headless-spatialised-world? and headless-first-case-west? [ patch (- max-pxcor + 20) 0 ]
     headless-spatialised-world? [ patch (max-pxcor - 20) 0 ]
     ;; else
-    [ one-of patches with [state = "S"] ]
+;    [ one-of patches with [state = "S"] ]
+    [ patch 0 0 ]
   )
 
   if is-agent? target [ ask target [ get-infected ] ]
@@ -110,16 +111,18 @@ end
 
 to diffusion
   ask patches with [state = "S"] [
-    let contacts n-of random count neighbors neighbors
+    let contacts n-of (random count neighbors) neighbors
     let infected-contacts contacts with [state = "I"]
-    repeat count infected-contacts [
-      if random-float 1 < headless-transmission-rate [ get-infected stop ]
+    if any? infected-contacts [
+      repeat count infected-contacts [
+        if random-float 1 < headless-transmission-rate [ get-infected stop ]
+      ]
     ]
   ]
 end
 
 to update-states
-  ask patches [
+  ask patches with [state = "I"] [
     (ifelse
       infectivity-counter > 0 [ set infectivity-counter infectivity-counter - 1 ]
       infectivity-counter = 0 [ get-immunised ]
@@ -272,7 +275,7 @@ proportion-personnes-immunisees
 proportion-personnes-immunisees
 0
 100
-20.0
+30.0
 5
 1
 %
@@ -296,9 +299,9 @@ NIL
 1
 
 PLOT
-407
+417
 741
-799
+809
 995
 Nombre de nouveaux cas par jour
 Jours
@@ -312,7 +315,6 @@ false
 "" ""
 PENS
 "default" 1.0 0 -16777216 true "" "set-plot-pen-color color-infected plot new-I"
-"pen-1" 1.0 0 -7500403 true "" "plot nb-I"
 
 SWITCH
 14
@@ -321,7 +323,7 @@ SWITCH
 209
 monde-spatialise?
 monde-spatialise?
-1
+0
 1
 -1000
 
@@ -464,10 +466,10 @@ TEXTBOX
 1
 
 MONITOR
-808
-741
-996
-786
+647
+671
+835
+716
 % final de personnes infectées
 total-nb-I / population-size * 100
 2
@@ -486,10 +488,10 @@ premier-cas-ouest?
 -1000
 
 MONITOR
-808
-785
-996
-830
+834
+671
+1022
+716
 % personnes saines infectées
 total-nb-I / ((1 - (proportion-personnes-immunisees / 100)) * population-size) * 100
 2
@@ -796,7 +798,7 @@ NetLogo 6.1.1
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
-  <experiment name="tauxImmunColl" repetitions="100" runMetricsEveryStep="false">
+  <experiment name="tauxImmunColl" repetitions="1000" runMetricsEveryStep="false">
     <setup>setup</setup>
     <go>go</go>
     <metric>total-nb-I / ((1 - (proportion-personnes-immunisees / 100)) * population-size) * 100</metric>
