@@ -460,7 +460,7 @@ TEXTBOX
 484
 323
 544
-6 - Optionnel: Choiser un nombre et cliquer pour infecter de nouvelles personnes avec le virus.\n\nL'épidémie repart-elle ou disparaît-elle ?
+6 - Optionnel: Choisir un nombre et cliquer pour infecter de nouvelles personnes avec le virus.\n\nL'épidémie repart-elle ou disparaît-elle ?
 12
 105.0
 1
