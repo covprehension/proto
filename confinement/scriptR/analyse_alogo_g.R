@@ -1,5 +1,5 @@
-# analyse
-
+# analyse des sortie de l'ago génétique d'openMole
+#Auteur : E. Delay (CIRAD ES, GREEN)
 library(ggplot2)
 library(gganimate)
 
