@@ -427,7 +427,7 @@ to-report MaxI%
  report max-I / population-size * 100
 end
 
-to-report H0
+to-report R0
   ;report mean [nb-other-infected] of citizens with [ epidemic-state != S] - To see in real time the nb of other citizens infected by people who wera affected by the infection
   ifelse nb-R > 0 [
     report mean [nb-other-infected] of citizens with [epidemic-state = R]
@@ -847,7 +847,7 @@ MONITOR
 1201
 413
 H0
-H0
+R0
 17
 1
 11
@@ -901,9 +901,9 @@ PLOT
 327
 1624
 477
-H0 evolution
+R0 evolution
 Durée de l'épidémie
-H0
+R0
 0.0
 70.0
 0.0
@@ -912,14 +912,14 @@ true
 false
 "" ""
 PENS
-"H0" 1.0 0 -16777216 true "" "if (H0  > 0) [plotxy (ticks / nb-step-per-day) (H0)]"
+"H0" 1.0 0 -16777216 true "" "if (R0  > 0) [plotxy (ticks / nb-step-per-day) (H0)]"
 
 PLOT
 1224
 328
 1424
 478
-Histogramme des H
+Histogramme des "R"
 NIL
 NIL
 0.0
