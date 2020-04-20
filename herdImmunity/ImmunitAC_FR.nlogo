@@ -25,7 +25,7 @@ globals [
 
 to setup
   clear-all
-  random-seed 42
+;  random-seed 42
 
   setup-globals
   setup-patches
@@ -87,8 +87,8 @@ to random-infection
     headless-spatialised-world? and headless-first-case-west? [ patch (- max-pxcor + 20) 0 ]
     headless-spatialised-world? [ patch (max-pxcor - 20) 0 ]
     ;; else
-;    [ one-of patches with [state = "S"] ]
-    [ patch 0 0 ]
+    [ one-of patches with [state = "S"] ]
+;    [ patch 0 0 ]
   )
 
   if is-agent? target [ ask target [ get-infected ] ]
@@ -275,7 +275,7 @@ proportion-personnes-immunisees
 proportion-personnes-immunisees
 0
 100
-30.0
+20.0
 5
 1
 %
@@ -323,7 +323,7 @@ SWITCH
 209
 monde-spatialise?
 monde-spatialise?
-0
+1
 1
 -1000
 

@@ -36,7 +36,7 @@ myPlot
 ggsave("~/Documents/CoVprehension/website/img/Q8-tauxImmuniteCollective-fr.png", myPlot, device = "png", width = 5, height = 5, dpi = 300)
 
 
-repet <- read_csv("tauxImmunColl-table.csv")
+repet <- read_csv("~/Documents/CoVprehension/proto/herdImmunity/replications.csv")
 
 avg <- repet %>%
     filter(infected != 0) %>%
@@ -47,15 +47,15 @@ distrib <- repet %>%
     filter(infected != 0) %>%
     ggplot(aes(immunised, infected)) +
     # geom_point() +
-    # geom_boxplot() +
+    # geom_boxplot(aes(group = immunised)) +
     # stat_smooth() +
     stat_summary(fun = mean, geom = "point") +
     # stat_summary(fun.data = mean_cl_normal, geom = "errorbar", color = "red") +
     # stat_summary(fun = median, geom = "point", color = "green") +
     # scale_x_continuous(breaks = seq(0, 100, 5), name = "% personnes immunisées initialement") +
-    # scale_y_continuous(breaks = seq(0, 100, 10), name = "% personnes saines infectées à la fin") +
+    # scale_y_continuous(breaks = seq(0, 100, 5), name = "% personnes saines infectées à la fin") +
     scale_x_continuous(breaks = seq(0, 100, 5), name = "% of people initially immunised") +
-    scale_y_continuous(breaks = seq(0, 100, 10), name = "% of people infected in the end") +
+    scale_y_continuous(breaks = seq(0, 100, 5), name = "% of people infected in the end") +
     theme_bw()
 distrib
 
