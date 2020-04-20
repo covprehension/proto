@@ -1,15 +1,39 @@
 ;extensions [ vid ]
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;; AGENTS AND THEIR VARIABLES ;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+breed [ susceptibles a-susceptible ]
+breed [ incubating an-incubating ]
+breed [ infected a-infected ]
+breed [ immunised a-immunised ]
+
+
+turtles-own [
+  contagious?
+  state-duration
+  my-travel-distance
+  nb-infections
+]
+
+
+immunised-own [ immunity-protection ]
+
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; GLOBAL VARIABLES ;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 globals [
   headless-proportion-immunised
-  headless-infectivity-duration
   headless-transmission-rate
+  headless-infectivity-duration
+  headless-immunity-duration
+  headless-partial-immunity?
 
-  population-size
+;  population-size
   population-density
   nb-infected-initialisation
   transmission-distance
@@ -30,21 +54,6 @@ globals [
 
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;; AGENTS AND THEIR VARIABLES ;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-breed [ citizens citizen ]
-
-
-citizens-own [
-  state
-  infection-counter
-  my-travel-distance
-]
-
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; SCENARIO-DEPENDENT SETUP ;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -52,22 +61,24 @@ citizens-own [
 to setup
   clear-all
   random-seed 25
+  reset-ticks
 
   setup-globals
   setup-world
   setup-population
 
-  reset-ticks
 ;  (vid:start-recorder 1080 1080)
 end
 
 
 to setup-globals
   set headless-proportion-immunised proportion-personnes-immunisees
-  set headless-infectivity-duration duree-de-contagiosite
   set headless-transmission-rate taux-de-transmission
+  set headless-infectivity-duration duree-de-contagiosite
+  set headless-immunity-duration duree-immunite * 7 * 4 ;; transform months into days
+  set headless-partial-immunity? immunite-partielle?
 
-  set population-size 10000
+;  set population-size 10000
   set population-density 105 ;; average for France
   set nb-infected-initialisation 1
   set transmission-distance 1
@@ -84,45 +95,60 @@ end
 
 
 to setup-world
+  ;; resize the world to match given density and population-size
   let patch-side-size 100 ;; meters
   let width (sqrt (population-size / population-density)) * 1000 / patch-side-size
   let max-cor floor ((width - 1) / 2)
   resize-world (- max-cor) (max-cor) (- max-cor) (max-cor)
+
+  ask patches [ set pcolor white ]
 end
 
 
 to setup-population
-  ask patches [ set pcolor white ]
+  set-default-shape turtles "circle"
+
   ;; susceptibles
-  create-citizens population-size [
+  create-turtles population-size [
     setxy random-xcor random-ycor
-    set shape "circle white"
-    set size 0.75
-    set state "S"
-    set color lput transparency color-susceptible
-    set infection-counter -1
-    set my-travel-distance travel-distance
+    get-susceptible
+    set nb-infections 0
+
   ]
 
   ;; immunised
   let nb-immunised-init floor (headless-proportion-immunised / 100 * population-size)
-  ask n-of nb-immunised-init citizens [ get-immunised ]
+  ask up-to-n-of nb-immunised-init susceptibles [ get-immunised ]
 
   ;; import virus
-  ask n-of nb-infected-initialisation citizens with [state = "S"] [ get-infected ]
+  ask up-to-n-of nb-infected-initialisation susceptibles [ get-infected ]
+end
+
+to get-susceptible
+  set breed susceptibles
+  set color lput transparency color-susceptible
+  set contagious? false
+  set state-duration -1
+  set my-travel-distance travel-distance
 end
 
 to get-immunised
-  set state "R"
+  set breed immunised
   set color lput transparency color-recovered
-  set infection-counter -1
+  set contagious? false
+  set state-duration headless-immunity-duration
+  set my-travel-distance travel-distance
 end
 
 
 to get-infected
-  set state "I"
+  set breed infected
   set color lput transparency color-infected
-  set infection-counter headless-infectivity-duration
+  set contagious? false
+  set state-duration headless-infectivity-duration
+  set my-travel-distance travel-distance
+  set nb-infections nb-infections + 1
+
   set new-I new-I + 1
 end
 
@@ -138,10 +164,10 @@ to go
     set new-I 0
 
     ;; movement
-    ask citizens [ move-randomly ]
+    ask turtles [ move-randomly ]
 
     ;; transmission
-    ask citizens with [state = "S"] [ get-virus ]
+    ask susceptibles [ get-virus ]
 
     update-states
 
@@ -170,10 +196,8 @@ end
 
 ;; virus transmission
 to get-virus
-  let target one-of other citizens in-radius transmission-distance with [state = "I"]
-  if is-agent? target and [state] of target = "I" and random-float 1 < headless-transmission-rate [
-    get-infected
-  ]
+  let target one-of infected in-radius transmission-distance
+  if is-agent? target and random-float 1 < headless-transmission-rate [ get-infected ]
 end
 
 
@@ -183,10 +207,17 @@ end
 ;;;;;;;;;;;;;;;;;;;
 
 to update-states
-  ask citizens with [state = "I"] [
+  ask infected [
     (ifelse
-      infection-counter > 0 [ set infection-counter infection-counter - 1 ]
-      infection-counter = 0 [ get-immunised ]
+      state-duration > 0 [ set state-duration state-duration - 1 ]
+      state-duration = 0 [ get-immunised ]
+    )
+  ]
+
+  ask immunised [
+    (ifelse
+      state-duration > 0 [ set state-duration state-duration - 1 ]
+      state-duration = 0 [ get-susceptible ]
     )
   ]
 
@@ -200,15 +231,15 @@ end
 ;;;;;;;;;;;;;;;;;;;;;
 
 to-report nb-S
-  report count citizens with [state = "S"]
+  report count susceptibles
 end
 
 to-report nb-I
-  report count citizens with [state = "I"]
+  report count infected
 end
 
 to-report nb-R
-  report count citizens with [state = "R"]
+  report count immunised
 end
 
 to-report virus-present?
@@ -218,8 +249,8 @@ end
 GRAPHICS-WINDOW
 671
 10
-1552
-892
+1335
+675
 -1
 -1
 9.525
@@ -232,10 +263,10 @@ GRAPHICS-WINDOW
 0
 0
 1
--48
-48
--48
-48
+-34
+34
+-34
+34
 1
 1
 1
@@ -243,10 +274,10 @@ ticks
 30.0
 
 BUTTON
-23
-172
-117
-227
+367
+10
+461
+65
 Initialiser
 setup
 NIL
@@ -260,10 +291,10 @@ NIL
 1
 
 BUTTON
-23
-230
-117
-279
+493
+10
+587
+59
 Simuler
 go
 T
@@ -297,25 +328,25 @@ PENS
 "Personnes guéries" 1.0 0 -16777216 true "" "set-plot-pen-color color-recovered plot (nb-R / population-size ) * 100"
 
 SLIDER
-19
-27
-341
-60
+16
+10
+338
+43
 proportion-personnes-immunisees
 proportion-personnes-immunisees
 0
 100
-40.0
+0.0
 5
 1
 %
 HORIZONTAL
 
 SLIDER
-24
-75
-281
-108
+18
+111
+275
+144
 duree-de-contagiosite
 duree-de-contagiosite
 1
@@ -327,10 +358,10 @@ jours
 HORIZONTAL
 
 SLIDER
-23
-117
-231
-150
+19
+69
+227
+102
 taux-de-transmission
 taux-de-transmission
 0
@@ -413,6 +444,61 @@ total-nb-I / ((1 - (proportion-personnes-immunisees / 100)) * population-size) *
 2
 1
 11
+
+INPUTBOX
+368
+83
+529
+143
+population-size
+5000.0
+1
+0
+Number
+
+SLIDER
+16
+154
+224
+187
+duree-immunite
+duree-immunite
+0
+24
+1.0
+1
+1
+mois
+HORIZONTAL
+
+SWITCH
+17
+198
+210
+231
+immunite-partielle?
+immunite-partielle?
+1
+1
+-1000
+
+PLOT
+556
+734
+931
+1040
+Distribution du nombre d'infections
+Nb d'infections
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 1 -16777216 true "" "histogram [nb-infections] of turtles"
 
 @#$#@#$#@
 ## Qu'est-ce que c'est ?
