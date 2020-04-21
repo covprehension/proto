@@ -27,6 +27,7 @@ supermarkets-own
   stock ; stock courant
   stock-max ; capacité max de stockage
   qte-reapprovisionnement ; quantité de réapprovisionnement à chaque step
+  nb-visite-consumer
 ]
 
 to setup-globals
@@ -117,6 +118,7 @@ ask citizens[
         ;;update stock of supermarket
         ask my-store [
           set stock (stock - quantity)
+          set nb-visite-consumer nb-visite-consumer + 1
         ]
         ;;update my own stock
         set my-stock (my-stock + quantity)
@@ -170,6 +172,11 @@ to plot-graph
     set-plot-pen-color color ;pour renvoyer la couleur du fermier
     plotxy ticks stock
     ]
+  set-current-plot "affluence"
+  ask supermarkets [
+    set-plot-pen-color color ;pour renvoyer la couleur du fermier
+    plotxy ticks nb-visite-consumer
+    ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -200,10 +207,10 @@ ticks
 30.0
 
 BUTTON
-600
-290
-725
-345
+604
+332
+729
+387
 Ré-initialiser
 setup
 NIL
@@ -217,10 +224,10 @@ NIL
 1
 
 BUTTON
-600
-350
-725
-408
+604
+392
+729
+450
 Partez ! / Pause
 go
 T
@@ -234,10 +241,10 @@ NIL
 1
 
 SWITCH
-730
-290
-978
-323
+601
+284
+737
+317
 confinement?
 confinement?
 0
@@ -316,24 +323,28 @@ false
 PENS
 "default" 1.0 2 -16777216 true "" ""
 
-@#$#@#$#@
-## DESCRIPTION DU MODELE
-Dans ce modèle les individus sont soit sains (beige), soit porteurs asymptomtiques (marron) lorsqu'ils sont contaminés par contact avec un porteur, puis au bout de 8 jours (32 itérations) ils deviennent infectés (symptomatiques) (noir) et 14 jours plus tard (56 itérations) ils deviennent guéris (bleu turquoise). 
- 
-## COMMENT AGIR ?
-Pour contrer le développement de l'épidémie, vous pouvez jouer sur deux mesures :
-1. Confiner les individus infectés, dans ce cas ce sont uniquement les porteurs symptomatiques qui seront confinés (les porteurs asymptomatiques se déplacent encore et propagent donc l'épidémie).
-2. Confiner une partie de la population quelquesoit son état. Vous pouvez dans ce cas sélectionner la proportion que vous souhaitez confiner (0,20%,40%,60%,80%,100%).
-Dans ce cas vous pouvez choisir un régime de confinement plus ou moins strict.
-a.Régime de confinement très strict : les individus confinés peuvent sortir en moyenne une fois toutes les 20 itérations et dans un rayon de 500m autour de chez eux.
-b.Régime de confinement strict : les individus confinés peuvent sortir en moyenne une fois toutes les 10 itérations dans un rayon d'1km autour de chez eux.
-c.Régime de confinement souple : les confinés peuvent sortir en moyenne une fois toutes les 5 itérations dans un rayon de 2km autour de chez eux.
-NB: si vous confinez une partie de la population (2.) la mesure de confinement des infectés sera automatiquement enclenchée. Ces derniers sont dans tous les cas dans un régime de confinement trés strict (sortie toute les 20 itérations, 500m autour de chez eux).
+PLOT
+803
+229
+1003
+379
+affluence
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 2 -16777216 true "" ""
 
-## A REMARQUER
-Les individus asymptomatiques sont une des difficultés principales à gérer dans ce modèle. Vous vous rendrez compte que confiner uniquement les individus symptomatiques, ne change pas grand chose au développement de l'épidémie, les individus asymptomatiques (marron) continuant de la propager.
-NB: les individus asymptomatiques sont figurés en marron mais "normalement" vous ne devriez pas pouvoir les distinguer des individus sains (à moins de les tester).
-En pratique, sur ce modèle, seules des mesures drastiques dès les premiers cas symptomatiques détectés permettent un peu d'endiguer l'épidémie ou du moins d'applatir la courbe d'infection. Encore faut-il ne pas lever les mesures de confinement trop tôt.
+@#$#@#$#@
+## TODO
+
+* Est-ce qu'on donne la possibilité aux agents d'aller dans un autre supermarché ?
 @#$#@#$#@
 default
 true
