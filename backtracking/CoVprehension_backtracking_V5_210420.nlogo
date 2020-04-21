@@ -865,17 +865,6 @@ NIL
 HORIZONTAL
 
 MONITOR
-1144
-368
-1201
-413
-H0
-R0
-17
-1
-11
-
-MONITOR
 1297
 271
 1354
@@ -935,7 +924,7 @@ true
 false
 "" ""
 PENS
-"H0" 1.0 0 -16777216 true "" "if (R0  > 0) [plotxy (ticks / nb-step-per-day) (H0)]"
+"R0" 1.0 0 -16777216 true "" "if (R0  > 0) [plotxy (ticks / nb-step-per-day) (R0)]"
 
 PLOT
 1224
