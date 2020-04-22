@@ -144,10 +144,10 @@ to checkStop
 end
 
 to update-confined
-  if pourcentage-confinés > 0 [
-    set confiner-infectés-symptomatiques? true
+  if percentage-confined > 0 [
+    set confine-symptomatic-infected? true
 
-  ifelse scenario-confinement = "Très Strict" [
+  ifelse scenario-confinement = "Very Strict" [
   set frequence-sortie-confinés 0.05
   set distance-from-home-pour-confinés 0.5][
   ifelse scenario-confinement = "Strict" [
@@ -166,14 +166,14 @@ to update-confined
   ;;on se base sur who pour que ceux qui sortent soient toujours les mêmes
   ;;les nb-house sont crées en premiers
   ;;les citizens sont numerotés de nb-house à nb-house + population-size - 1
-  let threshold-who (nb-house + pourcentage-confinés * population-size / 100)
+  let threshold-who (nb-house + percentage-confined * population-size / 100)
   ask citizens[ifelse who > threshold-who  [
     set confined? false
     set at-home? false ]
     [set confined? true
       set at-home? true]]
   ]
-  if (confiner-infectés-symptomatiques?) [ask citizens with [epidemic-state = 2] [
+  if (confine-symptomatic-infected?) [ask citizens with [epidemic-state = 2] [
     set confined? true
     set at-home? true]]
 end
@@ -273,7 +273,7 @@ end
 to become-recovered
   set epidemic-state 3
   set color color-recovered
-  if confiner-infectés-symptomatiques? [
+  if confine-symptomatic-infected? [
     set confined? false
     set at-home? false]
 end
@@ -303,7 +303,7 @@ end
 ;###############################
 
 to set-epidemic-plot
-  set-current-plot "Epidémie"
+  set-current-plot "Epidemics"
   set-plot-y-range 0 (nb-S + 50)
 end
 @#$#@#$#@
@@ -335,11 +335,11 @@ ticks
 30.0
 
 BUTTON
-623
-411
-748
-466
-Ré-initialiser
+598
+412
+726
+467
+Initialize (again)
 setup
 NIL
 1
@@ -352,11 +352,11 @@ NIL
 1
 
 BUTTON
-623
+599
 471
-748
+726
 529
-Partez ! / Pause
+Start ! / Pause
 go
 T
 1
@@ -373,9 +373,9 @@ PLOT
 10
 1000
 226
-Epidémie
-Temps(nbjours)
-Nombre total de cas
+Epidemics
+Time(nbDays)
+Nb of cases
 0.0
 10.0
 0.0
@@ -384,28 +384,28 @@ true
 true
 "\n" ""
 PENS
-"Sains" 1.0 0 -2570826 true "" "if nb-S > 0 [set-plot-pen-color color-susceptible plot nb-S]"
-"Infectés" 1.0 0 -16514302 true "" "set-plot-pen-color color-infected plot nb-I"
-"Guéris" 1.0 0 -8990512 true "" "set-plot-pen-color color-recovered plot nb-R"
-"Confinés" 1.0 0 -6917194 true "" "set-plot-pen-color color-houses plot count citizens with [confined?]"
+"Susceptible" 1.0 0 -2570826 true "" "if nb-S > 0 [set-plot-pen-color color-susceptible plot nb-S]"
+"Infected" 1.0 0 -16514302 true "" "set-plot-pen-color color-infected plot nb-I"
+"Recovered" 1.0 0 -8990512 true "" "set-plot-pen-color color-recovered plot nb-R"
+"Confined" 1.0 0 -6917194 true "" "set-plot-pen-color color-houses plot count citizens with [confined?]"
 
 TEXTBOX
 12
 420
 584
 546
-Pour exécuter la simulation :\n1 - Cliquez sur le bouton \"Ré-initialiser\"\n2 - Cliquez sur le bouton \"Partez ! / Pause\" \nNB: vous pouvez cliquer sur ce bouton lorsque vous voudrez mettre la simulation en pause.\nPour modifier les conditions de confinement vous pouvez jouer sur :\n- l'interrupteur permettant de ne confiner que les individus symptomatiques\n- le pourcentage de confinés\n- le scénario de confinement (Très Strict, Strict, Souple)\n
+To run the simulation:\n1 - Click on the button \"Initialize (again)\"\n2 - Click on the button \"Start ! / Pause\" \nNB: you can click on this button if you want to pause the simulation.\nTo modify the conditions of confinement you can act on: \n- the switch enabling to confine only symptomatic individuals\n- the percentage of confined\n- the scenario of confinement (Very Strict, Strict, Soft)\n
 11
 63.0
 1
 
 SLIDER
-753
+732
 448
-1002
+1000
 481
-pourcentage-confinés
-pourcentage-confinés
+percentage-confined
+percentage-confined
 0
 100
 0.0
@@ -415,13 +415,13 @@ NIL
 HORIZONTAL
 
 CHOOSER
-752
+733
 485
-1002
+1001
 530
 scenario-confinement
 scenario-confinement
-"Très Strict" "Strict" "Souple"
+"Very Strict" "Strict" "Loose"
 2
 
 PLOT
@@ -429,7 +429,7 @@ PLOT
 227
 1000
 406
-Scénarios de confinement
+Scenari of confinement
 NIL
 NIL
 0.0
@@ -440,49 +440,58 @@ true
 true
 "" ""
 PENS
-"Très Strict" 1.0 1 -2674135 true "" "ifelse scenario-confinement = \"Très Strict\" [plot pourcentage-confinés][plot 0]"
-"Strict" 1.0 1 -955883 true "" "ifelse scenario-confinement = \"Strict\" [plot pourcentage-confinés][plot 0]"
-"Souple" 1.0 1 -987046 true "" "ifelse scenario-confinement = \"Souple\" [plot pourcentage-confinés][plot 0]"
+"Very Strict" 1.0 1 -2674135 true "" "ifelse scenario-confinement = \"Very Strict\" [plot percentage-confined][plot 0]"
+"Strict" 1.0 1 -955883 true "" "ifelse scenario-confinement = \"Strict\" [plot percentage-confined][plot 0]"
+"Loose" 1.0 1 -987046 true "" "ifelse scenario-confinement = \"Loose\" [plot percentage-confined][plot 0]"
 
 SWITCH
-753
+732
 411
-1001
+1000
 444
-confiner-infectés-symptomatiques?
-confiner-infectés-symptomatiques?
+confine-symptomatic-infected?
+confine-symptomatic-infected?
 1
 1
 -1000
 
 TEXTBOX
-521
+574
 540
 1014
 558
-Un mode d'emploi plus complet est disponible dans l'onglet Model Info sous la simulation
+A more complete manual is available on the Model Info tab under the simulation
 11
 26.0
 1
 
 @#$#@#$#@
-## DESCRIPTION DU MODELE
-Dans ce modèle les individus sont soit sains (beige), soit porteurs asymptomtiques (marron) lorsqu'ils sont contaminés par contact avec un porteur, puis au bout de 8 jours (32 itérations) ils deviennent infectés (symptomatiques) (noir) et 14 jours plus tard (56 itérations) ils deviennent guéris (bleu turquoise). 
+## DESCRIPTION OF THE MODEL
+In this model people are either healthy (in beige), either asymptomatic carriers (in brown) when they have been contaminated by being in contact with a carrier. In this last case and after 8 days, they become infected (or symptomatic carriers, in black). 14 days later they are considered recovered (in teal). In the model, each day consists of 4 time steps during which people are allowed to go out (depending on the lockdown severity).
  
-## COMMENT AGIR ?
-Pour contrer le développement de l'épidémie, vous pouvez jouer sur deux mesures :
-1. Confiner les individus infectés, dans ce cas ce sont uniquement les porteurs symptomatiques qui seront confinés (les porteurs asymptomatiques se déplacent encore et propagent donc l'épidémie).
-2. Confiner une partie de la population quelquesoit son état. Vous pouvez dans ce cas sélectionner la proportion que vous souhaitez confiner (0,20%,40%,60%,80%,100%).
-Dans ce cas vous pouvez choisir un régime de confinement plus ou moins strict.
-a.Régime de confinement très strict : les individus confinés peuvent sortir en moyenne une fois toutes les 20 itérations et dans un rayon de 500m autour de chez eux.
-b.Régime de confinement strict : les individus confinés peuvent sortir en moyenne une fois toutes les 10 itérations dans un rayon d'1km autour de chez eux.
-c.Régime de confinement souple : les confinés peuvent sortir en moyenne une fois toutes les 5 itérations dans un rayon de 2km autour de chez eux.
-NB: si vous confinez une partie de la population (2.) la mesure de confinement des infectés sera automatiquement enclenchée. Ces derniers sont dans tous les cas dans un régime de confinement trés strict (sortie toute les 20 itérations, 500m autour de chez eux).
+## HOW TO ACT?
+In the simulator below, you can set or cancel two main measures to contain the epidemic by locking down a share of population and then lifting the lockdown when you think it is time. You are allowed to take as many actions as you see fit…
 
-## A REMARQUER
-Les individus asymptomatiques sont une des difficultés principales à gérer dans ce modèle. Vous vous rendrez compte que confiner uniquement les individus symptomatiques, ne change pas grand chose au développement de l'épidémie, les individus asymptomatiques (marron) continuant de la propager.
-NB: les individus asymptomatiques sont figurés en marron mais "normalement" vous ne devriez pas pouvoir les distinguer des individus sains (à moins de les tester).
-En pratique, sur ce modèle, seules des mesures drastiques dès les premiers cas symptomatiques détectés permettent un peu d'endiguer l'épidémie ou du moins d'applatir la courbe d'infection. Encore faut-il ne pas lever les mesures de confinement trop tôt.
+The two main measures are the following:
+
+* You can lock down people with confirmed symptoms of the disease. In this case, only symptomatic carriers will be put in quarantine and asymptomatic carriers will remain free to move around and spread the disease.
+* You can lock down a share of the population regardless of their carrying status. In this case, you can select the percentage of population to lockdown (0%, 20%, 40%, 60%, 80% or 100%).
+NB. If you lock down a percentage of the population (measure 2), infected people will automatically be locked down.
+
+You will also have to choose a lockdown regime, from strict to loose:
+
+* Very strict lockdown: people can go out once every 5 days on average within a radius of 500 meters around their home.
+* Strict lockdown: people can go out once every 2.5 days on average within a radius of 1km around their home.
+* Loose lockdown: people can go out once within a radius of 2km around their home on average.
+NB: Confirmed cases of symptomatic carriers have a different regime of lockdown which is very strict regardless of the regime chosen for the rest of the people: they are allowed out only once every 5 days within a radius of 500 meters around their home.
+
+
+## WHAT WE SEE
+Asymptomatic carriers are the most difficult group to manage in this model. We might notice that locking down only symptomatic carriers (in black) will not change much to the epidemic development since asymptomatic carriers (in brown) will keep spreading it.
+
+NB: In reality, asymptomatic carriers are not identifiable, unless they are tested. They are represented in a specific colour here only to highlight their role in spreading the disease.
+
+In practice, in this model, only drastic measures applied as soon as the first confirmed cases are detected allow us to contain the epidemic, or at least to flatten the curve. And still, this is only true if the lockdown is not lifted too soon.
 @#$#@#$#@
 default
 true
