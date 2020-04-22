@@ -408,7 +408,7 @@ percentage-confined
 percentage-confined
 0
 100
-60.0
+0.0
 20
 1
 NIL
@@ -422,7 +422,7 @@ CHOOSER
 scenario-confinement
 scenario-confinement
 "Very Strict" "Strict" "Loose"
-0
+2
 
 PLOT
 597
@@ -451,7 +451,7 @@ SWITCH
 444
 confine-symptomatic-infected?
 confine-symptomatic-infected?
-0
+1
 1
 -1000
 
