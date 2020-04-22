@@ -11,10 +11,10 @@ breed [ immunised a-immunised ]
 
 
 turtles-own [
-  contagious?
   state-duration
   my-travel-distance
   nb-infections
+  nb-transmissions
 ]
 
 
@@ -29,8 +29,8 @@ immunised-own [ immunity-protection ]
 globals [
   headless-proportion-immunised
   headless-transmission-rate
-  headless-infectivity-duration
-  headless-immunity-duration
+  headless-avg-infectivity-duration
+  headless-avg-immunity-duration
   headless-partial-immunity?
 
 ;  population-size
@@ -44,7 +44,10 @@ globals [
   transparency
 
   new-I
+  new-R
   total-nb-I
+  total-nb-R
+  date-all-infected
 
   ;; colors
   color-susceptible
@@ -74,8 +77,8 @@ end
 to setup-globals
   set headless-proportion-immunised proportion-personnes-immunisees
   set headless-transmission-rate taux-de-transmission
-  set headless-infectivity-duration duree-de-contagiosite
-  set headless-immunity-duration duree-immunite * 7 * 4 ;; transform months into days
+  set headless-avg-infectivity-duration duree-de-contagiosite
+  set headless-avg-immunity-duration duree-immunite * 30 ;; transform months into days
   set headless-partial-immunity? immunite-partielle?
 
 ;  set population-size 10000
@@ -86,10 +89,17 @@ to setup-globals
   set walking-angle 50
   set speed 0.5
 
+  set total-nb-I 0
+  set total-nb-R 0
+  set date-all-infected 0
+
   ;; colors
-  set color-susceptible [223 194 125]
-  set color-infected [128 205 193]
-  set color-recovered [166 97 26]
+;  set color-susceptible [223 194 125]
+;  set color-infected [128 205 193]
+;  set color-recovered [166 97 26]
+  set color-susceptible [0 153 255]
+  set color-infected [255 0 0]
+  set color-recovered [0 0 0]
   set transparency 145
 end
 
@@ -113,6 +123,7 @@ to setup-population
     setxy random-xcor random-ycor
     get-susceptible
     set nb-infections 0
+    set nb-transmissions 0
 
   ]
 
@@ -127,7 +138,6 @@ end
 to get-susceptible
   set breed susceptibles
   set color lput transparency color-susceptible
-  set contagious? false
   set state-duration -1
   set my-travel-distance travel-distance
 end
@@ -135,21 +145,31 @@ end
 to get-immunised
   set breed immunised
   set color lput transparency color-recovered
-  set contagious? false
-  set state-duration headless-immunity-duration
+  set state-duration gamma-law headless-avg-immunity-duration 4
   set my-travel-distance travel-distance
+
+  if headless-partial-immunity? [ set immunity-protection ((random 51) + 50) / 100 ]
+
+  set new-R new-R + 1
 end
 
 
 to get-infected
   set breed infected
   set color lput transparency color-infected
-  set contagious? false
-  set state-duration headless-infectivity-duration
+  set state-duration gamma-law headless-avg-infectivity-duration 1
   set my-travel-distance travel-distance
   set nb-infections nb-infections + 1
 
   set new-I new-I + 1
+end
+
+
+to-report gamma-law [avg var]
+  let alpha avg * avg / var
+  let lambda avg / var
+
+  report floor random-gamma alpha lambda
 end
 
 
@@ -162,12 +182,13 @@ to go
   ifelse virus-present?
   [
     set new-I 0
+    set new-R 0
 
     ;; movement
     ask turtles [ move-randomly ]
 
     ;; transmission
-    ask susceptibles [ get-virus ]
+    virus-transmission
 
     update-states
 
@@ -194,10 +215,29 @@ to move-randomly ;; turtle procedure
 end
 
 
-;; virus transmission
-to get-virus
-  let target one-of infected in-radius transmission-distance
-  if is-agent? target and random-float 1 < headless-transmission-rate [ get-infected ]
+to virus-transmission ;; turtle procedure
+  ask infected [
+    let potential-contacts turtles in-radius transmission-distance
+    let contacts n-of random (count potential-contacts + 1) potential-contacts
+
+    ask contacts with [breed = susceptibles] [
+      if random-float 1 < headless-transmission-rate [
+        get-infected
+        ask myself [ set nb-transmissions nb-transmissions + 1 ]
+        stop
+      ]
+    ]
+
+    if headless-partial-immunity? [
+      ask contacts with [breed = immunised] [
+        if random-float 1 < headless-transmission-rate * (1 - immunity-protection) [
+          get-infected
+          ask myself [ set nb-transmissions nb-transmissions + 1 ]
+          stop
+        ]
+      ]
+    ]
+  ]
 end
 
 
@@ -222,6 +262,8 @@ to update-states
   ]
 
   set total-nb-I total-nb-I + new-I
+  set total-nb-R total-nb-R + new-R
+  if count turtles with [nb-infections > 0] = population-size and date-all-infected = 0 [ set date-all-infected ticks ]
 end
 
 
@@ -249,8 +291,8 @@ end
 GRAPHICS-WINDOW
 671
 10
-1335
-675
+1336
+676
 -1
 -1
 9.525
@@ -308,10 +350,10 @@ NIL
 1
 
 PLOT
-19
-382
-458
-645
+18
+456
+457
+719
 Dynamique épidémique
 Jours
 % de cas
@@ -325,7 +367,7 @@ true
 PENS
 "Personnes saines" 1.0 0 -16777216 true "" "set-plot-pen-color color-susceptible plot (nb-S / population-size ) * 100"
 "Personnes infectées" 1.0 0 -16777216 true "" "set-plot-pen-color color-infected plot (nb-I / population-size ) * 100"
-"Personnes guéries" 1.0 0 -16777216 true "" "set-plot-pen-color color-recovered plot (nb-R / population-size ) * 100"
+"Personnes immunisées" 1.0 0 -16777216 true "" "set-plot-pen-color color-recovered plot (nb-R / population-size ) * 100"
 
 SLIDER
 16
@@ -373,10 +415,10 @@ NIL
 HORIZONTAL
 
 PLOT
-19
-644
-458
-907
+18
+718
+457
+981
 Nombre de nouveaux cas par jour
 Jours
 Nombre de cas
@@ -385,10 +427,11 @@ Nombre de cas
 0.0
 10.0
 true
-false
+true
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "set-plot-pen-color color-infected plot new-I"
+"Personnes infectées" 1.0 0 -16777216 true "" "set-plot-pen-color color-infected plot new-I"
+"Personnes immunisées" 1.0 0 -7500403 true "" "set-plot-pen-color color-recovered plot new-R"
 
 MONITOR
 20
@@ -424,24 +467,13 @@ nb-R
 11
 
 MONITOR
-473
-385
-661
-430
-% final de personnes infectées
-total-nb-I / population-size * 100
-2
-1
-11
-
-MONITOR
-473
-438
-659
-483
-% personnes saines infectées
-total-nb-I / ((1 - (proportion-personnes-immunisees / 100)) * population-size) * 100
-2
+73
+373
+453
+418
+temps nécessaire pour infecter 100% de la population (en jours)
+date-all-infected
+0
 1
 11
 
@@ -478,7 +510,7 @@ SWITCH
 231
 immunite-partielle?
 immunite-partielle?
-1
+0
 1
 -1000
 
@@ -487,7 +519,7 @@ PLOT
 734
 931
 1040
-Distribution du nombre d'infections
+Distribution du nombre de transmissions
 Nb d'infections
 NIL
 0.0
@@ -498,7 +530,25 @@ true
 false
 "" ""
 PENS
-"default" 1.0 1 -16777216 true "" "histogram [nb-infections] of turtles"
+"default" 1.0 1 -16777216 true "" "histogram [nb-transmissions] of turtles"
+
+PLOT
+928
+734
+1313
+1040
+Distribution de la force de l'immunité partielle
+NIL
+NIL
+0.5
+1.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 0.01 1 -16777216 true "" "histogram [immunity-protection] of immunised"
 
 @#$#@#$#@
 ## Qu'est-ce que c'est ?
