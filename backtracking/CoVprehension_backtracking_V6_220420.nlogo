@@ -50,6 +50,7 @@ citizens-own
   tested? ;0 no 1 yes
   list-date-test
   contact-order ;0 not contacted, 1 contacted at first order, 2 contacted at second order
+  nb-contacts-ticks
 ]
 
 houses-own
@@ -110,6 +111,7 @@ to setup-population
     set size 1
     set color green ; lput transparency extract-rgb  green
     set epidemic-state S
+    set nb-contacts-ticks 0
     set my-house one-of houses
     ask my-house[
       set my-humans lput me my-humans
@@ -229,6 +231,7 @@ to get-in-contact
   [
     ;ACCELERATION CODE AVEC PRIMITIVE NEIGHBORS
     let contacts other citizens-on neighbors
+    set nb-contacts-ticks count contacts
     set contacts contacts with [lockdown? = 0]
     if equiped? [
       let contacts-equiped contacts with [equiped?]
@@ -475,6 +478,10 @@ end
 
 to-report family-locked-down
   report count citizens with [not tested? and lockdown? = 1]
+end
+
+to-report mean-contacts-ticks
+  report mean [nb-contacts-ticks] of citizens
 end
 
 
@@ -796,39 +803,6 @@ hours
 HORIZONTAL
 
 MONITOR
-1115
-269
-1179
-314
-#ordre2
-count citizens with [contact-order = 2]
-17
-1
-11
-
-MONITOR
-1050
-269
-1114
-314
-#ordre1
-count citizens with [contact-order = 1]
-17
-1
-11
-
-MONITOR
-1180
-269
-1244
-314
-#ordre3
-count citizens with [contact-order = 3]
-17
-1
-11
-
-MONITOR
 787
 364
 1013
@@ -925,10 +899,10 @@ nb-S
 11
 
 PLOT
-1424
-327
-1624
-477
+1503
+326
+1703
+476
 R0 evolution
 Durée de l'épidémie
 R0
@@ -943,10 +917,10 @@ PENS
 "R0" 1.0 0 -16777216 true "" "if (R0  > 0) [plotxy (ticks / nb-step-per-day) (R0)]"
 
 PLOT
-1224
-328
-1424
-478
+1303
+327
+1503
+477
 Histogramme des "R"
 NIL
 NIL
@@ -1006,6 +980,35 @@ false
 "" ""
 PENS
 "default" 1.0 0 -16777216 true "" "plot family-locked-down"
+
+PLOT
+1025
+330
+1295
+480
+Histogramme des nombre de contacts
+nombre de contacts par ticks
+NIL
+0.0
+20.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 1 -16777216 true "" "histogram [nb-contacts-ticks] of citizens"
+
+MONITOR
+1031
+273
+1269
+318
+nombre de contacts moyen par ticks
+mean-contacts-ticks
+17
+1
+11
 
 @#$#@#$#@
 ## THINGS TO TRY
