@@ -32,6 +32,10 @@ globals [
   headless-transmission-rate
   headless-avg-incubation-duration
   headless-avg-infectivity-duration
+  headless-testing-strategy
+  headless-nb-tests-per-day
+  headless-test-sensitivity
+  headless-test-specificity
 
   infinity
   max-size-neighborhood
@@ -41,6 +45,10 @@ globals [
   ;; metrics
   new-I
   total-nb-I
+  true-pos
+  false-pos
+  true-neg
+  false-neg
 
   ;; colors
   color-susceptible
@@ -60,7 +68,7 @@ to setup
 
   setup-globals
   setup-network
-  setup-SIR
+  setup-population
 end
 
 
@@ -72,13 +80,21 @@ to setup-globals
   set headless-transmission-rate transmission-rate
   set headless-avg-incubation-duration avg-incubation-duration
   set headless-avg-infectivity-duration avg-infectivity-duration
+  set headless-testing-strategy TESTING-STRATEGY
+  set headless-nb-tests-per-day nb-tests-per-day-per-1000
+  set headless-test-sensitivity test-sensitivity / 100
+  set headless-test-specificity test-specificity / 100
 
   set infinity 1.0E+10
   set max-size-neighborhood 0.5
   set nb-seeds-fractal 3
 
   ;; metrics
-  set total-nb-I 0
+  set total-nb-I headless-nb-nodes-initially-infected
+  set true-pos 0
+  set false-pos 0
+  set true-neg 0
+  set false-neg 0
 
   ;; colors
   set color-susceptible [0 153 255]
@@ -108,8 +124,12 @@ to setup-network
 end
 
 
-to setup-SIR
-  ask turtles [ get-susceptible ]
+to setup-population
+  ask turtles [
+    get-susceptible
+    set age random 80
+    set tested? false
+  ]
   ask up-to-n-of nb-nodes-initially-infected susceptibles [ get-infected ]
 end
 
@@ -123,6 +143,7 @@ to go
   [
     set new-I 0
     transmit-virus
+    testing
     update-states
     tick
   ]
@@ -141,6 +162,32 @@ to transmit-virus
       ]
     ]
   ]
+end
+
+
+to testing
+  (ifelse
+    TESTING-STRATEGY = "random" [ ask up-to-n-of headless-nb-tests-per-day turtles [ get-tested ] ]
+
+    TESTING-STRATEGY = "infected people" [ ask up-to-n-of headless-nb-tests-per-day infected [ get-tested ] ]
+  )
+end
+
+
+to get-tested
+  (ifelse
+    breed = susceptibles or breed = recovered [
+      ifelse random-float 1 < headless-test-specificity
+      [ set true-neg true-neg + 1 ]
+      [ set false-neg false-neg + 1 ]
+    ]
+
+    breed = incubating or breed = infected [
+      ifelse random-float 1 < headless-test-sensitivity
+      [ set true-pos true-pos + 1 ]
+      [ set false-pos false-pos + 1 ]
+    ]
+  )
 end
 
 
@@ -164,9 +211,7 @@ end
 to get-susceptible
   set breed susceptibles
   set color color-susceptible
-  set age random 80
   set state-duration -1
-  set tested? false
 end
 
 to get-incubating
@@ -531,7 +576,7 @@ max-nb-nodes
 max-nb-nodes
 10
 1000
-250.0
+1000.0
 10
 1
 NIL
@@ -593,7 +638,7 @@ CHOOSER
 NETWORK
 NETWORK
 "Grid-4" "Grid-8" "Random" "Small World" "Scale Free" "Fractal"
-4
+2
 
 MONITOR
 295
@@ -674,10 +719,10 @@ NIL
 1
 
 PLOT
-26
-790
-405
-1107
+486
+645
+865
+962
 Epidemic
 Time
 Number of cases
@@ -710,10 +755,10 @@ days
 HORIZONTAL
 
 MONITOR
-86
-737
-265
-782
+296
+648
+475
+693
 final % of infected people
 total-nb-I / count turtles * 100
 2
@@ -736,10 +781,10 @@ days
 HORIZONTAL
 
 PLOT
-463
-661
-792
-933
+1121
+218
+1450
+490
 Age distribution
 Age
 NIL
@@ -752,6 +797,105 @@ false
 "" ""
 PENS
 "default" 1.0 1 -16777216 true "" "histogram [age] of turtles"
+
+CHOOSER
+18
+720
+294
+765
+TESTING-STRATEGY
+TESTING-STRATEGY
+"random" "infected people"
+0
+
+SLIDER
+18
+773
+300
+806
+nb-tests-per-day-per-1000
+nb-tests-per-day-per-1000
+0
+20
+7.5
+0.5
+1
+NIL
+HORIZONTAL
+
+SLIDER
+21
+860
+199
+893
+test-specificity
+test-specificity
+0
+100
+75.0
+5
+1
+%
+HORIZONTAL
+
+SLIDER
+19
+818
+197
+851
+test-sensitivity
+test-sensitivity
+0
+100
+90.0
+5
+1
+%
+HORIZONTAL
+
+MONITOR
+314
+715
+388
+760
+NIL
+true-pos
+17
+1
+11
+
+MONITOR
+387
+715
+461
+760
+NIL
+false-pos
+17
+1
+11
+
+MONITOR
+314
+759
+388
+804
+NIL
+false-neg
+17
+1
+11
+
+MONITOR
+387
+759
+461
+804
+NIL
+true-neg
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
