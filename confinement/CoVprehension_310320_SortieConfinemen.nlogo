@@ -116,6 +116,7 @@ to setup
   setup-globals
   setup-houses
   setup-population
+  set-epidemic-plot
 end
 
 to go
@@ -296,6 +297,15 @@ end
 to-report nb-R
   report count citizens with [epidemic-state = 3 ]
 end
+
+;###############################
+;GRAPHIQUES
+;###############################
+
+to set-epidemic-plot
+  set-current-plot "Epidémie"
+  set-plot-y-range 0 (nb-S + 50)
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 2
@@ -359,7 +369,7 @@ NIL
 1
 
 PLOT
-593
+597
 10
 1000
 226
@@ -372,7 +382,7 @@ Nombre total de cas
 10.0
 true
 true
-"" ""
+"\n" ""
 PENS
 "Sains" 1.0 0 -2570826 true "" "if nb-S > 0 [set-plot-pen-color color-susceptible plot nb-S]"
 "Infectés" 1.0 0 -16514302 true "" "set-plot-pen-color color-infected plot nb-I"
@@ -384,7 +394,7 @@ TEXTBOX
 420
 584
 546
-Pour exécuter la simulation :\n1 - Cliquez sur le bouton \"Ré-initialiser\"\n2 - Cliquez sur le bouton \"Partez ! / Pause\" \nNB: si vous voulez mettre en Pause la simulation le temps de faire vos choix, cliquez à nouveau sur \"Partez ! / Pause\"\nPour modifier les conditions de confinement vous pouvez jouer sur :\n- l'interrupteur permettant de ne confiner que les individus symptomatiques\n- le pourcentage de confinés\n- le scénario de confinement (Très Strict, Strict, Souple)\n
+Pour exécuter la simulation :\n1 - Cliquez sur le bouton \"Ré-initialiser\"\n2 - Cliquez sur le bouton \"Partez ! / Pause\" \nNB: vous pouvez cliquer sur ce bouton lorsque vous voudrez mettre la simulation en pause.\nPour modifier les conditions de confinement vous pouvez jouer sur :\n- l'interrupteur permettant de ne confiner que les individus symptomatiques\n- le pourcentage de confinés\n- le scénario de confinement (Très Strict, Strict, Souple)\n
 11
 63.0
 1
