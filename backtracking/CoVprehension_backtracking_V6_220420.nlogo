@@ -304,36 +304,31 @@ to backtrack-contacts [order]
       if date-j >= (my-lockdown-date - (nb-days-before-test-tagging-contacts * nb-step-per-day))[
         ask contacts-j with [lockdown? = 0][
           ;;ICI STRATEGIE DE DEPISTAGE SYSTEMATIQUE DE TOUS LES CONTACTS
-          if Confinement_avec_Test?[
+          ifelse Confinement_avec_Test?[
             ;On vérifie qu'on ne teste pas deux fois le même jour
             ;if not member? ticks  list-date-test[
-          get-tested order
+            get-tested order
             if montre-liens?[
               create-link-from me [set shape "link-arn" set color item (order - 2) list-colors-contacts]
             ]
                 ;if ((SCENARIO = "Rétro traçage2 + confinement des contacts2") and (order = 2)) [
                   ;backtrack-contacts 3
-                ]
-              ]
-            ]
-          ]
-
-          if not Confinement_avec_Test?[
+          ][
             if random-float 1 < probability-respect-lockdown-when-tagged[
               set lockdown? 1
               set lockdown-date ticks
               backtrack-contacts (order + 1)
             ]
-            set contact-order order
-            if montre-liens?[
+              set contact-order order
+              if montre-liens?[
                 create-link-from me [set shape "link-arn" set color item (order - 2) list-colors-contacts  ]
+              ]
             ]
-            ;if ((SCENARIO = "Rétro traçage2 + confinement des contacts2") and (order = 2))[
-             ;   backtrack-contacts 3
-            ;]
           ]
-    set j j + 1
+      ]
     ]
+    set j j + 1
+  ]
 end
 
 
@@ -616,7 +611,7 @@ SWITCH
 503
 Confinement_avec_Test?
 Confinement_avec_Test?
-0
+1
 1
 -1000
 
