@@ -1,16 +1,26 @@
 extensions [nw]
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;; AGENTS AND THEIR VARIABLES ;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-breed [ nodes node ]
+breed [ susceptibles a-susceptible ]
+breed [ incubating a-incubating ]
+breed [ infected a-infected ]
+breed [ recovered a-recovered ]
+
+;undirected-link-breed [ family-members family-member ]
+;undirected-link-breed [ friends friend ]
+;undirected-link-breed [ colleagues colleague ]
 undirected-link-breed [ edges edge ]
 
 
-nodes-own [
+turtles-own [
+  age
+  state-duration
+  tested?
   modulus ;;For the fractal network
   node-clustering-coefficient
-  epidemic-state
-  state-duration
-  tested?; False / True
 ]
 
 
@@ -20,6 +30,7 @@ globals [
   headless-max-nb-nodes
   headless-nb-nodes-initially-infected
   headless-transmission-rate
+  headless-avg-incubation-duration
   headless-avg-infectivity-duration
 
   infinity
@@ -33,6 +44,7 @@ globals [
 
   ;; colors
   color-susceptible
+  color-incubating
   color-infected
   color-recovered
 ]
@@ -58,6 +70,7 @@ to setup-globals
   set headless-max-nb-nodes max-nb-nodes
   set headless-nb-nodes-initially-infected nb-nodes-initially-infected
   set headless-transmission-rate transmission-rate
+  set headless-avg-incubation-duration avg-incubation-duration
   set headless-avg-infectivity-duration avg-infectivity-duration
 
   set infinity 1.0E+10
@@ -69,6 +82,7 @@ to setup-globals
 
   ;; colors
   set color-susceptible [0 153 255]
+  set color-incubating [254 178 76]
   set color-infected [255 0 0]
   set color-recovered [0 0 0]
 end
@@ -87,30 +101,16 @@ to setup-network
     Network = "Fractal" [ setup-serpienski ]
   )
 
-  nw:set-context nodes edges
+;  nw:set-context (turtle-set susceptibles incubating infected recovered) (link-set family-members friends colleagues)
+  nw:set-context (turtle-set susceptibles incubating infected recovered) edges
   find-clustering-coefficient
   do-plotting
 end
 
 
 to setup-SIR
-  ask nodes [
-    set epidemic-state "S"
-    set color color-susceptible
-    set state-duration -1
-    set tested? false
-  ]
-
-  ask up-to-n-of nb-nodes-initially-infected nodes [ get-infected ]
-end
-
-
-to get-infected
-  set epidemic-state "I"
-  set color color-infected
-  set state-duration gamma-law avg-infectivity-duration 1
-
-  set new-I new-I + 1
+  ask turtles [ get-susceptible ]
+  ask up-to-n-of nb-nodes-initially-infected susceptibles [ get-infected ]
 end
 
 
@@ -123,8 +123,7 @@ to go
   [
     set new-I 0
     transmit-virus
-    recover
-    set total-nb-I total-nb-I + new-I
+    update-states
     tick
   ]
   [ stop ]
@@ -132,12 +131,12 @@ end
 
 
 to transmit-virus
-  ask nodes with [epidemic-state = "I"] [
+  ask (turtle-set incubating infected) [
     let me1 self
-    ask link-neighbors with [epidemic-state  = "S"] [
+    ask link-neighbors with [breed = susceptibles] [
       let me2 self
       if random-float 1 < headless-transmission-rate [
-        get-infected
+        get-incubating
         ask edge [who] of me1 [who] of me2 [ set color color-infected ] ;WE COLOR LINKS TO SHOW CONTAGION PATH
       ]
     ]
@@ -145,17 +144,49 @@ to transmit-virus
 end
 
 
-to recover
-  ask nodes with [epidemic-state = "I"] [
+to update-states
+  ask (turtle-set incubating infected) [
     (ifelse
       state-duration > 0 [ set state-duration state-duration - 1 ]
-      state-duration = 0 [
-        set epidemic-state "R"
-        set color color-recovered
-        set state-duration -1
-      ]
+      state-duration = 0 and breed = infected [ get-recovered ]
+      state-duration = 0 and breed = incubating [ get-infected ]
     )
   ]
+
+  set total-nb-I total-nb-I + new-I
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;; EPIDEMIC STATES ;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to get-susceptible
+  set breed susceptibles
+  set color color-susceptible
+  set age random 80
+  set state-duration -1
+  set tested? false
+end
+
+to get-incubating
+  set breed incubating
+  set color color-incubating
+  set state-duration gamma-law headless-avg-incubation-duration 3
+end
+
+to get-infected
+  set breed infected
+  set color color-infected
+  set state-duration gamma-law headless-avg-infectivity-duration 1
+
+  set new-I new-I + 1
+end
+
+to get-recovered
+  set breed recovered
+  set color color-recovered
+  set state-duration -1
 end
 
 
@@ -171,15 +202,23 @@ to-report gamma-law [avg var]
 end
 
 to-report nb-S
-  report count nodes with [epidemic-state = "S"]
+  report count susceptibles
 end
 
-to-report nb-I
-  report count nodes with [epidemic-state = "I"]
+to-report nb-Incub
+  report count incubating
+end
+
+to-report nb-Inf
+  report count infected
 end
 
 to-report nb-R
-  report count nodes with [epidemic-state = "R"]
+  report count recovered
+end
+
+to-report nb-I
+  report nb-Incub + nb-Inf
 end
 
 to-report virus-present?
@@ -196,12 +235,12 @@ end
 
 to setup-square [NB-Neighbors-Regular-Grid]
   ask patches with [pxcor mod 3 = 0 and pycor mod 3 = 0] [
-    sprout-nodes 1 [ set color color-susceptible ]
+    sprout 1 [ set color color-susceptible ]
   ]
 
   ifelse NB-Neighbors-Regular-Grid = 4
-  [ ask nodes [ create-edges-with nodes in-radius 3 with [self != myself] ] ]
-  [ ask nodes [ create-edges-with nodes in-radius 5 with [self != myself] ] ]
+  [ ask turtles [ create-edges-with turtles in-radius 3 with [self != myself] ] ]
+  [ ask turtles [ create-edges-with turtles in-radius 5 with [self != myself] ] ]
 end
 
 
@@ -210,24 +249,24 @@ end
 
 to setup-simple-random
   let num-edges (1.3 * max-nb-nodes)
-  create-nodes max-nb-nodes [
+  create-turtles max-nb-nodes [
     set color color-susceptible
     setxy random-xcor * 0.95 random-ycor * 0.95
-    if any? nodes-here [ fd 1 ]
+    if any? turtles-here [ fd 1 ]
   ]
 
-  ask nodes [ create-edges-with other nodes in-radius max-size-neighborhood ]
+  ask turtles [ create-edges-with other turtles in-radius max-size-neighborhood ]
 
   while [count edges < num-edges] [
-    ask one-of nodes [
-      let choice (min-one-of (other nodes with [not link-neighbor? myself]) [distance myself])
+    ask one-of turtles [
+      let choice (min-one-of (other turtles with [not link-neighbor? myself]) [distance myself])
       if choice != nobody [ create-edge-with choice ]
     ]
   ]
 
   ;to make sure no isolated subnets < 4 connected nodes remain
-  ask nodes with [count link-neighbors < 4] [
-    create-edge-with min-one-of (other nodes with [not link-neighbor? myself and count link-neighbors >= 3]) [distance myself]
+  ask turtles with [count link-neighbors < 4] [
+    create-edge-with min-one-of (other turtles with [not link-neighbor? myself and count link-neighbors >= 3]) [distance myself]
   ]
 end
 
@@ -237,18 +276,18 @@ end
 
 ; create a node and set its initial location and modulus
 to setup-serpienski
-  create-nodes 1 [
+  create-turtles 1 [
     set heading 0
     set color color-susceptible
     setxy 0 -1
     set modulus 0.5 * max-pycor
   ]
-  while [count nodes < max-nb-nodes] [ create-serpienski nb-seeds-fractal ]
+  while [count turtles < max-nb-nodes] [ create-serpienski nb-seeds-fractal ]
 end
 
 ; draw the sierpinski tree
 to create-serpienski [nb]
-  ask nodes with [count edge-neighbors < 2] [
+  ask turtles with [count edge-neighbors < 2] [
     repeat nb [
       grow-serpienski
       right  360 / nb  ; turn counter-clockwise to draw more legs
@@ -278,7 +317,7 @@ end
 ;Generates a Watts-Strogatz small-world networ using NW extension
 
 to setup-smallworld
-  nw:generate-watts-strogatz nodes edges max-nb-nodes 2 0.1 [
+  nw:generate-watts-strogatz turtles edges max-nb-nodes 2 0.1 [
     set color color-susceptible
     fd 15
   ]
@@ -291,13 +330,13 @@ end
 to setup-scalefree
   ;; make the initial network of two nodes and an edge
   make-node nobody        ;; first node, unattached
-  make-node node 0      ;; second node, attached to first node
+  make-node turtle 0      ;; second node, attached to first node
   create-scalefree
 end
 
 
 to create-scalefree
-  while [count nodes < max-nb-nodes] [
+  while [count turtles < max-nb-nodes] [
     ;; new edge is green, old edges are gray
     ask edges [ set color gray ]
     make-node find-partner         ;; find partner & use it as attachment
@@ -309,7 +348,7 @@ end
 
 ;; used for creating a new node
 to make-node [old-node]
-  create-nodes 1 [
+  create-turtles 1 [
     set color color-susceptible
     set size nodes-size
     if old-node != nobody [
@@ -322,9 +361,9 @@ to make-node [old-node]
 end
 
 to-report find-partner
-  let total random-float sum [count edge-neighbors] of nodes
+  let total random-float sum [count edge-neighbors] of turtles
   let partner nobody
-  ask nodes [
+  ask turtles [
     let nc count edge-neighbors
     ;; if there's no winner yet...
     if partner = nobody [
@@ -338,14 +377,14 @@ end
 
 ;; resize-nodes, change back and forth from size based on degree to a size of 1
 to resize-nodes
-  ifelse all? nodes [size <= 1]
+  ifelse all? turtles [size <= 1]
   [
     ;; a node is a circle with diameter determined by
     ;; the SIZE variable; using SQRT makes the circle's
     ;; area proportional to its degree
-    ask nodes [ set size sqrt count edge-neighbors ]
+    ask turtles [ set size sqrt count edge-neighbors ]
   ]
-  [ ask nodes [ set size 1 ] ]
+  [ ask turtles [ set size 1 ] ]
 end
 
 to layout
@@ -354,18 +393,18 @@ to layout
   repeat 20 [
     ;; the more nodes we have to fit into the same amount of space,
     ;; the smaller the inputs to layout-spring we'll need to use
-    let factor count nodes
+    let factor count turtles
     ;; numbers here are arbitrarily chosen for pleasing appearance
-    layout-spring nodes edges (1 / factor) (7 / factor) (1 / factor)
+    layout-spring turtles edges (1 / factor) (7 / factor) (1 / factor)
     display  ;; for smooth animation
   ]
   ;; don't bump the edges of the world
-  let x-offset max [xcor] of nodes + min [xcor] of nodes
-  let y-offset max [ycor] of nodes + min [ycor] of nodes
+  let x-offset max [xcor] of turtles + min [xcor] of turtles
+  let y-offset max [ycor] of turtles + min [ycor] of turtles
   ;; big jumps look funny, so only adjust a little each time
   set x-offset limit-magnitude x-offset 0.1
   set y-offset limit-magnitude y-offset 0.1
-  ask nodes [ setxy (xcor - x-offset / 2) (ycor - y-offset / 2) ]
+  ask turtles [ setxy (xcor - x-offset / 2) (ycor - y-offset / 2) ]
 end
 
 to-report limit-magnitude [number limit]
@@ -380,11 +419,11 @@ end
 ;;;;;;;;;;;;;;;;;;;;
 
 to do-plotting
-  let max-degree max [count link-neighbors] of nodes
+  let max-degree max [count link-neighbors] of turtles
   set-current-plot "Degree Distribution"
   plot-pen-reset
   set-plot-x-range 0 (max-degree + 1)
-  histogram [count link-neighbors] of nodes
+  histogram [count link-neighbors] of turtles
 end
 
 
@@ -400,7 +439,7 @@ end
 
 ;; find the clustering coefficient and add to the aggregate for all iterations
 to find-clustering-coefficient
-  ifelse all? nodes [count link-neighbors <= 1]
+  ifelse all? turtles [count link-neighbors <= 1]
   [
     ;; it is undefined
     ;; what should this be?
@@ -408,8 +447,8 @@ to find-clustering-coefficient
   ]
   [
     let total 0
-    ask nodes with [ count link-neighbors <= 1] [ set node-clustering-coefficient "undefined" ]
-    ask nodes with [ count link-neighbors > 1] [
+    ask turtles with [ count link-neighbors <= 1] [ set node-clustering-coefficient "undefined" ]
+    ask turtles with [ count link-neighbors > 1] [
       let hood link-neighbors
       set node-clustering-coefficient (2 * count edges with [ in-neighborhood? hood ] /
         ((count hood) * (count hood - 1)) )
@@ -417,7 +456,7 @@ to find-clustering-coefficient
       set total total + node-clustering-coefficient
     ]
     ;; take the average
-    set clustering-coefficient total / count nodes with [count link-neighbors > 1]
+    set clustering-coefficient total / count turtles with [count link-neighbors > 1]
   ]
 end
 @#$#@#$#@
@@ -466,10 +505,10 @@ NIL
 1
 
 PLOT
-56
-264
-426
-481
+35
+196
+405
+413
 Degree Distribution
 Degree
 # Nodes
@@ -484,36 +523,36 @@ PENS
 "default" 1.0 1 -16777216 true "" ""
 
 SLIDER
-227
-154
-432
-187
+54
+106
+259
+139
 max-nb-nodes
 max-nb-nodes
 10
 1000
-500.0
+250.0
 10
 1
 NIL
 HORIZONTAL
 
 MONITOR
-154
-486
-219
-531
+133
+418
+198
+463
 #Nodes
-count nodes
+count turtles
 17
 1
 11
 
 MONITOR
-83
-485
-148
-530
+62
+417
+127
+462
 #Edges
 count edges
 17
@@ -521,21 +560,21 @@ count edges
 11
 
 MONITOR
-230
-485
-310
-530
+209
+417
+289
+462
 Density
-(count edges * 2) / count nodes
+(count edges * 2) / count turtles
 2
 1
 11
 
 SLIDER
-228
-195
-433
-228
+55
+147
+260
+180
 nodes-size
 nodes-size
 0.3
@@ -547,20 +586,20 @@ NIL
 HORIZONTAL
 
 CHOOSER
-186
-98
-431
-143
+13
+50
+258
+95
 NETWORK
 NETWORK
 "Grid-4" "Grid-8" "Random" "Small World" "Scale Free" "Fractal"
 4
 
 MONITOR
-316
-486
-384
-531
+295
+418
+363
+463
 Clustering
 clustering-coefficient
 2
@@ -578,20 +617,20 @@ NETWORK
 1
 
 TEXTBOX
-47
-554
-155
-576
+41
+504
+149
+526
 SIR MODEL
 20
 0.0
 1
 
 SLIDER
-34
-645
-275
-678
+18
+542
+259
+575
 nb-nodes-initially-infected
 nb-nodes-initially-infected
 1
@@ -603,10 +642,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-34
-692
-251
-725
+19
+581
+236
+614
 transmission-rate
 transmission-rate
 0
@@ -618,10 +657,10 @@ NIL
 HORIZONTAL
 
 BUTTON
-34
-598
-98
-632
+317
+540
+381
+574
 NIL
 Go
 T
@@ -635,10 +674,10 @@ NIL
 1
 
 PLOT
-37
-793
-416
-1110
+26
+790
+405
+1107
 Epidemic
 Time
 Number of cases
@@ -651,14 +690,15 @@ true
 "" ""
 PENS
 "Susceptible" 1.0 0 -16777216 true "" "set-plot-pen-color color-susceptible plot nb-S"
-"Infected" 1.0 0 -16777216 true "" "set-plot-pen-color color-infected plot nb-I"
-"Recovered" 1.0 0 -16777216 true "" "set-plot-pen-color color-recovered plot nb-R"
+"Incubating" 1.0 0 -16777216 true "" "set-plot-pen-color color-incubating plot nb-Incub"
+"Infected" 1.0 0 -16777216 true "" "set-plot-pen-color color-infected plot nb-Inf"
+"Recovered" 1.0 0 -7500403 true "" "set-plot-pen-color color-recovered plot nb-R"
 
 SLIDER
-33
-736
-290
-769
+18
+666
+275
+699
 avg-infectivity-duration
 avg-infectivity-duration
 0
@@ -670,15 +710,48 @@ days
 HORIZONTAL
 
 MONITOR
-320
-733
-499
-778
+86
+737
+265
+782
 final % of infected people
-total-nb-I / count nodes * 100
+total-nb-I / count turtles * 100
 2
 1
 11
+
+SLIDER
+18
+623
+284
+656
+avg-incubation-duration
+avg-incubation-duration
+0
+30
+6.0
+1
+1
+days
+HORIZONTAL
+
+PLOT
+463
+661
+792
+933
+Age distribution
+Age
+NIL
+0.0
+81.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 1 -16777216 true "" "histogram [age] of turtles"
 
 @#$#@#$#@
 ## WHAT IS IT?
