@@ -1,294 +1,268 @@
 extensions [nw]
 
+globals
+[
 
-breed [ nodes node ]
-undirected-link-breed [ edges edge ]
+infinity
+max-size-neighborhood
+clustering-coefficient
+nb-seeds-fractal
+]
+
+breed [nodes node]
+undirected-link-breed [edges edge]
 
 
-nodes-own [
-  modulus ;;For the fractal network
-  node-clustering-coefficient
-  epidemic-state
-  state-duration
+
+
+nodes-own
+[
+
+modulus ;;For the fractal network
+node-clustering-coefficient
+  epidemic-state ;0 --> S, 1 --> I, 2 --> R
   tested?; False / True
 ]
 
-
-globals [
-  ;; variables from the interface
-  headless-network
-  headless-max-nb-nodes
-  headless-nb-nodes-initially-infected
-  headless-transmission-rate
-  headless-avg-infectivity-duration
-
-  infinity
-  max-size-neighborhood
-  nb-seeds-fractal
-  clustering-coefficient
-
-  ;; metrics
-  new-I
-  total-nb-I
-
-  ;; colors
-  color-susceptible
-  color-infected
-  color-recovered
-]
+to setup-globals
+set infinity 1.0E+10
+set max-size-neighborhood 0.5
+set nb-seeds-fractal 3
+end
 
 
-;;;;;;;;;;;;;;;;;
-;;;;; SETUP ;;;;;
-;;;;;;;;;;;;;;;;;
 
 to setup
-  clear-all
+  ca
   reset-ticks
-
-  setup-globals
   setup-network
+  do-calculations
   setup-SIR
 end
 
 
-to setup-globals
-  ;; get variables from the interface
-  set headless-network NETWORK
-  set headless-max-nb-nodes max-nb-nodes
-  set headless-nb-nodes-initially-infected nb-nodes-initially-infected
-  set headless-transmission-rate transmission-rate
-  set headless-avg-infectivity-duration avg-infectivity-duration
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Setup SIR
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-  set infinity 1.0E+10
-  set max-size-neighborhood 0.5
-  set nb-seeds-fractal 3
-
-  ;; metrics
-  set total-nb-I 0
-
-  ;; colors
-  set color-susceptible [0 153 255]
-  set color-infected [255 0 0]
-  set color-recovered [0 0 0]
+to setup-SIR
+  set-current-plot "EPIDEMIC"
+  clear-plot
+  reset-ticks
+  ask nodes
+  [
+    set epidemic-state 0
+    set color green
+    set tested? false]
+  setup-initial-infection
 end
 
 
+
+to setup-initial-infection
+
+  ask n-of Nb-nodes-initially-infected nodes
+  [
+    set epidemic-state  1
+  set color red
+  ]
+end
+
+
+to Go
+  if not any? nodes with [epidemic-state = 1] [stop]
+  transmit-virus
+  recover
+  tick
+end
+
+;THE MAIN ADVANTAGE OF NETWORK STRUCTURE IS THE WAY TOPOLOGY IS HANDLED
+;CONTACTS (NEIGHBORS) ARE DIRECTLY AVAILABLE WITH LINK-NEIGHBORS
+
+to transmit-virus
+  ask nodes with [epidemic-state = 1]
+  [
+    let me1 self
+    ask link-neighbors with [epidemic-state  = 0]
+  [
+      let me2 self
+    if random-float 1 < Probability-transmission
+      [
+        set epidemic-state 1
+        set color red
+        ask edge [who] of me1 [who] of me2 [set color red]] ;WE COLOR LINKS TO SHOW CONTAGION PATH
+    ]
+  ]
+end
+
+
+;Recovering based on a probability, TIME should be added
+
+to recover
+  ask nodes with [epidemic-state = 1]
+  [
+  if random-float 1 < probability-recovering
+    [
+    set epidemic-state 2
+      set color blue
+    ]
+  ]
+
+end
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Setup network
+;;nodes = nodes, edges = relations between neighbors
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+
+
 to setup-network
-  ask patches [ set pcolor white ]
-  set-default-shape turtles "square"
-
-  (ifelse
-    Network = "Grid-4" [ setup-square 4 ]
-    Network = "Grid-8" [ setup-square 8 ]
-    Network = "Random" [ setup-simple-random ]
-    Network = "Small World" [ setup-smallworld ]
-    Network = "Scale Free" [ setup-scalefree ]
-    Network = "Fractal" [ setup-serpienski ]
-  )
-
+  if Network =  "Grid-4" [setup-square 4]
+  if Network =  "Grid-8" [setup-square 8]
+  if Network =  "Random" [setup-simple-random]
+  if Network =  "Small World" [setup-smallworld]
+  if Network =  "Scale Free" [setup-scalefree]
+  if Network =  "Fractal" [Setup-Serpienski]
   nw:set-context nodes edges
-  find-clustering-coefficient
   do-plotting
 end
 
 
-to setup-SIR
-  ask nodes [
-    set epidemic-state "S"
-    set color color-susceptible
-    set state-duration -1
-    set tested? false
-  ]
 
-  ask up-to-n-of nb-nodes-initially-infected nodes [ get-infected ]
-end
-
-
-to get-infected
-  set epidemic-state "I"
-  set color color-infected
-  set state-duration gamma-law avg-infectivity-duration 1
-
-  set new-I new-I + 1
-end
-
-
-;;;;;;;;;;;;;;;;;;;;;
-;;;;; TIME STEP ;;;;;
-;;;;;;;;;;;;;;;;;;;;;
-
-to go
-  ifelse virus-present?
-  [
-    set new-I 0
-    transmit-virus
-    recover
-    set total-nb-I total-nb-I + new-I
-    tick
-  ]
-  [ stop ]
-end
-
-
-to transmit-virus
-  ask nodes with [epidemic-state = "I"] [
-    let me1 self
-    ask link-neighbors with [epidemic-state  = "S"] [
-      let me2 self
-      if random-float 1 < headless-transmission-rate [
-        get-infected
-        ask edge [who] of me1 [who] of me2 [ set color color-infected ] ;WE COLOR LINKS TO SHOW CONTAGION PATH
-      ]
-    ]
-  ]
-end
-
-
-to recover
-  ask nodes with [epidemic-state = "I"] [
-    (ifelse
-      state-duration > 0 [ set state-duration state-duration - 1 ]
-      state-duration = 0 [
-        set epidemic-state "R"
-        set color color-recovered
-        set state-duration -1
-      ]
-    )
-  ]
-end
-
-
-;;;;;;;;;;;;;;;;;;;;;
-;;;;; REPORTERS ;;;;;
-;;;;;;;;;;;;;;;;;;;;;
-
-to-report gamma-law [avg var]
-  let alpha avg * avg / var
-  let lambda avg / var
-
-  report floor random-gamma alpha lambda
-end
-
-to-report nb-S
-  report count nodes with [epidemic-state = "S"]
-end
-
-to-report nb-I
-  report count nodes with [epidemic-state = "I"]
-end
-
-to-report nb-R
-  report count nodes with [epidemic-state = "R"]
-end
-
-to-report virus-present?
-  report nb-I > 0
-end
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;; SETUP NETWORK ;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;;; REGULAR NETWORK ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;Regular Network
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 to setup-square [NB-Neighbors-Regular-Grid]
-  ask patches with [pxcor mod 3 = 0 and pycor mod 3 = 0] [
-    sprout-nodes 1 [ set color color-susceptible ]
-  ]
+  __clear-all-and-reset-ticks
+  setup-globals
 
+  ask patches with [pxcor mod 3 = 0 and
+                    pycor mod 3 = 0]
+  [
+  sprout-nodes 1
+  [
+      set shape "square"
+      set size nodes-size
+      set color green
+  ]
+  ]
   ifelse NB-Neighbors-Regular-Grid = 4
-  [ ask nodes [ create-edges-with nodes in-radius 3 with [self != myself] ] ]
-  [ ask nodes [ create-edges-with nodes in-radius 5 with [self != myself] ] ]
+    [ ask nodes [ create-edges-with nodes in-radius 3 with [self != myself]]]
+    [ ask nodes [ create-edges-with nodes in-radius 5 with [self != myself]]]
 end
 
 
-
-;;; RANDOM NETWORK ;;;
+;;Random network
 
 to setup-simple-random
-  let num-edges (1.3 * max-nb-nodes)
-  create-nodes max-nb-nodes [
-    set color color-susceptible
-    setxy random-xcor * 0.95 random-ycor * 0.95
-    if any? nodes-here [ fd 1 ]
-  ]
+  __clear-all-and-reset-ticks
+  setup-globals
+  let num-edges (1.3 * max-number-nodes)
+  create-nodes max-number-nodes
+  [
+  set size nodes-size
+    set color green
+  setxy random-xcor * 0.95 random-ycor * 0.95
+  if any? nodes-here [fd 1]]
+  ask nodes
+     [
 
-  ask nodes [ create-edges-with other nodes in-radius max-size-neighborhood ]
+     create-edges-with other nodes in-radius max-size-neighborhood]
 
-  while [count edges < num-edges] [
-    ask one-of nodes [
-      let choice (min-one-of (other nodes with [not link-neighbor? myself]) [distance myself])
+  while [count edges < num-edges ]
+  [
+    ask one-of nodes
+    [
+      let choice (min-one-of (other nodes with [not link-neighbor? myself])
+                   [distance myself])
       if choice != nobody [ create-edge-with choice ]
     ]
   ]
-
-  ;to make sure no isolated subnets < 4 connected nodes remain
-  ask nodes with [count link-neighbors < 4] [
-    create-edge-with min-one-of (other nodes with [not link-neighbor? myself and count link-neighbors >= 3]) [distance myself]
-  ]
+  ask nodes with [count link-neighbors < 4]
+  [create-edge-with min-one-of (other nodes with [not link-neighbor? myself and count link-neighbors >= 3]) ;to make sure no isolated subnets < 4 connected nodes remain
+                   [distance myself]]
 end
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Fractal network (Serpienski)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;; FRACTAL NETWORK ;;;
 ;;From Arnaud
 
 ; create a node and set its initial location and modulus
-to setup-serpienski
-  create-nodes 1 [
+to setup-Serpienski
+  __clear-all-and-reset-ticks
+  setup-globals
+  create-nodes 1
+  [
     set heading 0
-    set color color-susceptible
+    set size nodes-size
+    set color green
     setxy 0 -1
     set modulus 0.5 * max-pycor
   ]
-  while [count nodes < max-nb-nodes] [ create-serpienski nb-seeds-fractal ]
+  while [count nodes < max-number-nodes] [Create-Serpienski nb-seeds-fractal]
+end
+
+; ask the nodes to go forward by modulus, create a new node to
+; draw the next iteration of sierpinski's tree, and return to its place
+to grow-Serpienski
+  hatch 1
+    [ fd modulus
+     create-edge-with myself
+      ifelse nb-seeds-fractal = 3 [set modulus (0.5 * modulus) ]  ; new node's modulus is half its parent's
+                                  [ifelse nb-seeds-fractal = 5 [set modulus (0.4 * modulus) ]
+                                                               [set modulus (0.3 * modulus) ] ]
+    ]
+
+
 end
 
 ; draw the sierpinski tree
-to create-serpienski [nb]
-  ask nodes with [count edge-neighbors < 2] [
-    repeat nb [
-      grow-serpienski
+to Create-Serpienski [nb]
+  ask nodes with [count edge-neighbors < 2]
+  [
+    repeat nb
+    [
+      grow-Serpienski
       right  360 / nb  ; turn counter-clockwise to draw more legs
     ]
   ]
   tick
 end
 
-; ask the nodes to go forward by modulus, create a new node to
-; draw the next iteration of sierpinski's tree, and return to its place
-to grow-serpienski
-  hatch 1 [
-    fd modulus
-    create-edge-with myself
-    ifelse nb-seeds-fractal = 3
-    [ set modulus (0.5 * modulus) ]  ; new node's modulus is half its parent's
-    [
-      ifelse nb-seeds-fractal = 5
-      [ set modulus (0.4 * modulus) ]
-      [ set modulus (0.3 * modulus) ]
-    ]
-  ]
-end
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Small World network ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
-;;; SMALL WORLD NETWORK ;;;
 ;Generates a Watts-Strogatz small-world networ using NW extension
 
 to setup-smallworld
-  nw:generate-watts-strogatz nodes edges max-nb-nodes 2 0.1 [
-    set color color-susceptible
-    fd 15
-  ]
-end
+
+ nw:generate-watts-strogatz nodes edges max-number-nodes 2 0.1 [set color green set size nodes-size  fd 15 ]
+
+  end
 
 
-;;; SCALE FREE NETWORK ;;;
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Scale free network ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ;;From NetLogo Library
 
 to setup-scalefree
+  __clear-all-and-reset-ticks
+  setup-globals
+  set-default-shape nodes "square"
   ;; make the initial network of two nodes and an edge
   make-node nobody        ;; first node, unattached
   make-node node 0      ;; second node, attached to first node
@@ -297,44 +271,50 @@ end
 
 
 to create-scalefree
-  while [count nodes < max-nb-nodes] [
-    ;; new edge is green, old edges are gray
-    ask edges [ set color gray ]
-    make-node find-partner         ;; find partner & use it as attachment
-                                   ;; point for new node
+  while [count nodes < max-number-nodes]
+  [
+  ;; new edge is green, old edges are gray
+  ask edges [ set color gray ]
+  make-node find-partner         ;; find partner & use it as attachment
+                                 ;; point for new node
+  tick
 
-    layout
+  layout
   ]
 end
 
 ;; used for creating a new node
 to make-node [old-node]
-  create-nodes 1 [
-    set color color-susceptible
+  create-nodes 1
+  [
+    set color green
     set size nodes-size
-    if old-node != nobody [
-      create-edge-with old-node [ set color green ]
-      ;; position the new node near its partner
-      move-to old-node
-      fd 1
-    ]
+    if old-node != nobody
+      [ create-edge-with old-node [ set color green ]
+        ;; position the new node near its partner
+        move-to old-node
+        fd 1
+      ]
   ]
 end
 
 to-report find-partner
   let total random-float sum [count edge-neighbors] of nodes
   let partner nobody
-  ask nodes [
+  ask nodes
+  [
     let nc count edge-neighbors
     ;; if there's no winner yet...
-    if partner = nobody [
+    if partner = nobody
+    [
       ifelse nc > total
-      [ set partner self ]
-      [ set total total - nc ]
+        [ set partner self ]
+        [ set total total - nc ]
     ]
   ]
   report partner
 end
+
 
 ;; resize-nodes, change back and forth from size based on degree to a size of 1
 to resize-nodes
@@ -345,7 +325,9 @@ to resize-nodes
     ;; area proportional to its degree
     ask nodes [ set size sqrt count edge-neighbors ]
   ]
-  [ ask nodes [ set size 1 ] ]
+  [
+    ask nodes [ set size 1 ]
+  ]
 end
 
 to layout
@@ -375,9 +357,17 @@ to-report limit-magnitude [number limit]
 end
 
 
-;;;;;;;;;;;;;;;;;;;;
-;;;;; PLOTTING ;;;;;
-;;;;;;;;;;;;;;;;;;;;
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;Plotting
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+
+
 
 to do-plotting
   let max-degree max [count link-neighbors] of nodes
@@ -385,21 +375,35 @@ to do-plotting
   plot-pen-reset
   set-plot-x-range 0 (max-degree + 1)
   histogram [count link-neighbors] of nodes
-end
+  end
+
+
+
+
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Clustering computations ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ;;Inspired for Models Library ==> Networks ==> Small-World
+
+to do-calculations
+
+  ;; find the clustering coefficient and add to the aggregate for all iterations
+  find-clustering-coefficient
+
+
+end
 
 to-report in-neighborhood? [ hood ]
   report ( member? end1 hood and member? end2 hood )
 end
 
 
-;; find the clustering coefficient and add to the aggregate for all iterations
 to find-clustering-coefficient
+
   ifelse all? nodes [count link-neighbors <= 1]
   [
     ;; it is undefined
@@ -408,11 +412,13 @@ to find-clustering-coefficient
   ]
   [
     let total 0
-    ask nodes with [ count link-neighbors <= 1] [ set node-clustering-coefficient "undefined" ]
-    ask nodes with [ count link-neighbors > 1] [
+    ask nodes with [ count link-neighbors <= 1]
+      [ set node-clustering-coefficient "undefined" ]
+    ask nodes with [ count link-neighbors > 1]
+    [
       let hood link-neighbors
       set node-clustering-coefficient (2 * count edges with [ in-neighborhood? hood ] /
-        ((count hood) * (count hood - 1)) )
+                                         ((count hood) * (count hood - 1)) )
       ;; find the sum for the value at turtles
       set total total + node-clustering-coefficient
     ]
@@ -420,15 +426,18 @@ to find-clustering-coefficient
     set clustering-coefficient total / count nodes with [count link-neighbors > 1]
   ]
 end
+
+
+
 @#$#@#$#@
 GRAPHICS-WINDOW
-462
+436
 10
-1080
-629
+1125
+700
 -1
 -1
-10.0
+23.32
 1
 10
 1
@@ -438,10 +447,10 @@ GRAPHICS-WINDOW
 0
 0
 1
--30
-30
--30
-30
+-20
+20
+-20
+20
 0
 0
 1
@@ -487,12 +496,12 @@ SLIDER
 227
 154
 432
-187
-max-nb-nodes
-max-nb-nodes
+188
+max-number-nodes
+max-number-nodes
 10
 1000
-500.0
+240.0
 10
 1
 NIL
@@ -535,12 +544,12 @@ SLIDER
 228
 195
 433
-228
+229
 nodes-size
 nodes-size
 0.3
 1
-1.0
+0.6
 0.1
 1
 NIL
@@ -554,7 +563,7 @@ CHOOSER
 NETWORK
 NETWORK
 "Grid-4" "Grid-8" "Random" "Small World" "Scale Free" "Fractal"
-4
+2
 
 MONITOR
 316
@@ -578,22 +587,22 @@ NETWORK
 1
 
 TEXTBOX
-47
-554
-155
-576
+1147
+17
+1255
+39
 SIR MODEL
 20
 0.0
 1
 
 SLIDER
-34
-645
-275
-678
-nb-nodes-initially-infected
-nb-nodes-initially-infected
+1134
+108
+1350
+142
+Nb-nodes-initially-infected
+Nb-nodes-initially-infected
 1
 100
 1.0
@@ -603,25 +612,25 @@ NIL
 HORIZONTAL
 
 SLIDER
-34
-692
-251
-725
-transmission-rate
-transmission-rate
+1134
+155
+1351
+189
+Probability-transmission
+Probability-transmission
 0
-1
-0.12
-0.01
+0.3
+0.005
+0.001
 1
 NIL
 HORIZONTAL
 
 BUTTON
-34
-598
-98
-632
+1240
+58
+1304
+92
 NIL
 Go
 T
@@ -635,10 +644,10 @@ NIL
 1
 
 PLOT
-37
-793
-416
-1110
+1137
+256
+1516
+573
 Epidemic
 Time
 Number of cases
@@ -647,38 +656,44 @@ Number of cases
 0.0
 10.0
 true
-true
+false
 "" ""
 PENS
-"Susceptible" 1.0 0 -16777216 true "" "set-plot-pen-color color-susceptible plot nb-S"
-"Infected" 1.0 0 -16777216 true "" "set-plot-pen-color color-infected plot nb-I"
-"Recovered" 1.0 0 -16777216 true "" "set-plot-pen-color color-recovered plot nb-R"
+"S" 1.0 0 -13840069 true "" "if any? nodes [plot count nodes with [epidemic-state = 0]]"
+"I" 1.0 0 -2674135 true "" "if any? nodes [plot count nodes with [epidemic-state = 1]]"
+"pen-2" 1.0 0 -13345367 true "" "if any? nodes [plot count nodes with [epidemic-state = 2]]"
 
 SLIDER
-33
-736
-290
-769
-avg-infectivity-duration
-avg-infectivity-duration
+1135
+197
+1353
+231
+probability-recovering
+probability-recovering
 0
-30
-21.0
+0.3
+0.001
+0.001
 1
-1
-days
+NIL
 HORIZONTAL
 
-MONITOR
-320
-733
-499
-778
-final % of infected people
-total-nb-I / count nodes * 100
-2
+BUTTON
+1133
+58
+1238
+92
+SETUP SIR
+setup-SIR
+NIL
 1
-11
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
