@@ -2,7 +2,7 @@ globals [ ;;global parameters
   population-size
   nb-house
  ; transmission-distance ==> SUPPRIMER POUR ACCELERATION CODE DANS get-in-contact AVEC PRIMITIVE NEIGHBORS
-  probability-asymptomatic-infection
+  ;probability-asymptomatic-infection
   probability-transmission
   probability-transmission-asymptomatic
   walking-angle
@@ -71,7 +71,7 @@ to setup-globals
   set nb-house (population-size / 2)
 
  ; set transmission-distance 1 ACCELERATION CODE DANS get-in-contact AVEC PRIMITIVE NEIGHBORS
-  set probability-asymptomatic-infection 0.3
+  ;set probability-asymptomatic-infection 0.3
   set probability-transmission 0.15
   set probability-transmission-asymptomatic 0.07
   ;set incubation-period 5 * nb-step-per-day
@@ -304,36 +304,31 @@ to backtrack-contacts [order]
       if date-j >= (my-lockdown-date - (nb-days-before-test-tagging-contacts * nb-step-per-day))[
         ask contacts-j with [lockdown? = 0][
           ;;ICI STRATEGIE DE DEPISTAGE SYSTEMATIQUE DE TOUS LES CONTACTS
-          if Confinement_avec_Test?[
+          ifelse Confinement_avec_Test?[
             ;On vérifie qu'on ne teste pas deux fois le même jour
             ;if not member? ticks  list-date-test[
-          get-tested order
+            get-tested order
             if montre-liens?[
               create-link-from me [set shape "link-arn" set color item (order - 2) list-colors-contacts]
             ]
                 ;if ((SCENARIO = "Rétro traçage2 + confinement des contacts2") and (order = 2)) [
                   ;backtrack-contacts 3
-                ]
-              ]
-            ]
-          ]
-
-          if not Confinement_avec_Test?[
+          ][
             if random-float 1 < probability-respect-lockdown-when-tagged[
               set lockdown? 1
               set lockdown-date ticks
               backtrack-contacts (order + 1)
             ]
-            set contact-order order
-            if montre-liens?[
+              set contact-order order
+              if montre-liens?[
                 create-link-from me [set shape "link-arn" set color item (order - 2) list-colors-contacts  ]
+              ]
             ]
-            ;if ((SCENARIO = "Rétro traçage2 + confinement des contacts2") and (order = 2))[
-             ;   backtrack-contacts 3
-            ;]
           ]
-    set j j + 1
+      ]
     ]
+    set j j + 1
+  ]
 end
 
 
@@ -519,7 +514,7 @@ GRAPHICS-WINDOW
 2
 10
 591
-409
+790
 -1
 -1
 9.525
@@ -534,8 +529,8 @@ GRAPHICS-WINDOW
 1
 -30
 30
--20
-20
+-40
+40
 1
 1
 1
@@ -543,10 +538,10 @@ ticks
 30.0
 
 BUTTON
-405
-414
-493
-469
+1039
+557
+1127
+612
 Initialiser
 setup
 NIL
@@ -560,10 +555,10 @@ NIL
 1
 
 BUTTON
-494
-414
-582
-469
+1128
+557
+1216
+612
 Simuler
 go
 T
@@ -600,10 +595,10 @@ PENS
 "Ex" 1.0 0 -8630108 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) (nb-Ex / population-size  * 100)]"
 
 TEXTBOX
-23
-418
-201
-568
+657
+561
+835
+711
 Mode d'emploi à ajouter ici\n\nCréer indicateurs de sortie behaviour space
 12
 105.0
@@ -616,7 +611,7 @@ SWITCH
 503
 Confinement_avec_Test?
 Confinement_avec_Test?
-0
+1
 1
 -1000
 
@@ -674,10 +669,10 @@ MaxI%
 11
 
 SWITCH
-405
-473
-547
-506
+1039
+616
+1181
+649
 Montre-liens?
 Montre-liens?
 1
@@ -685,10 +680,10 @@ Montre-liens?
 -1000
 
 BUTTON
-405
-508
-507
-541
+1039
+651
+1141
+684
 Cache liens
 ask links [die]
 NIL
@@ -814,10 +809,10 @@ nb-tests
 11
 
 SLIDER
-220
-423
-392
-456
+854
+566
+1026
+599
 Taille_population
 Taille_population
 0
@@ -840,10 +835,10 @@ Population testée (%)
 11
 
 SLIDER
-220
-460
-392
-493
+854
+603
+1026
+636
 Nb_infected_initialisation
 Nb_infected_initialisation
 1
@@ -1001,14 +996,29 @@ PENS
 
 MONITOR
 1031
-273
+488
 1269
-318
+533
 nombre de contacts moyen par ticks
 mean-contacts-ticks
 17
 1
 11
+
+SLIDER
+1016
+256
+1290
+289
+probability-asymptomatic-infection
+probability-asymptomatic-infection
+0
+1
+0.3
+0.1
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## THINGS TO TRY
