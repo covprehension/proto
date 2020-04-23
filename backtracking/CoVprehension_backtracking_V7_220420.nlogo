@@ -19,6 +19,7 @@ globals [ ;;global parameters
   nb-lockdown-episodes
   max-I
   list-colors-contacts
+  total-exposed
   ;epidemic symbolic constants
   S ; Susceptible
   Ex ; Exposed - Infected and incubating, but already contagious.
@@ -83,6 +84,7 @@ to setup-globals
   set nb-step-per-day 4
   set contagion-duration (incubation-duration + (14 * nb-step-per-day))
   set list-colors-contacts [white 125]
+  set total-exposed 0
 end
 
 to setup-walls
@@ -233,7 +235,7 @@ to get-in-contact
     ;ACCELERATION CODE AVEC PRIMITIVE NEIGHBORS
     let contacts other citizens-on neighbors
     set nb-contacts-ticks count contacts
-    if epidemic-state = Ia or epidemic-state = I or epidemic-state = Ex [set nb-contacts-total-Infectious nb-contacts-total-Infectious + nb-contacts-ticks]
+    if contagious? [set nb-contacts-total-Infectious nb-contacts-total-Infectious + nb-contacts-ticks]
     set contacts contacts with [lockdown? = 0]
     if equiped? [
       let contacts-equiped contacts with [equiped?]
@@ -370,6 +372,7 @@ end
 ;;STATE TRANSITION PROCEDURES
 to become-exposed
   set epidemic-state Ex
+  set total-exposed total-exposed + 1
   set contagion-counter contagion-duration
   set infection-date ticks
   set current-nb-new-infections-reported (current-nb-new-infections-reported + 1)
@@ -592,7 +595,7 @@ PENS
 "S" 1.0 0 -13840069 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) (nb-S / population-size * 100)]"
 "Ir" 1.0 0 -2674135 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) (nb-Ir  / population-size * 100)]"
 "Inr" 1.0 0 -13345367 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) (nb-Inr  / population-size * 100)]\n"
-"I" 1.0 0 -955883 true "" "\nif population-size > 0 [plotxy (ticks / nb-step-per-day) ((nb-Ir + nb-Inr) / population-size  * 100)]"
+"I" 1.0 0 -955883 true "" "\nif population-size > 0 [plotxy (ticks / nb-step-per-day) ((nb-Ir + nb-Inr + nb-Ex) / population-size  * 100)]"
 "R" 1.0 0 -7500403 true "" "\nif population-size > 0 [plotxy (ticks / nb-step-per-day) (nb-R / population-size  * 100)]"
 "Ex" 1.0 0 -8630108 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) (nb-Ex / population-size  * 100)]"
 "%Locked" 1.0 0 -6459832 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) %locked] "
@@ -1061,6 +1064,17 @@ false
 "" ""
 PENS
 "default" 1.0 2 -16777216 true "" "if any? citizens with [epidemic-state = R]\n[\nask citizens with [epidemic-state = R] [plotxy (nb-contacts-total-Infectious + random-float 1) (nb-other-infected + random-float 1)] \n]"
+
+MONITOR
+1632
+261
+1733
+306
+NIL
+total-exposed
+17
+1
+11
 
 @#$#@#$#@
 ## THINGS TO TRY
