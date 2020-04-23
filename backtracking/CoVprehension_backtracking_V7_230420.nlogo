@@ -56,6 +56,7 @@ citizens-own
   contact-order ;0 not contacted, 1 contacted at first order, 2 contacted at second order
   nb-contacts-ticks
   nb-contacts-total-Infectious ; ttotal number of contacts during infectious period
+  nb-lockeddown
 ]
 
 houses-own
@@ -270,6 +271,7 @@ to lockdown [order]
   set contact-order order
   move-to my-house
   set nb-step-confinement 0
+  set nb-lockeddown nb-lockeddown + 1
   ifelse contagious?[
     set nb-infected-identified-removed nb-infected-identified-removed + 1
   ][
@@ -283,12 +285,14 @@ to get-tested [order]
   if contagious? and random-float 1 < probability-success-test-infected [
     set  nb-infected-identified nb-infected-identified + 1
     if ((order = 0) or (random-float 1 < probability-respect-lockdown-when-tagged))[ ; It is supposed that order 0 infected people, who made the test without being prompted, will respect lockdown.
-      set nb-infected-identified-removed nb-infected-identified-removed + 1
+      ;set nb-infected-identified-removed nb-infected-identified-removed + 1
       ifelse Family-lockdown? [
         ask my-house[
           foreach my-humans[
             [my-human] -> ask my-human [
-              lockdown order
+              if lockdown? = 0 [
+                lockdown order
+              ]
             ]
           ]
         ]
@@ -1079,7 +1083,7 @@ MONITOR
 806
 556
 851
-Retirés
+Retirés infectés
 nb-infected-identified-removed
 0
 1
@@ -1127,6 +1131,35 @@ nb-contagious-cumulated
 17
 1
 11
+
+MONITOR
+431
+853
+564
+898
+Retirés pas infectés
+nb-non-infected-lockeddown
+17
+1
+11
+
+PLOT
+1263
+557
+1463
+707
+Lockeddwon
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 1 -16777216 true "" "histogram [nb-lockeddown] of citizens"
 
 @#$#@#$#@
 ## THINGS TO TRY
