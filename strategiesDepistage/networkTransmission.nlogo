@@ -6,7 +6,8 @@ extensions [nw]
 
 breed [ susceptibles a-susceptible ]
 breed [ incubating a-incubating ]
-breed [ infected a-infected ]
+breed [ asymptomatic a-asymptomatic ]
+breed [ symptomatic a-symptomatic ]
 breed [ recovered a-recovered ]
 
 ;undirected-link-breed [ family-members family-member ]
@@ -28,6 +29,7 @@ globals [
   ;; variables from the interface
   headless-network
   headless-max-nb-nodes
+  headless-asymptomatic-proportion
   headless-nb-nodes-initially-infected
   headless-transmission-rate
   headless-avg-incubation-duration
@@ -43,7 +45,8 @@ globals [
   clustering-coefficient
 
   ;; metrics
-  new-I
+  new-Asymp
+  new-Symp
   total-nb-I
   true-pos
   false-pos
@@ -53,7 +56,8 @@ globals [
   ;; colors
   color-susceptible
   color-incubating
-  color-infected
+  color-asymptomatic
+  color-symptomatic
   color-recovered
 ]
 
@@ -76,6 +80,7 @@ to setup-globals
   ;; get variables from the interface
   set headless-network NETWORK
   set headless-max-nb-nodes max-nb-nodes
+  set headless-asymptomatic-proportion asymptomatic-proportion
   set headless-nb-nodes-initially-infected nb-nodes-initially-infected
   set headless-transmission-rate transmission-rate
   set headless-avg-incubation-duration avg-incubation-duration
@@ -99,7 +104,8 @@ to setup-globals
   ;; colors
   set color-susceptible [0 153 255]
   set color-incubating [254 178 76]
-  set color-infected [255 0 0]
+  set color-asymptomatic [153 153 153]
+  set color-symptomatic [255 0 0]
   set color-recovered [0 0 0]
 end
 
@@ -117,8 +123,8 @@ to setup-network
     Network = "Fractal" [ setup-serpienski ]
   )
 
-;  nw:set-context (turtle-set susceptibles incubating infected recovered) (link-set family-members friends colleagues)
-  nw:set-context (turtle-set susceptibles incubating infected recovered) edges
+;  nw:set-context (turtle-set susceptibles incubating symptomatic recovered) (link-set family-members friends colleagues)
+  nw:set-context (turtle-set susceptibles incubating symptomatic recovered) edges
   find-clustering-coefficient
   do-plotting
 end
@@ -130,7 +136,7 @@ to setup-population
     set age random 80
     set tested? false
   ]
-  ask up-to-n-of nb-nodes-initially-infected susceptibles [ get-infected ]
+  ask up-to-n-of headless-nb-nodes-initially-infected susceptibles [ get-symptomatic ]
 end
 
 
@@ -141,7 +147,8 @@ end
 to go
   ifelse virus-present?
   [
-    set new-I 0
+    set new-Asymp 0
+    set new-Symp 0
     transmit-virus
     testing
     update-states
@@ -152,13 +159,13 @@ end
 
 
 to transmit-virus
-  ask (turtle-set incubating infected) [
+  ask (turtle-set incubating asymptomatic symptomatic) [
     let me1 self
     ask link-neighbors with [breed = susceptibles] [
       let me2 self
       if random-float 1 < headless-transmission-rate [
         get-incubating
-        ask edge [who] of me1 [who] of me2 [ set color color-infected ] ;WE COLOR LINKS TO SHOW CONTAGION PATH
+        ask edge [who] of me1 [who] of me2 [ set color color-symptomatic ] ;WE COLOR LINKS TO SHOW CONTAGION PATH
       ]
     ]
   ]
@@ -169,7 +176,7 @@ to testing
   (ifelse
     TESTING-STRATEGY = "random" [ ask up-to-n-of headless-nb-tests-per-day turtles [ get-tested ] ]
 
-    TESTING-STRATEGY = "infected people" [ ask up-to-n-of headless-nb-tests-per-day infected [ get-tested ] ]
+    TESTING-STRATEGY = "symptomatic people" [ ask up-to-n-of headless-nb-tests-per-day symptomatic [ get-tested ] ]
   )
 end
 
@@ -182,7 +189,7 @@ to get-tested
       [ set false-neg false-neg + 1 ]
     ]
 
-    breed = incubating or breed = infected [
+    breed = incubating or breed = asymptomatic or breed = symptomatic [
       ifelse random-float 1 < headless-test-sensitivity
       [ set true-pos true-pos + 1 ]
       [ set false-pos false-pos + 1 ]
@@ -192,15 +199,19 @@ end
 
 
 to update-states
-  ask (turtle-set incubating infected) [
+  ask (turtle-set incubating asymptomatic symptomatic) [
     (ifelse
       state-duration > 0 [ set state-duration state-duration - 1 ]
-      state-duration = 0 and breed = infected [ get-recovered ]
-      state-duration = 0 and breed = incubating [ get-infected ]
+      state-duration = 0 and (breed = symptomatic or breed = asymptomatic) [ get-recovered ]
+      state-duration = 0 and breed = incubating [
+        ifelse random 100 < headless-asymptomatic-proportion
+        [ get-asymptomatic ]
+        [ get-symptomatic ]
+      ]
     )
   ]
 
-  set total-nb-I total-nb-I + new-I
+  set total-nb-I total-nb-I + new-Asymp + new-Symp
 end
 
 
@@ -220,12 +231,20 @@ to get-incubating
   set state-duration gamma-law headless-avg-incubation-duration 3
 end
 
-to get-infected
-  set breed infected
-  set color color-infected
+to get-asymptomatic
+  set breed asymptomatic
+  set color color-asymptomatic
   set state-duration gamma-law headless-avg-infectivity-duration 1
 
-  set new-I new-I + 1
+  set new-Asymp new-Asymp + 1
+end
+
+to get-symptomatic
+  set breed symptomatic
+  set color color-symptomatic
+  set state-duration gamma-law headless-avg-infectivity-duration 1
+
+  set new-Symp new-Symp + 1
 end
 
 to get-recovered
@@ -254,8 +273,12 @@ to-report nb-Incub
   report count incubating
 end
 
-to-report nb-Inf
-  report count infected
+to-report nb-Asymp
+  report count asymptomatic
+end
+
+to-report nb-Symp
+  report count symptomatic
 end
 
 to-report nb-R
@@ -263,7 +286,7 @@ to-report nb-R
 end
 
 to-report nb-I
-  report nb-Incub + nb-Inf
+  report nb-Incub + nb-Asymp + nb-Symp
 end
 
 to-report virus-present?
@@ -736,8 +759,9 @@ true
 PENS
 "Susceptible" 1.0 0 -16777216 true "" "set-plot-pen-color color-susceptible plot nb-S"
 "Incubating" 1.0 0 -16777216 true "" "set-plot-pen-color color-incubating plot nb-Incub"
-"Infected" 1.0 0 -16777216 true "" "set-plot-pen-color color-infected plot nb-Inf"
-"Recovered" 1.0 0 -7500403 true "" "set-plot-pen-color color-recovered plot nb-R"
+"Asymptomatic" 1.0 0 -16777216 true "" "set-plot-pen-color color-asymptomatic plot nb-Asymp"
+"Symptomatic" 1.0 0 -16777216 true "" "set-plot-pen-color color-symptomatic plot nb-Symp"
+"Recovered" 1.0 0 -16777216 true "" "set-plot-pen-color color-recovered plot nb-R"
 
 SLIDER
 18
@@ -896,6 +920,21 @@ true-neg
 17
 1
 11
+
+SLIDER
+52
+966
+307
+999
+asymptomatic-proportion
+asymptomatic-proportion
+0
+100
+30.0
+5
+1
+%
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
