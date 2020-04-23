@@ -28,6 +28,7 @@ globals [ ;;global parameters
   nb-infected-identified
   nb-infected-identified-removed
   nb-contagious-cumulated
+  nb-non-infected-lockeddown
 ]
 
 patches-own [wall]
@@ -236,7 +237,7 @@ to get-in-contact
     ;ACCELERATION CODE AVEC PRIMITIVE NEIGHBORS
     let contacts other citizens-on neighbors
     set nb-contacts-ticks count contacts
-    if epidemic-state = Ia or epidemic-state = I or epidemic-state = Ex [set nb-contacts-total-Infectious nb-contacts-total-Infectious + nb-contacts-ticks]
+    if contagious? [set nb-contacts-total-Infectious nb-contacts-total-Infectious + nb-contacts-ticks]
     set contacts contacts with [lockdown? = 0]
     if equiped? [
       let contacts-equiped contacts with [equiped?]
@@ -256,7 +257,6 @@ end
 to get-virus [contact-source]
   if ( ([contagious?] of contact-source)  and (random-float 1 < (contagiousness contact-source)) ) [
     become-exposed
-    set nb-contagious-cumulated nb-contagious-cumulated + 1
     set infection-source contact-source
     ask contact-source [set nb-other-infected nb-other-infected + 1]
   ]
@@ -270,6 +270,11 @@ to lockdown [order]
   set contact-order order
   move-to my-house
   set nb-step-confinement 0
+  ifelse contagious?[
+    set nb-infected-identified-removed nb-infected-identified-removed + 1
+  ][
+    set nb-non-infected-lockeddown nb-non-infected-lockeddown + 1
+  ]
 end
 
 to get-tested [order]
@@ -284,7 +289,6 @@ to get-tested [order]
           foreach my-humans[
             [my-human] -> ask my-human [
               lockdown order
-              if contagious? [set nb-infected-identified-removed nb-infected-identified-removed + 1]
             ]
           ]
         ]
@@ -380,6 +384,7 @@ to become-exposed
   set contagion-counter contagion-duration
   set infection-date ticks
   set current-nb-new-infections-reported (current-nb-new-infections-reported + 1)
+  set nb-contagious-cumulated nb-contagious-cumulated + 1
   set color violet ; lput transparency extract-rgb red
   set resistant? (random-float 1 < probability-asymptomatic-infection)
   set contagious? true
@@ -1110,6 +1115,7 @@ PENS
 "Contagieux" 1.0 0 -817084 true "" "\nif population-size > 0 [plotxy (ticks / nb-step-per-day) nb-contagious-cumulated ]"
 "Identifiés" 1.0 0 -13791810 true "" "\nif population-size > 0 [plotxy (ticks / nb-step-per-day) nb-infected-identified]\n\n"
 "Retirés" 1.0 0 -5825686 true "" "\nif population-size > 0 [plotxy (ticks / nb-step-per-day) nb-infected-identified-removed]\n\n"
+"Retirés pas contagieux" 1.0 0 -7500403 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) nb-non-infected-lockeddown]"
 
 MONITOR
 125
