@@ -18,6 +18,7 @@ globals [ ;;global parameters
   lock-down-color
   nb-lockdown-episodes
   max-I
+  max-conf
   list-colors-contacts
   ;epidemic symbolic constants
   S ; Susceptible
@@ -170,7 +171,7 @@ to go
   ]
   update-epidemics
   update-max-I
-  ;wait 0.1
+  update-max-conf
 
   tick
 end
@@ -536,6 +537,11 @@ end
 to update-max-I
   if nb-I > max-I [set max-I nb-I]
 end
+
+to update-max-conf
+  let nb-conf count citizens with [lockdown? = 1]
+  if nb-conf > max-conf [set max-conf nb-conf]
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 2
@@ -623,20 +629,20 @@ PENS
 "%Locked" 1.0 0 -6459832 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) %locked] "
 
 TEXTBOX
-657
-561
-835
-711
+1449
+760
+1627
+910
 Mode d'emploi à ajouter ici\n\nCréer indicateurs de sortie behaviour space
 12
 105.0
 1
 
 SWITCH
-695
-470
-904
-503
+689
+498
+898
+531
 Confinement_avec_Test?
 Confinement_avec_Test?
 0
@@ -655,10 +661,10 @@ Population touchée par l'épidémie (%)
 11
 
 CHOOSER
-640
-414
-957
-459
+642
+454
+959
+499
 SCENARIO
 SCENARIO
 "Laisser faire" "Confinement simple" "Confinement simple + traçage des contacts"
@@ -976,10 +982,10 @@ PENS
 "default" 1.0 1 -16777216 true "" "histogram [contact-order] of citizens with [contact-order > 0]"
 
 SWITCH
-719
-503
-890
-536
+713
+531
+884
+564
 Family-Lockdown?
 Family-Lockdown?
 0
@@ -1058,16 +1064,6 @@ R0
 2
 1
 11
-
-TEXTBOX
-1107
-696
-1493
-886
-Ajouts arn\n\nR0 : N/A + plot R0 evolution\nplots renommés\najout attribut nb-contacts-total-Infectious\najout plot contacts/ifections secondaires jittering
-20
-15.0
-1
 
 MONITOR
 432
@@ -1167,6 +1163,27 @@ NIL
 NIL
 NIL
 NIL
+1
+
+MONITOR
+591
+409
+787
+454
+Pic de confinement (max-conf)
+max-conf
+17
+1
+11
+
+TEXTBOX
+244
+871
+394
+889
+Tout est du cumulé
+11
+0.0
 1
 
 @#$#@#$#@
