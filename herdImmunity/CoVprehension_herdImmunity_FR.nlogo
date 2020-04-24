@@ -15,9 +15,9 @@ turtles-own [
   my-travel-distance
   nb-infections
   nb-transmissions
-  xadr
-  yadr
-
+  quarantined?
+;  xadr
+;  yadr
 ]
 
 
@@ -30,13 +30,16 @@ immunised-own [ immunity-protection ]
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 globals [
+  headless-population-size
   headless-proportion-immunised
   headless-transmission-rate
   headless-avg-infectivity-duration
   headless-avg-immunity-duration
   headless-partial-immunity?
+  headless-lockdown-strategy
+  headless-lockdown-threshold
+  headless-lockdown-duration
 
-;  population-size
   population-density
   nb-infected-initialisation
   transmission-distance
@@ -46,12 +49,14 @@ globals [
   speed
   transparency
 
-  nb-Confinenement
+  lockdown?
+  lockdown-counter
 
   new-I
   new-R
   total-nb-I
   total-nb-R
+  total-prop-I
   date-all-infected
 
   ;; colors
@@ -62,15 +67,16 @@ globals [
 
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;; SCENARIO-DEPENDENT SETUP ;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;
+;;;;; SETUP ;;;;;
+;;;;;;;;;;;;;;;;;
 
 to setup
   clear-all
   random-seed 25
   reset-ticks
 
+  setup-GUI
   setup-globals
   setup-world
   setup-population
@@ -78,30 +84,44 @@ to setup
 ;  (vid:start-recorder 1080 1080)
 end
 
+to headless-setup
+  reset-ticks
 
-to setup-globals
+  setup-globals
+  setup-world
+  setup-population
+end
+
+
+to setup-GUI
+  set headless-population-size population-size
   set headless-proportion-immunised proportion-personnes-immunisees
   set headless-transmission-rate taux-de-transmission
   set headless-avg-infectivity-duration duree-de-contagiosite
   set headless-avg-immunity-duration duree-immunite * 30 ;; transform months into days
   set headless-partial-immunity? immunite-partielle?
+  set headless-lockdown-strategy STRATEGIE-DE-CONFINEMENT
+  set headless-lockdown-threshold seuil-confinement
+  set headless-lockdown-duration duree-confinement * 7 ;; transform weeks into days
+end
 
-;  set population-size 10000
+
+to setup-globals
+;  set headless-population-size 10000
   set population-density 105 ;; average for France
   set nb-infected-initialisation 1
   set transmission-distance 1
   set travel-distance 3
-  set walking-angle 50
-  set speed 0.5
+
+  set lockdown? false
+  set lockdown-counter -1
 
   set total-nb-I 0
   set total-nb-R 0
+  set total-prop-I 0
   set date-all-infected 0
 
   ;; colors
-;  set color-susceptible [223 194 125]
-;  set color-infected [128 205 193]
-;  set color-recovered [166 97 26]
   set color-susceptible [0 153 255]
   set color-infected [255 0 0]
   set color-recovered [0 0 0]
@@ -112,7 +132,7 @@ end
 to setup-world
   ;; resize the world to match given density and population-size
   let patch-side-size 100 ;; meters
-  let width (sqrt (population-size / population-density)) * 1000 / patch-side-size
+  let width (sqrt (headless-population-size / population-density)) * 1000 / patch-side-size
   let max-cor floor ((width - 1) / 2)
   resize-world (- max-cor) (max-cor) (- max-cor) (max-cor)
 
@@ -124,80 +144,38 @@ to setup-population
   set-default-shape turtles "circle"
 
   ;; susceptibles
-  create-turtles population-size [
+  create-turtles headless-population-size [
     setxy random-xcor random-ycor
-    set xadr xcor
-    set yadr ycor
+;    set xadr xcor
+;    set yadr ycor
     get-susceptible
     set nb-infections 0
     set nb-transmissions 0
-
+    set quarantined? false
   ]
 
   ;; immunised
-  let nb-immunised-init floor (headless-proportion-immunised / 100 * population-size)
+  let nb-immunised-init floor (headless-proportion-immunised / 100 * headless-population-size)
   ask up-to-n-of nb-immunised-init susceptibles [ get-immunised ]
 
   ;; import virus
   ask up-to-n-of nb-infected-initialisation susceptibles [ get-infected ]
 end
 
-to get-susceptible
-  set breed susceptibles
-  set color lput transparency color-susceptible
-  set state-duration -1
-  set my-travel-distance travel-distance
-end
-
-to get-immunised
-  set breed immunised
-  set color lput transparency color-recovered
-  set state-duration gamma-law headless-avg-immunity-duration 4
-  set my-travel-distance travel-distance
-  set nb-transmissions 0
-  if headless-partial-immunity? [ set immunity-protection ((random 51) + 50) / 100 ]
-
-  set new-R new-R + 1
-end
 
 
-to get-infected
-  set breed infected
-  set color lput transparency color-infected
-  set state-duration gamma-law headless-avg-infectivity-duration 1
-  set my-travel-distance travel-distance
-  set nb-infections nb-infections + 1
-
-  set new-I new-I + 1
-end
-
-
-to-report gamma-law [avg var]
-  let alpha avg * avg / var
-  let lambda avg / var
-
-  report floor random-gamma alpha lambda
-end
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;
-;;;;; PROCEDURES ;;;;;
-;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;
+;;;;; TIME STEP ;;;;;
+;;;;;;;;;;;;;;;;;;;;;
 
 to go
   ifelse virus-present?
   [
-    set new-I 0
-    set new-R 0
-
-    ;; movement
-    ask turtles [ move-randomly ]
-
-    ;; transmission
+    reset-case-counts
+    move-randomly
     virus-transmission
-
     update-states
+    quarantine-decision
 
     tick
 ;    vid:record-view
@@ -208,30 +186,43 @@ to go
   ]
 end
 
+to headless-go
+  reset-case-counts
+  move-randomly
+  virus-transmission
+  update-states
+  quarantine-decision
+
+  tick
+end
+
+
+to reset-case-counts
+  set new-I 0
+  set new-R 0
+end
+
 
 to move-randomly ;; turtle procedure
- set xcor xadr         ;;;; Il RESTE AUTOUR DE CHEZ LUI
- set ycor yadr
+  ask turtles with [not quarantined?] [
+    ;  set xcor xadr         ;;;; Il RESTE AUTOUR DE CHEZ LUI
+    ;  set ycor yadr
 
- set heading random 360
+    set heading random 360
 
+    while [my-travel-distance > 0] [
+      while [patch-ahead 1 = nobody] [ right random 360 ]
+      jump 1
+      set my-travel-distance my-travel-distance - 1
+    ]
 
- if (count infected < 0.015 * population-size) ; and (( count infected / (sum [nb-transmissions] of turtles + 1 )) < 1 )
-
- ; if not confined?
-  [ while [my-travel-distance > 0] [
-    while [patch-ahead 1 = nobody] [ right random 360 ]
-    jump 1
-    set my-travel-distance my-travel-distance - 1
+    set my-travel-distance travel-distance
   ]
-  ]
-
-  set my-travel-distance travel-distance
 end
 
 
 to virus-transmission ;; turtle procedure
-  ask infected [
+  ask infected with [not quarantined?] [
     let potential-contacts turtles in-radius transmission-distance
     let contacts n-of random (count potential-contacts) potential-contacts
 
@@ -256,11 +247,6 @@ to virus-transmission ;; turtle procedure
 end
 
 
-
-;;;;;;;;;;;;;;;;;;;
-;;;;; UPDATES ;;;;;
-;;;;;;;;;;;;;;;;;;;
-
 to update-states
   ask infected [
     (ifelse
@@ -278,7 +264,68 @@ to update-states
 
   set total-nb-I total-nb-I + new-I
   set total-nb-R total-nb-R + new-R
-  if count turtles with [nb-infections > 0] = population-size and date-all-infected = 0 [ set date-all-infected ticks ]
+  set total-prop-I total-nb-I / ((1 - headless-proportion-immunised / 100) * headless-population-size) * 100
+  if count turtles with [nb-infections > 0] = headless-population-size and date-all-infected = 0 [ set date-all-infected ticks ]
+end
+
+
+to quarantine-decision
+  (ifelse
+    not lockdown? and prop-I > headless-lockdown-threshold [
+      set lockdown? true
+      set lockdown-counter headless-lockdown-duration
+
+      (ifelse
+        headless-lockdown-strategy = "tout le monde" [ ask turtles [ set quarantined? true ] ]
+        headless-lockdown-strategy = "uniquement les personnes infectées" [ ask infected [ set quarantined? true ] ]
+      )
+    ]
+
+    lockdown? and lockdown-counter > 0 [
+      set lockdown-counter lockdown-counter - 1
+    ]
+
+    lockdown? and lockdown-counter = 0 [
+      set lockdown? false
+      set lockdown-counter -1
+      ask turtles [ set quarantined? false ]
+    ]
+  )
+
+end
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;; EPIDEMIC STATES ;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to get-susceptible
+  set breed susceptibles
+  set color lput transparency color-susceptible
+  set state-duration -1
+  set my-travel-distance travel-distance
+end
+
+to get-infected
+  set breed infected
+  set color lput transparency color-infected
+  set state-duration gamma-law headless-avg-infectivity-duration 1
+  set my-travel-distance travel-distance
+  set nb-infections nb-infections + 1
+
+  set new-I new-I + 1
+end
+
+to get-immunised
+  set breed immunised
+  set color lput transparency color-recovered
+  set state-duration gamma-law headless-avg-immunity-duration 4
+  set my-travel-distance travel-distance
+  set nb-transmissions 0
+  if headless-partial-immunity? [ set immunity-protection ((random 51) + 50) / 100 ]
+
+  set new-R new-R + 1
 end
 
 
@@ -287,12 +334,23 @@ end
 ;;;;; REPORTERS ;;;;;
 ;;;;;;;;;;;;;;;;;;;;;
 
+to-report gamma-law [avg var]
+  let alpha avg * avg / var
+  let lambda avg / var
+
+  report floor random-gamma alpha lambda
+end
+
 to-report nb-S
   report count susceptibles
 end
 
 to-report nb-I
   report count infected
+end
+
+to-report prop-I
+  report nb-I / headless-population-size * 100
 end
 
 to-report nb-R
@@ -482,10 +540,10 @@ nb-R
 11
 
 MONITOR
-73
-373
-453
-418
+17
+389
+397
+434
 temps nécessaire pour infecter 100% de la population (en jours)
 date-all-infected
 0
@@ -566,16 +624,56 @@ false
 PENS
 "default" 0.01 1 -16777216 true "" "histogram [immunity-protection] of immunised"
 
-SWITCH
-536
-74
-655
-107
-Confined?
-Confined?
+CHOOSER
+307
+228
+620
+273
+STRATEGIE-DE-CONFINEMENT
+STRATEGIE-DE-CONFINEMENT
+"tout le monde" "uniquement les personnes infectées"
+1
+
+SLIDER
+309
+149
+511
+182
+seuil-confinement
+seuil-confinement
+0
+100
+15.0
+5
+1
+%
+HORIZONTAL
+
+MONITOR
+414
+389
+647
+434
+% de personnes saines infectées
+total-prop-I
+2
+1
+11
+
+SLIDER
+307
+187
+574
+220
+duree-confinement
+duree-confinement
+1
+20
+2.0
 1
 1
--1000
+semaines
+HORIZONTAL
 
 @#$#@#$#@
 ## Qu'est-ce que c'est ?
