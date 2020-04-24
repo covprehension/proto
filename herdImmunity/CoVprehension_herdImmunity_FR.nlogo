@@ -46,6 +46,8 @@ globals [
   speed
   transparency
 
+  nb-Confinenement
+
   new-I
   new-R
   total-nb-I
@@ -88,7 +90,7 @@ to setup-globals
   set population-density 105 ;; average for France
   set nb-infected-initialisation 1
   set transmission-distance 1
-  set travel-distance 5
+  set travel-distance 3
   set walking-angle 50
   set speed 0.5
 
@@ -213,7 +215,10 @@ to move-randomly ;; turtle procedure
 
  set heading random 360
 
- if not confined?
+
+ if (count infected < 0.015 * population-size) ; and (( count infected / (sum [nb-transmissions] of turtles + 1 )) < 1 )
+
+ ; if not confined?
   [ while [my-travel-distance > 0] [
     while [patch-ahead 1 = nobody] [ right random 360 ]
     jump 1
@@ -507,7 +512,7 @@ duree-immunite
 duree-immunite
 0
 24
-2.0
+24.0
 1
 1
 mois
@@ -520,7 +525,7 @@ SWITCH
 231
 immunite-partielle?
 immunite-partielle?
-0
+1
 1
 -1000
 
