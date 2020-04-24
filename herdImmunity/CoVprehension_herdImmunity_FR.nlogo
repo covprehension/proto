@@ -15,6 +15,9 @@ turtles-own [
   my-travel-distance
   nb-infections
   nb-transmissions
+  xadr
+  yadr
+
 ]
 
 
@@ -121,6 +124,8 @@ to setup-population
   ;; susceptibles
   create-turtles population-size [
     setxy random-xcor random-ycor
+    set xadr xcor
+    set yadr ycor
     get-susceptible
     set nb-infections 0
     set nb-transmissions 0
@@ -147,7 +152,7 @@ to get-immunised
   set color lput transparency color-recovered
   set state-duration gamma-law headless-avg-immunity-duration 4
   set my-travel-distance travel-distance
-
+  set nb-transmissions 0
   if headless-partial-immunity? [ set immunity-protection ((random 51) + 50) / 100 ]
 
   set new-R new-R + 1
@@ -203,12 +208,17 @@ end
 
 
 to move-randomly ;; turtle procedure
-  right random 360
+ set xcor xadr         ;;;; Il RESTE AUTOUR DE CHEZ LUI
+ set ycor yadr
 
-  while [my-travel-distance > 0] [
+ set heading random 360
+
+ if not confined?
+  [ while [my-travel-distance > 0] [
     while [patch-ahead 1 = nobody] [ right random 360 ]
     jump 1
     set my-travel-distance my-travel-distance - 1
+  ]
   ]
 
   set my-travel-distance travel-distance
@@ -218,7 +228,7 @@ end
 to virus-transmission ;; turtle procedure
   ask infected [
     let potential-contacts turtles in-radius transmission-distance
-    let contacts n-of random (count potential-contacts + 1) potential-contacts
+    let contacts n-of random (count potential-contacts) potential-contacts
 
     ask contacts with [breed = susceptibles] [
       if random-float 1 < headless-transmission-rate [
@@ -352,7 +362,7 @@ NIL
 PLOT
 18
 456
-457
+666
 719
 Dynamique épidémique
 Jours
@@ -417,7 +427,7 @@ HORIZONTAL
 PLOT
 18
 718
-457
+546
 981
 Nombre de nouveaux cas par jour
 Jours
@@ -497,7 +507,7 @@ duree-immunite
 duree-immunite
 0
 24
-1.0
+2.0
 1
 1
 mois
@@ -530,7 +540,8 @@ true
 false
 "" ""
 PENS
-"default" 1.0 1 -16777216 true "" "histogram [nb-transmissions] of turtles"
+"default" 1.0 0 -16777216 true "" "set-plot-pen-color black plot sum [nb-transmissions] of turtles "
+"pen-1" 1.0 0 -7500403 true "" "set-plot-pen-color red plot count infected"
 
 PLOT
 928
@@ -549,6 +560,17 @@ false
 "" ""
 PENS
 "default" 0.01 1 -16777216 true "" "histogram [immunity-protection] of immunised"
+
+SWITCH
+536
+74
+655
+107
+Confined?
+Confined?
+1
+1
+-1000
 
 @#$#@#$#@
 ## Qu'est-ce que c'est ?
