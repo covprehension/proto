@@ -30,6 +30,7 @@ globals [ ;;global parameters
   nb-infected-identified-removed
   nb-contagious-cumulated
   nb-non-infected-lockeddown
+  contacts-to-warn
 ]
 
 patches-own [wall]
@@ -235,7 +236,6 @@ to update-epidemics
 end
 
 
-
 to get-in-contact
   ask citizens
   [
@@ -274,6 +274,7 @@ to get-in-contact
     ]
   ]
 end
+
 
 
 
@@ -323,13 +324,14 @@ to get-tested [order]
         ]
       ]
       if equiped? and (SCENARIO = "Confinement simple + traçage des contacts")[
-        backtrack-contacts order + 1
+        show ["backtrack"]
+        detect-contacts order + 1
       ]
     ]
   ]
 end
 
-to backtrack-contacts [order]
+to detect-contacts [order]
 
  ; probability-respect-lockdown-when-tagged
   let me self
@@ -342,37 +344,54 @@ to backtrack-contacts [order]
 
     if is-agentset? contacts-j[
       if date-j >= (my-lockdown-date - (nb-days-before-test-tagging-contacts * nb-step-per-day))[
-        ask contacts-j with [lockdown? = 0][
-          ;;ICI STRATEGIE DE DEPISTAGE SYSTEMATIQUE DE TOUS LES CONTACTS
-          ifelse Confinement_avec_Test?[
-            ;On vérifie qu'on ne teste pas deux fois le même ticks
-            if (not member? ticks list-date-test)[
-              ifelse (lockdown? = 0)[
-                get-tested order
-              ][
-                if contact-order > order [
-                  set contact-order order
-                ]
-              ]
-              if montre-liens?[
-                create-link-from me [set shape "link-arn" set color item (order - 2) list-colors-contacts]
-              ]
-            ]
-          ][
-            if random-float 1 < probability-respect-lockdown-when-tagged[
-              lockdown (order)
-              backtrack-contacts (order + 1)
-              set contact-order order
-              if montre-liens?[
-                create-link-from me [set shape "link-arn" set color item (order - 2) list-colors-contacts  ]
-              ]
-            ]
-          ]
-        ]
+        set contacts-to-warn (turtle-set contacts-to-warn contacts-j)
       ]
     ]
     set j j + 1
   ]
+end
+
+to warn-contacts [order]
+  ifelse Confinement_avec_Test?[
+    ask contacts-to-warn [
+      get-tested order
+    ]
+  ][
+    if random-float 1 < probability-respect-lockdown-when-tagged[
+      ask contacts-to-warn[
+      lockdown order
+      detect-contacts order + 1
+      ]
+    ]
+  ]
+;            ;On vérifie qu'on ne teste pas deux fois le même ticks
+;            if (not member? ticks list-date-test)[
+;              ifelse (lockdown? = 0)[
+;                get-tested order
+;              ][
+;
+;                if contact-order > order [
+;                  set contact-order order
+;                  show ["rattrapage"]
+;                ]
+;              ]
+;              if montre-liens?[
+;                create-link-from me [set shape "link-arn" set color item (order - 2) list-colors-contacts]
+;              ]
+;            ]
+;          ][
+;            if random-float 1 < probability-respect-lockdown-when-tagged[
+;              lockdown (order)
+;              backtrack-contacts (order + 1)
+;              set contact-order order
+;              if montre-liens?[
+;                create-link-from me [set shape "link-arn" set color item (order - 2) list-colors-contacts  ]
+;              ]
+;            ]
+;          ]
+;        ]
+;      ]
+
 end
 
 
