@@ -1231,6 +1231,28 @@ PENS
 "Confinés détectés" 1.0 0 -13345367 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) count citizens with [detected? and lockdown? = 1]]"
 "Confinés non détectés" 1.0 0 -11221820 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) count citizens with [not detected? and lockdown? = 1]]"
 
+MONITOR
+1553
+745
+1750
+790
+Détections suite à symptômes
+count citizens with [detected? and contact-order = 1]
+17
+1
+11
+
+MONITOR
+1555
+800
+1722
+845
+Détections grâce à l'appli
+count citizens with [detected? and contact-order = 2]
+17
+1
+11
+
 @#$#@#$#@
 ## THINGS TO TRY
 
