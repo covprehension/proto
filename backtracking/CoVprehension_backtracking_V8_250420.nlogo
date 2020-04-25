@@ -194,14 +194,18 @@ to move-citizens
     ifelse lockdown? = 1[
       set nb-step-confinement (nb-step-confinement + 1)
       if epidemic-state = R[
-        if clean? my-house[
-          ask my-house[
-          foreach my-humans[
-            [my-human] -> ask my-human [
-              set lockdown? 0
+        ifelse family-lockdown?[
+          if clean? my-house[
+            ask my-house[
+            foreach my-humans[
+              [my-human] -> ask my-human [
+                set lockdown? 0
+                ]
               ]
             ]
           ]
+        ][
+          set lockdown? 0
         ]
       ]
     ][
