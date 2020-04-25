@@ -77,14 +77,17 @@ to setup-globals
   set I 3
   set R 4
 
+  if fixed-seed?[
+    fix-seed
+  ]
 
   set population-size Taille_population
   set nb-house (population-size / 2)
 
  ; set transmission-distance 1 ACCELERATION CODE DANS get-in-contact AVEC PRIMITIVE NEIGHBORS
   ;set probability-asymptomatic-infection 0.3
-  set probability-transmission 0.05;0.15
-  set probability-transmission-asymptomatic 0.025;0.07
+  set probability-transmission 0.013;0.05;0.15
+  set probability-transmission-asymptomatic 0.065;0.025;0.07
   ;set incubation-period 5 * nb-step-per-day
   set walking-angle 50
   set speed 0.5
@@ -141,6 +144,7 @@ to setup-population
     set resistant? false ; resistance is really "defined" when the citizen is Exposed to the virus
   ]
   set-infected-initialisation
+  set-R-initialisation
   set-equiped-initialisation
 end
 
@@ -155,6 +159,12 @@ end
 to set-infected-initialisation
   ask n-of Nb_infected_initialisation citizens [
     become-exposed
+  ]
+end
+
+to set-R-initialisation
+  ask n-of (initial-R-proportion / 100 * population-size) citizens with [not (epidemic-state = Ex)][
+    set epidemic-state R
   ]
 end
 
@@ -541,7 +551,13 @@ to-report mean-contacts-ticks
   report mean [nb-contacts-ticks] of citizens
 end
 
+to-report symptom-detected
+  report count citizens with [detected? and contact-order = 1]
+end
 
+to-report contact-detected
+  report count citizens with [detected? and contact-order = 2]
+end
 
 ;==============
 
@@ -550,7 +566,7 @@ end
 ;===============
 
 to fix-seed
- random-seed 47822
+ random-seed seed
 end
 
 ;to send-user-message
@@ -793,7 +809,7 @@ nb-days-before-test-tagging-contacts
 nb-days-before-test-tagging-contacts
 1
 5
-5.0
+1.0
 1
 1
 days
@@ -819,7 +835,7 @@ proportion-equiped
 proportion-equiped
 0
 100
-90.0
+40.0
 10
 1
 NIL
@@ -1237,7 +1253,7 @@ MONITOR
 1750
 790
 Détections suite à symptômes
-count citizens with [detected? and contact-order = 1]
+symptom-detected
 17
 1
 11
@@ -1248,10 +1264,58 @@ MONITOR
 1722
 845
 Détections grâce à l'appli
-count citizens with [detected? and contact-order = 2]
+contact-detected
 17
 1
 11
+
+MONITOR
+1554
+866
+1782
+911
+proportion de R dans la population
+nb-R / population-size
+17
+1
+11
+
+SLIDER
+659
+599
+836
+632
+initial-R-proportion
+initial-R-proportion
+0
+100
+60.0
+1
+1
+NIL
+HORIZONTAL
+
+SWITCH
+1589
+61
+1718
+94
+fixed-seed?
+fixed-seed?
+1
+1
+-1000
+
+INPUTBOX
+1579
+93
+1728
+153
+seed
+10.0
+1
+0
+Number
 
 @#$#@#$#@
 ## THINGS TO TRY
@@ -1662,6 +1726,50 @@ NetLogo 6.1.1
     <enumeratedValueSet variable="family-lockdown?">
       <value value="true"/>
       <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="Test_V8" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <exitCondition>not any? citizens with [contagious?]</exitCondition>
+    <metric>MaxI%</metric>
+    <metric>%nb-I-Total</metric>
+    <metric>epidemic-duration</metric>
+    <metric>max-conf</metric>
+    <metric>symptom-detected</metric>
+    <metric>contact-detected</metric>
+    <metric>nb-R / population-size</metric>
+    <enumeratedValueSet variable="Confinement_avec_Test?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="delay-before-test">
+      <value value="6"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Nb_infected_initialisation">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="population-size">
+      <value value="2000"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="nb-days-before-test-tagging-contacts">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fixed-seed">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="proportion-equiped">
+      <value value="40"/>
+      <value value="70"/>
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="family-lockdown?">
+      <value value="true"/>
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="initial-R-proportion">
+      <value value="0"/>
+      <value value="6"/>
+      <value value="60"/>
     </enumeratedValueSet>
   </experiment>
 </experiments>
