@@ -30,6 +30,7 @@ globals [ ;;global parameters
   nb-infected-identified-removed
   nb-contagious-cumulated
   nb-non-infected-lockeddown
+  nb-co-infected
   contacts-to-warn
   contacts-to-warn-next
 ]
@@ -41,7 +42,7 @@ breed [houses house]
 
 citizens-own
 [
-  epidemic-state;FA: S, Ex, Ia, I or R
+  epidemic-state; S, Ex, Ia, I or R
   infection-date
   infection-source
   nb-other-infected
@@ -61,6 +62,9 @@ citizens-own
   nb-contacts-ticks
   nb-contacts-total-Infectious ; ttotal number of contacts during infectious period
   nb-lockeddown
+  difference
+  potential-co-infected
+  family-infection?
 ]
 
 houses-own
@@ -138,6 +142,8 @@ to setup-population
     set list-date-test []
     set nb-other-infected 0
     set contact-order 0
+    set potential-co-infected false
+    set family-infection? false
     set equiped? false
     set detected? false
     set contagious? false
@@ -267,7 +273,9 @@ to get-in-contact
   ask citizens
   [
     ifelse lockdown? = 0[
-      let contacts other citizens-on neighbors
+      let contacts (turtle-set other citizens-here citizens-on neighbors)
+      ;let contactsv other citizens-on neighbors
+      ;set difference (count contacts - count contactsv)
       set nb-contacts-ticks count contacts
       if contagious? [set nb-contacts-total-Infectious nb-contacts-total-Infectious + nb-contacts-ticks]
       set contacts contacts with [lockdown? = 0]
@@ -296,6 +304,7 @@ to get-in-contact
         ]
         if co-infected?[
           get-virus infection-contact
+          set potential-co-infected true
         ]
       ]
     ]
@@ -304,10 +313,16 @@ end
 
 
 to get-virus [contact-source]
-  if ( ([contagious?] of contact-source)  and (random-float 1 < (contagiousness contact-source)) ) [
+  ifelse ( ([contagious?] of contact-source)  and (random-float 1 < (contagiousness contact-source)) ) [
     become-exposed
     set infection-source contact-source
     ask contact-source [set nb-other-infected nb-other-infected + 1]
+    set family-infection? (my-house = [my-house] of contact-source)
+    if potential-co-infected [
+      set nb-co-infected nb-co-infected + 1
+    ]
+  ][
+    set potential-co-infected false
   ]
 end
 
@@ -551,12 +566,20 @@ to-report mean-contacts-ticks
   report mean [nb-contacts-ticks] of citizens
 end
 
+to-report mean-difference
+  report mean [difference] of citizens
+end
+
 to-report symptom-detected
   report count citizens with [detected? and contact-order = 1]
 end
 
 to-report contact-detected
   report count citizens with [detected? and contact-order = 2]
+end
+
+to-report citizens-per-house
+  report mean [length my-humans] of houses
 end
 
 ;==============
@@ -835,7 +858,7 @@ proportion-equiped
 proportion-equiped
 0
 100
-40.0
+50.0
 10
 1
 NIL
@@ -1232,8 +1255,8 @@ PLOT
 1513
 921
 Instantané : contagieux - détectés - confinés détectés - confinés non détectés
-NIL
-NIL
+Durée de l'épidémie
+Nombre
 0.0
 10.0
 0.0
@@ -1289,7 +1312,7 @@ initial-R-proportion
 initial-R-proportion
 0
 100
-60.0
+6.0
 1
 1
 NIL
@@ -1302,7 +1325,7 @@ SWITCH
 94
 fixed-seed?
 fixed-seed?
-1
+0
 1
 -1000
 
@@ -1316,6 +1339,39 @@ seed
 1
 0
 Number
+
+MONITOR
+1343
+178
+1737
+223
+# de membres d'une famille infectés après un famliy lockdown
+nb-co-infected
+17
+1
+11
+
+MONITOR
+1344
+223
+1815
+268
+Nombre de personnes infectées par des gens qui habitent la même maison
+count citizens with [family-infection?]
+17
+1
+11
+
+MONITOR
+1558
+10
+1805
+55
+NIL
+citizens-per-house
+17
+1
+11
 
 @#$#@#$#@
 ## THINGS TO TRY
