@@ -31,8 +31,11 @@ globals [ ;;global parameters
   nb-contagious-cumulated
   nb-non-infected-lockeddown
   nb-co-infected
+  mean-daily-contacts
+  mean-mean-daily-contacts
   contacts-to-warn
   contacts-to-warn-next
+  list-mean-contacts
 ]
 
 patches-own [wall]
@@ -54,6 +57,7 @@ citizens-own
   nb-step-confinement
   liste-contacts
   liste-contact-dates
+  daily-contacts
   equiped?
   detected?
   list-date-test
@@ -90,8 +94,8 @@ to setup-globals
 
  ; set transmission-distance 1 ACCELERATION CODE DANS get-in-contact AVEC PRIMITIVE NEIGHBORS
   ;set probability-asymptomatic-infection 0.3
-  set probability-transmission 0.013;0.05;0.15
-  set probability-transmission-asymptomatic 0.065;0.025;0.07
+  set probability-transmission R0-a-priori / (10 * 19) ;0.013;0.05;0.15
+  set probability-transmission-asymptomatic probability-transmission / 2 ;0.065;0.025;0.07
   ;set incubation-period 5 * nb-step-per-day
   set walking-angle 50
   set speed 0.5
@@ -102,6 +106,8 @@ to setup-globals
   set list-colors-contacts [white 125]
   set contacts-to-warn-next no-turtles
   set contacts-to-warn no-turtles
+  set list-mean-contacts []
+  set mean-mean-daily-contacts []
 end
 
 to setup-walls
@@ -140,6 +146,7 @@ to setup-population
     set liste-contacts []
     set liste-contact-dates []
     set list-date-test []
+    set daily-contacts nobody
     set nb-other-infected 0
     set contact-order 0
     set potential-co-infected false
@@ -200,6 +207,9 @@ to go
   update-epidemics
   update-max-I
   update-max-conf
+  update-list-mean-contacts
+  update-mean-daily-contacts
+  update-mean-mean-daily-contacts
 
   tick
 end
@@ -273,10 +283,14 @@ to get-in-contact
   ask citizens
   [
     ifelse lockdown? = 0[
+      if (((ticks - 1) mod 4) = 0)[
+        set daily-contacts nobody
+      ]
       let contacts (turtle-set other citizens-here citizens-on neighbors)
       ;let contactsv other citizens-on neighbors
       ;set difference (count contacts - count contactsv)
       set nb-contacts-ticks count contacts
+      set daily-contacts (turtle-set daily-contacts contacts)
       if contagious? [set nb-contacts-total-Infectious nb-contacts-total-Infectious + nb-contacts-ticks]
       set contacts contacts with [lockdown? = 0]
       if equiped? [
@@ -582,6 +596,15 @@ to-report citizens-per-house
   report mean [length my-humans] of houses
 end
 
+to-report mean-contacts
+  report mean list-mean-contacts
+end
+
+to-report mean-mean-daily-contacts-nb
+  report mean mean-mean-daily-contacts
+end
+
+
 ;==============
 
 ;TECHNICAL ADDS
@@ -615,6 +638,20 @@ to update-max-conf
   let nb-conf count citizens with [lockdown? = 1]
   if nb-conf > max-conf [set max-conf nb-conf]
 end
+
+to update-list-mean-contacts
+  set list-mean-contacts lput mean-contacts-ticks list-mean-contacts
+end
+
+to update-mean-daily-contacts
+  if ((ticks mod 4) = 0)[
+    set mean-daily-contacts mean [count daily-contacts] of citizens
+  ]
+end
+
+to update-mean-mean-daily-contacts
+  set mean-mean-daily-contacts lput mean-daily-contacts mean-mean-daily-contacts
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 2
@@ -644,10 +681,10 @@ ticks
 30.0
 
 BUTTON
-1039
-557
-1127
-612
+660
+576
+748
+631
 Initialiser
 setup
 NIL
@@ -661,10 +698,10 @@ NIL
 1
 
 BUTTON
-1128
-557
-1216
-612
+749
+576
+837
+631
 Simuler
 go
 T
@@ -733,16 +770,6 @@ SCENARIO
 "Laisser faire" "Confinement simple" "Confinement simple + traçage des contacts"
 2
 
-TEXTBOX
-1020
-11
-1344
-32
-La période de contagion est fixée à 14 jours
-14
-25.0
-1
-
 MONITOR
 593
 317
@@ -766,10 +793,10 @@ MaxI%
 11
 
 SWITCH
-1039
-616
-1181
-649
+23
+846
+165
+879
 Montre-liens?
 Montre-liens?
 1
@@ -777,10 +804,10 @@ Montre-liens?
 -1000
 
 BUTTON
-1039
-651
-1141
-684
+23
+881
+125
+914
 Cache liens
 ask links [die]
 NIL
@@ -794,27 +821,12 @@ NIL
 1
 
 SLIDER
-1016
-223
-1279
-256
+1015
+198
+1278
+231
 probability-success-test-infected
 probability-success-test-infected
-0
-1
-1.0
-0.1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-1016
-185
-1298
-218
-probability-respect-lockdown-when-tagged
-probability-respect-lockdown-when-tagged
 0
 1
 1.0
@@ -825,9 +837,24 @@ HORIZONTAL
 
 SLIDER
 1015
-109
-1293
-142
+160
+1297
+193
+probability-respect-lockdown-when-tagged
+probability-respect-lockdown-when-tagged
+0
+1
+1.0
+0.1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1014
+84
+1292
+117
 nb-days-before-test-tagging-contacts
 nb-days-before-test-tagging-contacts
 1
@@ -850,25 +877,25 @@ Population confinée (%)
 11
 
 SLIDER
-1016
-147
-1194
-180
+1015
+122
+1193
+155
 proportion-equiped
 proportion-equiped
 0
 100
-50.0
+70.0
 10
 1
 NIL
 HORIZONTAL
 
 SLIDER
-1015
-71
-1210
-104
+1014
+46
+1209
+79
 incubation-duration
 incubation-duration
 0
@@ -880,10 +907,10 @@ days
 HORIZONTAL
 
 SLIDER
-1014
-35
-1217
-68
+1013
+10
+1216
+43
 delay-before-test
 delay-before-test
 0
@@ -906,16 +933,16 @@ nb-detected
 11
 
 SLIDER
-854
-566
-1026
-599
+1015
+326
+1187
+359
 Taille_population
 Taille_population
 0
 10000
-2000.0
-1000
+1750.0
+250
 1
 NIL
 HORIZONTAL
@@ -932,10 +959,10 @@ Population testée (%)
 11
 
 SLIDER
-854
-603
-1026
-636
+1015
+363
+1187
+396
 Nb_infected_initialisation
 Nb_infected_initialisation
 1
@@ -947,10 +974,10 @@ NIL
 HORIZONTAL
 
 MONITOR
-1297
-271
-1354
-316
+1304
+250
+1361
+295
 NIL
 nb-I
 17
@@ -958,10 +985,10 @@ nb-I
 11
 
 MONITOR
-1412
-271
-1469
-316
+1419
+250
+1476
+295
 NIL
 nb-R
 17
@@ -969,10 +996,10 @@ nb-R
 11
 
 MONITOR
-1355
-271
-1412
-316
+1362
+250
+1419
+295
 NIL
 nb-Ex
 17
@@ -980,10 +1007,10 @@ nb-Ex
 11
 
 MONITOR
-1471
-270
-1528
-315
+1478
+249
+1535
+294
 NIL
 nb-S
 17
@@ -991,17 +1018,17 @@ nb-S
 11
 
 PLOT
-1587
-330
-1787
-480
+1582
+294
+1782
+444
 R0
 Durée de l'épidémie
 R0
 0.0
 70.0
 0.0
-10.0
+5.0
 true
 false
 "" ""
@@ -1009,10 +1036,10 @@ PENS
 "R0" 1.0 0 -16777216 true "" "if (nb-R > 0) [plotxy (ticks / nb-step-per-day) (R0)]"
 
 PLOT
-1300
-330
-1580
-480
+1295
+294
+1575
+444
 Nombre d'infections secondaires
 NIL
 NIL
@@ -1027,10 +1054,10 @@ PENS
 "default" 1.0 1 -16777216 true "" "histogram [nb-other-infected] of citizens with [nb-other-infected > 0]"
 
 PLOT
-1573
-546
-1773
-696
+1579
+591
+1779
+741
 Histogramme des ordres
 NIL
 NIL
@@ -1051,15 +1078,15 @@ SWITCH
 564
 Family-Lockdown?
 Family-Lockdown?
-0
+1
 1
 -1000
 
 PLOT
-1342
-28
-1542
-178
+1301
+10
+1501
+160
 Family lockdown
 NIL
 NIL
@@ -1074,10 +1101,10 @@ PENS
 "default" 1.0 0 -16777216 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) (family-locked-down)]"
 
 PLOT
-1025
-330
-1295
-480
+988
+414
+1258
+564
 nombre de contacts
 nombre de contacts par ticks
 NIL
@@ -1092,21 +1119,21 @@ PENS
 "default" 1.0 1 -16777216 true "" "histogram [nb-contacts-ticks] of citizens"
 
 MONITOR
-1031
-488
-1269
-533
-nombre de contacts moyen par ticks
+988
+561
+1276
+606
+Nb de contacts moyen par ticks
 mean-contacts-ticks
 17
 1
 11
 
 SLIDER
-1016
-256
-1290
-289
+1015
+231
+1289
+264
 probability-asymptomatic-infection
 probability-asymptomatic-infection
 0
@@ -1118,10 +1145,10 @@ NIL
 HORIZONTAL
 
 MONITOR
-1793
-436
-1851
-481
+1476
+446
+1534
+491
 NIL
 R0
 2
@@ -1151,10 +1178,10 @@ nb-infected-identified
 11
 
 PLOT
-633
-650
-1013
-873
+597
+647
+977
+870
 Contagieux vs Identifiés vs Confinés
 Durée de l'épidémie
 Nombre
@@ -1194,10 +1221,10 @@ nb-non-infected-lockeddown
 11
 
 PLOT
-1365
-546
-1565
-696
+1579
+444
+1779
+594
 Lockeddown
 NIL
 NIL
@@ -1212,10 +1239,10 @@ PENS
 "default" 1.0 1 -16777216 true "" "histogram [nb-lockeddown] of citizens"
 
 BUTTON
-1217
-557
-1296
-609
+838
+576
+917
+628
 Step
 go
 NIL
@@ -1250,10 +1277,10 @@ Tout est du cumulé
 1
 
 PLOT
-1067
-705
-1513
-921
+978
+692
+1424
+908
 Instantané : contagieux - détectés - confinés détectés - confinés non détectés
 Durée de l'épidémie
 Nombre
@@ -1304,25 +1331,25 @@ nb-R / population-size
 11
 
 SLIDER
-659
-599
-836
-632
+1015
+296
+1192
+329
 initial-R-proportion
 initial-R-proportion
 0
 100
-6.0
+0.0
 1
 1
 NIL
 HORIZONTAL
 
 SWITCH
-1589
-61
-1718
-94
+1513
+60
+1642
+93
 fixed-seed?
 fixed-seed?
 0
@@ -1330,10 +1357,10 @@ fixed-seed?
 -1000
 
 INPUTBOX
-1579
-93
-1728
-153
+1503
+92
+1652
+152
 seed
 10.0
 1
@@ -1341,10 +1368,10 @@ seed
 Number
 
 MONITOR
-1343
-178
-1737
-223
+1302
+160
+1696
+205
 # de membres d'une famille infectés après un famliy lockdown
 nb-co-infected
 17
@@ -1352,10 +1379,10 @@ nb-co-infected
 11
 
 MONITOR
-1344
-223
-1815
-268
+1303
+205
+1774
+250
 Nombre de personnes infectées par des gens qui habitent la même maison
 count citizens with [family-infection?]
 17
@@ -1363,12 +1390,71 @@ count citizens with [family-infection?]
 11
 
 MONITOR
-1558
+1506
 10
-1805
+1629
 55
 NIL
 citizens-per-house
+17
+1
+11
+
+MONITOR
+989
+605
+1276
+650
+Nb de contacts moyens depuis le début
+mean-contacts
+17
+1
+11
+
+SLIDER
+1015
+262
+1187
+295
+R0-a-priori
+R0-a-priori
+0
+10
+4.0
+1
+1
+NIL
+HORIZONTAL
+
+MONITOR
+1298
+447
+1476
+492
+Probabilté de transmission
+probability-transmission
+17
+1
+11
+
+MONITOR
+1277
+562
+1516
+607
+Nb de contacts moyen par jour (inst)
+mean-daily-contacts
+17
+1
+11
+
+MONITOR
+1276
+607
+1537
+652
+Nb de contacts moyens par jour (cumul)
+mean-mean-daily-contacts-nb
 17
 1
 11
