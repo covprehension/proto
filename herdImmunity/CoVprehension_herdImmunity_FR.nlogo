@@ -16,8 +16,8 @@ turtles-own [
   nb-infections
   nb-transmissions
   quarantined?
-;  xadr
-;  yadr
+ ; xadr
+ ; yadr
 ]
 
 
@@ -51,6 +51,7 @@ globals [
 
   lockdown?
   lockdown-counter
+  nb_LD
 
   new-I
   new-R
@@ -146,8 +147,8 @@ to setup-population
   ;; susceptibles
   create-turtles headless-population-size [
     setxy random-xcor random-ycor
-;    set xadr xcor
-;    set yadr ycor
+  ;  set xadr xcor
+  ;  set yadr ycor
     get-susceptible
     set nb-infections 0
     set nb-transmissions 0
@@ -273,6 +274,8 @@ to quarantine-decision
   (ifelse
     not lockdown? and prop-I > headless-lockdown-threshold [
       set lockdown? true
+      set nb_LD nb_LD + 1
+
       set lockdown-counter headless-lockdown-duration
 
       (ifelse
@@ -509,7 +512,7 @@ PENS
 MONITOR
 20
 304
-171
+159
 349
 nb de personnes saines
 nb-S
@@ -518,9 +521,9 @@ nb-S
 11
 
 MONITOR
-190
+165
 305
-355
+321
 350
 nb de personnes infectées
 nb-I
@@ -529,9 +532,9 @@ nb-I
 11
 
 MONITOR
-378
+325
 305
-533
+477
 350
 nb de personnes guéries
 nb-R
@@ -579,7 +582,7 @@ HORIZONTAL
 SWITCH
 17
 198
-210
+223
 231
 immunite-partielle?
 immunite-partielle?
@@ -643,8 +646,8 @@ seuil-confinement
 seuil-confinement
 0
 100
-15.0
-5
+11.0
+1
 1
 %
 HORIZONTAL
@@ -669,11 +672,22 @@ duree-confinement
 duree-confinement
 1
 20
-2.0
+3.0
 1
 1
 semaines
 HORIZONTAL
+
+MONITOR
+777
+688
+928
+733
+Périodes de confinements
+nb_LD
+17
+1
+11
 
 @#$#@#$#@
 ## Qu'est-ce que c'est ?
