@@ -41,6 +41,9 @@ globals [
   infection-variance
   incubation-mean
   incubation-variance
+  
+  proba-false-pos
+  proba-false-neg
 ]
 
 
@@ -113,7 +116,7 @@ to setup-globals
   set walking-angle 50
   set speed 0.5
   set transparency 145
-  set population-size 200
+  set population-size 300
   set %unreported-infections 50
   
   ; for now probability of transmission is the same whatever the source's status
@@ -125,6 +128,12 @@ to setup-globals
   set incubation-variance 30
   set infection-mean 210
   set infection-variance 10
+  
+  set proba-false-pos 0.1
+  set proba-false-neg 0.1
+  
+  ; TODO: when to start the testing campaign?
+  ; after X deaths? use a slider to explore impact of testing earlier
 end
 
 
@@ -140,11 +149,11 @@ to setup-population
 
     ; new depistage
     ; setup age, gender, telework : TODO: use realistic stats?
-    set age random 100
+    set age random 100   ; FIXME integer age, or string category school / work / retired ?
     set gender item random 2 ["male" "female"]
-    if-else random 2 = 0 ; about 50% of people work from home
-    [set telework? true]
-    [set telework? false]
+    if-else age < 20 or age > 65 or random 2 = 0 
+    [set telework? true]   ; about 50% of people work from home + kids + retired
+    [set telework? false]  ; the rest has to work outside
     set tested? false
     set positive? false
 
@@ -152,32 +161,35 @@ to setup-population
     show-epidemic-state
   ]
 
+  ; set who is infected initially
   set-infected-initialisation
 end
 
 
 ; set some agents to be initially infected to start the epidemics
-; FIXME: find exact  statistically more symptomatic or asymptomatic infected people?
+; FIXME: find exact statistics about proportions of symptomatic / asymptomatic (here inverted...)
 to set-infected-initialisation
   ; initial number of infected = parameter
-  ask n-of nb-infected-initialisation citizens [
+  ask n-of nb-infected-initialisation citizens with [ telework? = false ] [
     set epidemic-state "Infected"
     set infection-duration infection-mean
-    set telework? false
+    ;set telework? false
     show-epidemic-state
   ]
 
   ; initially one asymptomatic in addition to this number of infected
-  ask one-of citizens with [epidemic-state = "Susceptible"] [
+  ask one-of citizens with [epidemic-state = "Susceptible" and telework? = false ] [
     set epidemic-state "Asymptomatic Infected"
     set infection-duration infection-mean
-    set telework? false
+    ;set telework? false
     show-epidemic-state
   ]
 end
 
 
 ; decide who respects distanciation or not (respect=circle, disrespect=square)
+; TODO: could depend dynamically on density of infected people around (assuming that agents know it)
+;       could also depend more on personal risk-aversion than on external/imposed social norms
 to set-respect-rules
   ; init infected citizens to all disrespect rules (so that contagion can happen before they recover...)
   ask citizens with [epidemic-state = "Infected"] [
@@ -209,6 +221,7 @@ to go
   set tests-today 0
   
   ;; stop criterion: no more susceptible citizens
+  ;; TODO: other possibility if all recovered before all infected
   if nb-S = 0 [
     show-asymptomatic-cases
     stop
@@ -217,14 +230,16 @@ to go
   ;; update previous case counts
   update-previous-epidemic-counts
 
-  ;; movement
+  ;; movement (options: move-distanciation-citizens, avoid-infected, move-randomly-citizens)
   ;; FIXME: pour le dépistage, veut-on un évitement des infectés ou un respect de la distanciation?
-  ;; movement options: move-distanciation-citizens, avoid-infected, move-randomly-citizens
   avoid-infected
   
   ;; transmission - TODO multiple phases
-  ;;ask citizens with [epidemic-state = "Susceptible"] [ get-virus ]
+  ;; ask citizens with [epidemic-state = "Susceptible"] [ get-virus ]
   propagate-epidemics
+  
+  ; FIXME when do we start testing? parameter?
+  test-pop
   
   ; update new counters and monitors
   update-current-epidemic-counts
@@ -362,7 +377,7 @@ to propagate-epidemics
   ; an immunity-duration decided when becoming recovered. After this, citizen becomes susceptible again
   ; immunity duration probably 1 or 2 years, but unknown so far
   
-  ; change shape accordingly
+  ; change shapes accordingly
   ask citizens [ show-epidemic-state ]
 end
 
@@ -440,14 +455,21 @@ end
 ; TODO: strategies de test par symptomes (echoue sur les asymptomatiques) vs serologique (détecte les guéris)
 ;       ajouter un selecteur pour le type de test à utiliser
 
-; TODO: ne pas confiner les malades !! (ou alors uniquement ceux qui sont testés ! - ajouter un switch)
-
 ; TODO : depending on max number of tests, part of the target population cannot be tested
 ; monitor the number of days needed to test the entire target?
 
 ; TODO: supprimer le bouton test, faire du test auto selon la stratégie choisie à l'init
 
+; TODO : as part of strategy, choose when to (auto-)start campaign ?
 
+; TODO: only allow workers tested negative to work outside?
+
+; TODO: compter les personnes testées positives mais encore susceptibles même après la fin du délai d'incubation
+; ou compter simplement les faux positifs directement / le nombre de confinements inutiles
+
+
+; TODO: call it in go, once a given starting condition is met 
+; (eg number of dead > x, except nobody dies here...)
 to test-pop
   ; switch based on selected strategy, to determine WHO is tested
   ; TODO: first define target population, then check if not empty
@@ -455,63 +477,92 @@ to test-pop
   ; if not empty, keep testing
 
   ; TODO attention n-of plante si n>len(set)...
+  show "Testing population with strategy"
+  show STRATEGY
   
   ; 0) lancement de la campagne
-  if campaign-start = -1
-  [
-    set campaign-start ticks
+  if campaign-start = -1 [ 
+    set campaign-start ticks 
+    set campaign-duration 0
   ]
 
   ; 1) define target population based on strategy
   ; take all untested people
   let target-population citizens with [tested? = false]
+  
+  ; then refine based on selected strategy
   ( ifelse
-    ;STRATEGY = "random"  [set target-population citizens]
+    ;STRATEGY = "random"  [set target-population citizens]  ; already done before if
     STRATEGY = "older"   [set target-population target-population with [age >= 60]]
     STRATEGY = "workers" [set target-population target-population with [telework? = false]]
+    
+    ; test only people with symptoms: symptomatic infected state 
+    ; TODO + there should be some symptoms in the susceptible population (influenza)
     STRATEGY = "symptomatic" [set target-population target-population with [epidemic-state = "Symptomatic"] ]
-    ; default else
+    
+    ; TODO : additional strategies
+    ; test neighbors of new detected cases (in the patches around)
+    
+    ; default else do nothing
     []
   )
+  
+  let n count target-population
+  show "size of population to be tested ? " 
+  show n
 
-  ; FIXME empty? ok sur list mais pas sur agentset... comment convertir?
-  if-else count target-population = 0
-
-  ; 2a) end of test campaign
-  ; remise à 0
-  ; afficher les résultats: temps, nombre de tests consommés, combien sont négatifs, combien de malades on a ratés
-  [
-    ; show results
-    show "total tests = " ; FIXME: displayed where?
-    show total-tests
-    show negative-tests
-    show untested-sick
-
-    ; reinitialise campaign
-    set campaign-duration ticks - campaign-start
-    set campaign-start -1
-    ask citizens with [tested? = true] [set tested? false]
+  ; if there are still agents to test
+  ; test as many of them as possible with the daily number of tests available
+  if n > 0 [
+    ask n-of min (list n number-daily-tests) target-population [test-one]
+    set campaign-duration campaign-duration + 1
+    ;ask n-of number-daily-tests target-population [test-one]
   ]
 
-  ; 2b) tester la population cible, au max du nombre de tests possibles aujourd'hui
-  [
-    ask n-of number-daily-tests target-population [test-one]
-  ]
-
-    stop
+  ;stop
 end
 
 
 ; called on each tested citizen
-; TODO: test probabiliste -
+; FIXME: probabilities should depend on infection status? (could add a weight)
 to test-one
   set tested? true ; won't be tested again in the same campaign
-  ; TODO: test should not be 100% ok
+  set tests-today tests-today + 1
+  
   ; TODO: incubation might be missed?
   ; TODO: type of test: PCR detects symptoms, serological detects even recovered
-  if-else epidemic-state != "Susceptible" and epidemic-state != "Recovered"  [set positive? true] [set positive? false]
-  ;il faut que certains symptomatiques soient non COVID : nouvel état ? attribut symptomes/etat de santé/comorbidités?
+  if-else epidemic-state != "Susceptible" and epidemic-state != "Recovered"
+  ; if agent is infected
+  [
+    ifelse random-float 1 < proba-false-neg 
+    [ set positive? false ] ; false negative
+    [ set positive? true ]  ; true positive
+  ] 
+  ; if agent is NOT infected / is recovered
+  [
+    ifelse random-float 1 < proba-false-pos
+    [ set positive? true ]  ; false positive
+    [ set positive? false ] ; true negative
+  ]  
   set shape "triangle"
+  
+  ; consequences of positive testing? (selected by switches in interface)
+  if positive? [ manage-positive ]
+end
+
+; what to do with people tested positive
+to manage-positive
+  if quarantine? [ quarantine-infected ]
+  if forbid-work? [ set telework? true ]
+end
+
+
+; not used for now (FIXME: multiple campaigns in one simulation?)
+to reinit-campaign
+  ; reinitialise campaign
+  set campaign-duration ticks - campaign-start
+  set campaign-start -1
+  ask citizens with [tested? = true] [set tested? false]
 end
 
 ;;;;;;;;;;;;;;;;;;;
@@ -542,6 +593,8 @@ to show-epidemic-state
 end
 
 
+
+; called at the end of simulation
 to show-asymptomatic-cases
   ask citizens with [epidemic-state = "Asymptomatic Infected"]
   [ set color lput transparency extract-rgb blue ]
@@ -550,6 +603,7 @@ end
 
 ;; TODO: attention à compter aussi les incubateurs !!
 ;; sinon on a des comptes négatifs sur le graphe !
+
 to update-previous-epidemic-counts
   set previous-nb-new-infections-reported nb-Ir
   set previous-nb-new-infections-asymptomatic nb-Inr
@@ -586,7 +640,7 @@ to-report nb-Inr
 end
 
 to-report nb-I
-  report count citizens with [epidemic-state = "Infected" or epidemic-state = "Asymptomatic Infected"] ;/ population-size * 100
+  report count citizens with [epidemic-state = "Infected" or epidemic-state = "Asymptomatic Infected" or epidemic-state = "Incubation"] ;/ population-size * 100
 end
 
 to-report nb-R
@@ -601,9 +655,10 @@ to-report nb-NegTests
   report count citizens with [tested? = true and positive? = false]
 end
 
-to-report nb-UI
+to-report nb-UI  ; untested infected 
   report count citizens with [tested? = false and epidemic-state != "Susceptible" and epidemic-state != "Recovered" ]
 end
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
