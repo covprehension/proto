@@ -30,6 +30,9 @@ globals [ ;;global parameters
   nb-infected-identified-removed
   nb-contagious-cumulated
   nb-non-infected-lockeddown
+  nb-co-infected
+  contacts-to-warn
+  contacts-to-warn-next
 ]
 
 patches-own [wall]
@@ -39,7 +42,7 @@ breed [houses house]
 
 citizens-own
 [
-  epidemic-state;FA: S, Ex, Ia, I or R
+  epidemic-state; S, Ex, Ia, I or R
   infection-date
   infection-source
   nb-other-infected
@@ -52,17 +55,22 @@ citizens-own
   liste-contacts
   liste-contact-dates
   equiped?
-  tested? ;0 no 1 yes
+  detected?
   list-date-test
+  nb-tests
   contact-order ;0 not contacted, 1 contacted at first order, 2 contacted at second order
   nb-contacts-ticks
   nb-contacts-total-Infectious ; ttotal number of contacts during infectious period
   nb-lockeddown
+  difference
+  potential-co-infected
+  family-infection?
 ]
 
 houses-own
 [
   my-humans
+  clean ; private. Should be accessed through reporter clean? [house]
 ]
 
 to setup-globals
@@ -73,14 +81,17 @@ to setup-globals
   set I 3
   set R 4
 
+  if fixed-seed?[
+    fix-seed
+  ]
 
   set population-size Taille_population
   set nb-house (population-size / 2)
 
  ; set transmission-distance 1 ACCELERATION CODE DANS get-in-contact AVEC PRIMITIVE NEIGHBORS
   ;set probability-asymptomatic-infection 0.3
-  set probability-transmission 0.05;0.15
-  set probability-transmission-asymptomatic 0.025;0.07
+  set probability-transmission 0.013;0.05;0.15
+  set probability-transmission-asymptomatic 0.065;0.025;0.07
   ;set incubation-period 5 * nb-step-per-day
   set walking-angle 50
   set speed 0.5
@@ -89,6 +100,8 @@ to setup-globals
   set nb-step-per-day 4
   set contagion-duration (incubation-duration + (14 * nb-step-per-day))
   set list-colors-contacts [white 125]
+  set contacts-to-warn-next no-turtles
+  set contacts-to-warn no-turtles
 end
 
 to setup-walls
@@ -105,6 +118,7 @@ to setup-houses
     set size 2
     set color lput transparency extract-rgb  white
     set my-humans []
+    set clean true
   ]
 end
 
@@ -128,12 +142,15 @@ to setup-population
     set list-date-test []
     set nb-other-infected 0
     set contact-order 0
+    set potential-co-infected false
+    set family-infection? false
     set equiped? false
-    set tested? false
+    set detected? false
     set contagious? false
     set resistant? false ; resistance is really "defined" when the citizen is Exposed to the virus
   ]
   set-infected-initialisation
+  set-R-initialisation
   set-equiped-initialisation
 end
 
@@ -151,6 +168,12 @@ to set-infected-initialisation
   ]
 end
 
+to set-R-initialisation
+  ask n-of (initial-R-proportion / 100 * population-size) citizens with [not (epidemic-state = Ex)][
+    set epidemic-state R
+  ]
+end
+
 to setup
   clear-all
   reset-ticks
@@ -165,10 +188,15 @@ to go
   move-citizens
   get-in-contact
   if not (SCENARIO = "Laisser faire")[
-    ask citizens with [(epidemic-state = I) and (not tested?)] [
+    if any? contacts-to-warn[
+      warn-contacts 2
+    ]
+    ask citizens with [(epidemic-state = I) and (not detected?)] [
       get-tested 1
     ]
   ]
+  set contacts-to-warn contacts-to-warn-next
+  set contacts-to-warn-next no-turtles
   update-epidemics
   update-max-I
   update-max-conf
@@ -182,7 +210,19 @@ to move-citizens
     ifelse lockdown? = 1[
       set nb-step-confinement (nb-step-confinement + 1)
       if epidemic-state = R[
-        set lockdown? 0
+        ifelse family-lockdown?[
+          if clean? my-house[
+            ask my-house[
+            foreach my-humans[
+              [my-human] -> ask my-human [
+                set lockdown? 0
+                ]
+              ]
+            ]
+          ]
+        ][
+          set lockdown? 0
+        ]
       ]
     ][
       let nighttime? (ticks mod 4) = 0
@@ -214,10 +254,8 @@ to update-epidemics
   set current-nb-new-infections-reported 0
   set  current-nb-new-infections-asymptomatic 0
   ;;update recovered
-  ask citizens with [contagious?]
-  [  ;show  contagion-counter
+  ask citizens with [contagious?][
     set contagion-counter (contagion-counter - 1)
-
     if ( (ticks - infection-date) = incubation-duration ) [
       ifelse resistant?
         [ become-asymptomatic-infected ]
@@ -228,19 +266,16 @@ to update-epidemics
       become-recovered
     ]
   ]
-  ;;spread virus
-;  ask citizens with [epidemic-state = S][
-;    get-virus
-;  ]
 end
-
 
 
 to get-in-contact
   ask citizens
   [
     ifelse lockdown? = 0[
-      let contacts other citizens-on neighbors
+      let contacts (turtle-set other citizens-here citizens-on neighbors)
+      ;let contactsv other citizens-on neighbors
+      ;set difference (count contacts - count contactsv)
       set nb-contacts-ticks count contacts
       if contagious? [set nb-contacts-total-Infectious nb-contacts-total-Infectious + nb-contacts-ticks]
       set contacts contacts with [lockdown? = 0]
@@ -269,6 +304,7 @@ to get-in-contact
         ]
         if co-infected?[
           get-virus infection-contact
+          set potential-co-infected true
         ]
       ]
     ]
@@ -276,12 +312,17 @@ to get-in-contact
 end
 
 
-
 to get-virus [contact-source]
-  if ( ([contagious?] of contact-source)  and (random-float 1 < (contagiousness contact-source)) ) [
+  ifelse ( ([contagious?] of contact-source)  and (random-float 1 < (contagiousness contact-source)) ) [
     become-exposed
     set infection-source contact-source
     ask contact-source [set nb-other-infected nb-other-infected + 1]
+    set family-infection? (my-house = [my-house] of contact-source)
+    if potential-co-infected [
+      set nb-co-infected nb-co-infected + 1
+    ]
+  ][
+    set potential-co-infected false
   ]
 end
 
@@ -303,8 +344,9 @@ end
 
 to get-tested [order]
   set list-date-test lput ticks list-date-test
-  set tested? true
+  set nb-tests nb-tests + 1
   if contagious? and random-float 1 < probability-success-test-infected [
+    set detected? true
     set  nb-infected-identified nb-infected-identified + 1
     if ((order = 1) or (random-float 1 < probability-respect-lockdown-when-tagged))[ ; It is supposed that order 1 infected people, who made the test without being prompted, will respect lockdown.
       ifelse Family-lockdown? [
@@ -323,13 +365,13 @@ to get-tested [order]
         ]
       ]
       if equiped? and (SCENARIO = "Confinement simple + traçage des contacts")[
-        backtrack-contacts order + 1
+        detect-contacts order + 1
       ]
     ]
   ]
 end
 
-to backtrack-contacts [order]
+to detect-contacts [order]
 
  ; probability-respect-lockdown-when-tagged
   let me self
@@ -342,37 +384,28 @@ to backtrack-contacts [order]
 
     if is-agentset? contacts-j[
       if date-j >= (my-lockdown-date - (nb-days-before-test-tagging-contacts * nb-step-per-day))[
-        ask contacts-j with [lockdown? = 0][
-          ;;ICI STRATEGIE DE DEPISTAGE SYSTEMATIQUE DE TOUS LES CONTACTS
-          ifelse Confinement_avec_Test?[
-            ;On vérifie qu'on ne teste pas deux fois le même ticks
-            if (not member? ticks list-date-test)[
-              ifelse (lockdown? = 0)[
-                get-tested order
-              ][
-                if contact-order > order [
-                  set contact-order order
-                ]
-              ]
-              if montre-liens?[
-                create-link-from me [set shape "link-arn" set color item (order - 2) list-colors-contacts]
-              ]
-            ]
-          ][
-            if random-float 1 < probability-respect-lockdown-when-tagged[
-              lockdown (order)
-              backtrack-contacts (order + 1)
-              set contact-order order
-              if montre-liens?[
-                create-link-from me [set shape "link-arn" set color item (order - 2) list-colors-contacts  ]
-              ]
-            ]
-          ]
-        ]
+        set contacts-to-warn-next (turtle-set contacts-to-warn-next (contacts-j with [detected? = false]))
       ]
     ]
     set j j + 1
   ]
+end
+
+to warn-contacts [order]
+  ifelse Confinement_avec_Test?[
+    ask contacts-to-warn with [detected? = false][
+      get-tested order
+    ]
+  ][
+    if random-float 1 < probability-respect-lockdown-when-tagged[
+      ask contacts-to-warn[
+      lockdown order
+      detect-contacts order + 1
+      ]
+    ]
+  ]
+
+
 end
 
 
@@ -388,7 +421,40 @@ to connect-contacts-foreach
 
 end
 
-;;CITIZEN PROCEDURES
+
+
+;;STATE TRANSITION PROCEDURES
+to become-exposed
+  set epidemic-state Ex
+  set contagion-counter contagion-duration
+  set infection-date ticks
+  set current-nb-new-infections-reported (current-nb-new-infections-reported + 1)
+  set nb-contagious-cumulated nb-contagious-cumulated + 1
+  set color violet ;
+  set resistant? (random-float 1 < probability-asymptomatic-infection)
+  set contagious? true
+end
+
+to become-infected
+  set epidemic-state I
+  set color red ;
+end
+
+to become-asymptomatic-infected
+  set epidemic-state Ia
+  set color blue ;
+end
+
+to become-recovered
+  set epidemic-state R
+  set contagious? false
+  set color yellow ;
+end
+
+;###############################
+;REPORTERS
+;###############################
+
 to-report contagiousness [a-citizen]
   if ([epidemic-state] of a-citizen) = Ex [
     ifelse resistant? [
@@ -409,44 +475,20 @@ to-report contagiousness [a-citizen]
 
 end
 
-;;STATE TRANSITION PROCEDURES
-to become-exposed
-  set epidemic-state Ex
-  set contagion-counter contagion-duration
-  set infection-date ticks
-  set current-nb-new-infections-reported (current-nb-new-infections-reported + 1)
-  set nb-contagious-cumulated nb-contagious-cumulated + 1
-  set color violet ; lput transparency extract-rgb red
-  set resistant? (random-float 1 < probability-asymptomatic-infection)
-  set contagious? true
-  ;show ["exposed"]
+to-report clean? [a-house]
+  let local-clean true
+  ask a-house[
+    foreach my-humans[
+      [my-human] -> ask my-human [
+        if contagious?[
+          set local-clean false
+        ]
+      ]
+    ]
+    set clean local-clean
+  ]
+  report [clean] of a-house
 end
-
-to become-infected
-  set epidemic-state I
-  ;set contagion-counter contagion-duration
-  ;set infection-date ticks
-  ;set current-nb-new-infections-reported (current-nb-new-infections-reported + 1)
-  set color red ; lput transparency extract-rgb red
-end
-
-to become-asymptomatic-infected
-  set epidemic-state Ia
-  set color blue ; lput transparency extract-rgb blue
-  ;set contagion-counter contagion-duration
-  ;set infection-date ticks
-  ;set current-nb-new-infections-reported (current-nb-new-infections-reported + 1)
-end
-
-to become-recovered
-  set epidemic-state R
-  set contagious? false
-  set color yellow ; lput transparency extract-rgb gray
-end
-
-;###############################
-;REPORTERS
-;###############################
 
 to-report nb-S
   report count citizens with [epidemic-state = S ]
@@ -488,12 +530,12 @@ to-report %locked
   report (count citizens with [lockdown? = 1] / population-size) * 100
 end
 
-to-report nb-tests
-  report count citizens with [tested?]
+to-report nb-detected
+  report count citizens with [detected?]
 end
 
-to-report %tested
-  report (count citizens with  [tested?] / population-size) * 100
+to-report %detected
+  report (count citizens with  [detected?] / population-size) * 100
 end
 
 to-report epidemic-duration
@@ -517,14 +559,28 @@ to-report R0
 end
 
 to-report family-locked-down
-  report count citizens with [not tested? and lockdown? = 1]
+  report count citizens with [not detected? and lockdown? = 1]
 end
 
 to-report mean-contacts-ticks
   report mean [nb-contacts-ticks] of citizens
 end
 
+to-report mean-difference
+  report mean [difference] of citizens
+end
 
+to-report symptom-detected
+  report count citizens with [detected? and contact-order = 1]
+end
+
+to-report contact-detected
+  report count citizens with [detected? and contact-order = 2]
+end
+
+to-report citizens-per-house
+  report mean [length my-humans] of houses
+end
 
 ;==============
 
@@ -533,7 +589,7 @@ end
 ;===============
 
 to fix-seed
- random-seed 47822
+ random-seed seed
 end
 
 ;to send-user-message
@@ -644,16 +700,6 @@ PENS
 "R" 1.0 0 -7500403 true "" "\nif population-size > 0 [plotxy (ticks / nb-step-per-day) (nb-R / population-size  * 100)]"
 "Ex" 1.0 0 -8630108 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) (nb-Ex / population-size  * 100)]"
 "%Locked" 1.0 0 -6459832 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) %locked] "
-
-TEXTBOX
-1449
-760
-1627
-910
-Mode d'emploi à ajouter ici\n\nCréer indicateurs de sortie behaviour space
-12
-105.0
-1
 
 SWITCH
 689
@@ -786,7 +832,7 @@ nb-days-before-test-tagging-contacts
 nb-days-before-test-tagging-contacts
 1
 5
-5.0
+1.0
 1
 1
 days
@@ -812,7 +858,7 @@ proportion-equiped
 proportion-equiped
 0
 100
-90.0
+50.0
 10
 1
 NIL
@@ -854,7 +900,7 @@ MONITOR
 1013
 409
 Nombre de tests réalisés
-nb-tests
+nb-detected
 0
 1
 11
@@ -880,7 +926,7 @@ MONITOR
 785
 409
 Population testée (%)
-%tested
+%detected
 17
 1
 11
@@ -1087,7 +1133,7 @@ MONITOR
 806
 556
 851
-Retirés infectés
+Confinés infectés
 nb-infected-identified-removed
 0
 1
@@ -1109,7 +1155,7 @@ PLOT
 650
 1013
 873
-Contagieux vs Identifiés vs Retirés
+Contagieux vs Identifiés vs Confinés
 Durée de l'épidémie
 Nombre
 0.0
@@ -1122,8 +1168,8 @@ true
 PENS
 "Contagieux" 1.0 0 -817084 true "" "\nif population-size > 0 [plotxy (ticks / nb-step-per-day) nb-contagious-cumulated ]"
 "Identifiés" 1.0 0 -13791810 true "" "\nif population-size > 0 [plotxy (ticks / nb-step-per-day) nb-infected-identified]\n\n"
-"Retirés" 1.0 0 -5825686 true "" "\nif population-size > 0 [plotxy (ticks / nb-step-per-day) nb-infected-identified-removed]\n\n"
-"Retirés pas contagieux" 1.0 0 -7500403 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) nb-non-infected-lockeddown]"
+"Confinés" 1.0 0 -5825686 true "" "\nif population-size > 0 [plotxy (ticks / nb-step-per-day) nb-infected-identified-removed]\n\n"
+"Confinés pas contagieux" 1.0 0 -7500403 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) nb-non-infected-lockeddown]"
 
 MONITOR
 125
@@ -1139,9 +1185,9 @@ nb-contagious-cumulated
 MONITOR
 431
 853
-564
+577
 898
-Retirés pas infectés
+Confinés pas infectés
 nb-non-infected-lockeddown
 17
 1
@@ -1202,6 +1248,130 @@ Tout est du cumulé
 11
 0.0
 1
+
+PLOT
+1067
+705
+1513
+921
+Instantané : contagieux - détectés - confinés détectés - confinés non détectés
+Durée de l'épidémie
+Nombre
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"Contagieux" 1.0 0 -955883 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) count citizens with [contagious?]]"
+"Détectés" 1.0 0 -2674135 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) count citizens with [detected? and contagious?]]"
+"Confinés détectés" 1.0 0 -13345367 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) count citizens with [detected? and lockdown? = 1]]"
+"Confinés non détectés" 1.0 0 -11221820 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) count citizens with [not detected? and lockdown? = 1]]"
+
+MONITOR
+1553
+745
+1750
+790
+Détections suite à symptômes
+symptom-detected
+17
+1
+11
+
+MONITOR
+1555
+800
+1722
+845
+Détections grâce à l'appli
+contact-detected
+17
+1
+11
+
+MONITOR
+1554
+866
+1782
+911
+proportion de R dans la population
+nb-R / population-size
+17
+1
+11
+
+SLIDER
+659
+599
+836
+632
+initial-R-proportion
+initial-R-proportion
+0
+100
+6.0
+1
+1
+NIL
+HORIZONTAL
+
+SWITCH
+1589
+61
+1718
+94
+fixed-seed?
+fixed-seed?
+0
+1
+-1000
+
+INPUTBOX
+1579
+93
+1728
+153
+seed
+10.0
+1
+0
+Number
+
+MONITOR
+1343
+178
+1737
+223
+# de membres d'une famille infectés après un famliy lockdown
+nb-co-infected
+17
+1
+11
+
+MONITOR
+1344
+223
+1815
+268
+Nombre de personnes infectées par des gens qui habitent la même maison
+count citizens with [family-infection?]
+17
+1
+11
+
+MONITOR
+1558
+10
+1805
+55
+NIL
+citizens-per-house
+17
+1
+11
 
 @#$#@#$#@
 ## THINGS TO TRY
@@ -1612,6 +1782,50 @@ NetLogo 6.1.1
     <enumeratedValueSet variable="family-lockdown?">
       <value value="true"/>
       <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="Test_V8" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <exitCondition>not any? citizens with [contagious?]</exitCondition>
+    <metric>MaxI%</metric>
+    <metric>%nb-I-Total</metric>
+    <metric>epidemic-duration</metric>
+    <metric>max-conf</metric>
+    <metric>symptom-detected</metric>
+    <metric>contact-detected</metric>
+    <metric>nb-R / population-size</metric>
+    <enumeratedValueSet variable="Confinement_avec_Test?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="delay-before-test">
+      <value value="6"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Nb_infected_initialisation">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="population-size">
+      <value value="2000"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="nb-days-before-test-tagging-contacts">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fixed-seed">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="proportion-equiped">
+      <value value="40"/>
+      <value value="70"/>
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="family-lockdown?">
+      <value value="true"/>
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="initial-R-proportion">
+      <value value="0"/>
+      <value value="6"/>
+      <value value="60"/>
     </enumeratedValueSet>
   </experiment>
 </experiments>
