@@ -804,7 +804,7 @@ CHOOSER
 SCENARIO
 SCENARIO
 "Laisser faire" "Confinement simple" "Traçage et confinement systématique" "Traçage et confinement sélectif"
-2
+3
 
 MONITOR
 593
@@ -921,7 +921,7 @@ proportion-equiped
 proportion-equiped
 0
 100
-90.0
+70.0
 10
 1
 NIL
@@ -951,7 +951,7 @@ delay-before-test
 delay-before-test
 0
 72
-6.0
+12.0
 6
 1
 hours
@@ -1003,7 +1003,7 @@ Nb_infected_initialisation
 Nb_infected_initialisation
 1
 50
-10.0
+2.0
 1
 1
 NIL
