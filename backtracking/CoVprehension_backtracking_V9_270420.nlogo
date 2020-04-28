@@ -414,7 +414,7 @@ to get-tested [order]
   if contagious? and random-float 1 < probability-success-test-infected [
     set detected? true
     set  nb-infected-identified nb-infected-identified + 1
-    if ((order = 1) or (random-float 1 < probability-respect-lockdown-when-tagged))[ ; It is supposed that order 1 infected people, who made the test without being prompted, will respect lockdown.
+    if (random-float 1 < probability-respect-lockdown)[
       ifelse Family-lockdown? [
         ask my-house[
           foreach my-humans[
@@ -430,9 +430,11 @@ to get-tested [order]
           lockdown order
         ]
       ]
+
       if equiped? and tracing?[
-        detect-contacts order + 1
+        detect-contacts
       ]
+
     ]
   ]
 end
@@ -443,9 +445,7 @@ end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-to detect-contacts [order]
-
- ; probability-respect-lockdown-when-tagged
+to detect-contacts
   let me self
   let my-lockdown-date lockdown-date
   let j 0
@@ -469,10 +469,10 @@ to warn-contacts [order]
       get-tested order
     ]
   ][
-    if random-float 1 < probability-respect-lockdown-when-tagged[
-      ask contacts-to-warn[
+    if random-float 1 < probability-respect-lockdown[
+      ask contacts-to-warn with [lockdown? = 0][
       lockdown order
-      detect-contacts order + 1
+      detect-contacts
       ]
     ]
   ]
@@ -783,7 +783,7 @@ CHOOSER
 SCENARIO
 SCENARIO
 "Laisser faire" "Confinement simple" "Traçage et confinement systématique" "Traçage et confinement sélectif"
-3
+2
 
 MONITOR
 593
@@ -855,11 +855,11 @@ SLIDER
 160
 1297
 193
-probability-respect-lockdown-when-tagged
-probability-respect-lockdown-when-tagged
+probability-respect-lockdown
+probability-respect-lockdown
 0
 1
-1.0
+0.0
 0.1
 1
 NIL
@@ -900,7 +900,7 @@ proportion-equiped
 proportion-equiped
 0
 100
-90.0
+70.0
 10
 1
 NIL
