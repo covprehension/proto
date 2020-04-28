@@ -1,8 +1,17 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;DECLARATION;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 globals [ ;;global parameters
+  ;epidemic symbolic constants
+  S ; Susceptible
+  Ex ; Exposed - Infected and incubating, but already contagious.
+  Ia ; Infected asymptomatic
+  I ; Infected symptomatic
+  R ; Recovered
+
   population-size
   nb-house
- ; transmission-distance ==> SUPPRIMER POUR ACCELERATION CODE DANS get-in-contact AVEC PRIMITIVE NEIGHBORS
-  ;probability-asymptomatic-infection
   probability-transmission
   probability-transmission-asymptomatic
   walking-angle
@@ -20,12 +29,7 @@ globals [ ;;global parameters
   max-I
   max-conf
   list-colors-contacts
-  ;epidemic symbolic constants
-  S ; Susceptible
-  Ex ; Exposed - Infected and incubating, but already contagious.
-  Ia ; Infected asymptomatic
-  I ; Infected symptomatic
-  R ; Recovered
+
   nb-infected-identified
   nb-infected-identified-removed
   nb-contagious-cumulated
@@ -82,6 +86,10 @@ houses-own
   clean ; private. Should be accessed through reporter clean? [house]
 ]
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;SETUP;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 to setup-globals
   ;symbolic constants
   set S 0
@@ -91,7 +99,7 @@ to setup-globals
   set R 4
 
   if fixed-seed?[
-    fix-seed
+    random-seed seed
   ]
 
   set population-size Taille_population
@@ -105,7 +113,7 @@ to setup-globals
 
   set contagion-duration (incubation-duration + (14 * nb-step-per-day))
 
-  let nb-contacts ((population-size  / count patches) * 9) - 1
+  let nb-contacts (((population-size  / count patches) * 9) - 1) / 2 ; the / 2 is an approximate experimental value on how to go from #contacts per ticks to #contacts per day, without counting a contact twice
   set probability-transmission R0-a-priori / (nb-contacts * contagion-duration)
   set probability-transmission-asymptomatic probability-transmission / 2
 
@@ -195,7 +203,6 @@ to setup-population
 end
 
 to set-equiped-initialisation
-  ;ifelse SCENARIO = "Laisser faire" [set Proportion-equiped 0]
   ask n-of (round (population-size * (Proportion-equiped / 100))) citizens[
     set equiped? true
   ]
@@ -223,8 +230,14 @@ to setup
   setup-population
 end
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;GO;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 to go
-  if not any? citizens with [contagious?] [stop] ;send-user-message
+  if not any? citizens with [contagious?] [stop]
+
   move-citizens
   get-in-contact
 
@@ -253,7 +266,10 @@ to go
   tick
 end
 
-;;MOVEMENT PROCEDURES
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;MOVEMENT PROCEDURES;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 to move-citizens
   ask citizens[
     ifelse lockdown? = 1[
@@ -297,7 +313,10 @@ to avoid-walls
       ]
 end
 
-;;EPIDEMICS PROCEDURE
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;EPIDEMIC PROCEDURES;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 to update-epidemics
   ;;update the counters for the infected at this timestep
   set current-nb-new-infections-reported 0
@@ -314,6 +333,20 @@ to update-epidemics
     if contagion-counter <= 0 [
       become-recovered
     ]
+  ]
+end
+
+to get-virus [contact-source]
+  ifelse ( ([contagious?] of contact-source)  and (random-float 1 < (contagiousness contact-source)) ) [
+    become-exposed
+    set infection-source contact-source
+    ask contact-source [set nb-other-infected nb-other-infected + 1]
+    set family-infection? (my-house = [my-house] of contact-source)
+    if potential-co-infected [
+      set nb-co-infected nb-co-infected + 1
+    ]
+  ][
+    set potential-co-infected false
   ]
 end
 
@@ -365,22 +398,6 @@ to get-in-contact
 end
 
 
-to get-virus [contact-source]
-  ifelse ( ([contagious?] of contact-source)  and (random-float 1 < (contagiousness contact-source)) ) [
-    become-exposed
-    set infection-source contact-source
-    ask contact-source [set nb-other-infected nb-other-infected + 1]
-    set family-infection? (my-house = [my-house] of contact-source)
-    if potential-co-infected [
-      set nb-co-infected nb-co-infected + 1
-    ]
-  ][
-    set potential-co-infected false
-  ]
-end
-
-
-;;BACKTRACKING
 to lockdown [order]
   set lockdown? 1
   set lockdown-date ticks
@@ -424,6 +441,12 @@ to get-tested [order]
   ]
 end
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;BACKTRACKING;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
 to detect-contacts [order]
 
  ; probability-respect-lockdown-when-tagged
@@ -461,22 +484,10 @@ to warn-contacts [order]
 
 end
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;STATE TRANSITION PROCEDURES;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-to connect-contacts-foreach
-  ask citizens with [not empty? liste-contact-dates]
-  [
-    let me self
-  foreach liste-contacts
-  [
-    [the-turtle] -> ask the-turtle [ create-link-with me ]
-    ]
-  ]
-
-end
-
-
-
-;;STATE TRANSITION PROCEDURES
 to become-exposed
   set epidemic-state Ex
   set contagion-counter contagion-duration
@@ -503,6 +514,8 @@ to become-recovered
   set contagious? false
   set color yellow ;
 end
+
+
 
 ;###############################
 ;REPORTERS
@@ -567,8 +580,6 @@ end
   report count citizens with [epidemic-state = R]
 end
 
-
-; % Population touchée par l'épidémie
 to-report %nb-I-Total
   report (population-size - nb-S) / population-size * 100
 end
@@ -644,30 +655,10 @@ to-report mean-mean-daily-contacts-nb
 end
 
 
-;==============
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;COUNTERS;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;TECHNICAL ADDS
-
-;===============
-
-to fix-seed
- random-seed seed
-end
-
-;to send-user-message
-;  ifelse population-spared > 75 and nb-lockdown-episodes = 1
-;  [user-message (word "Bravo ! Vous avez réussi a protéger " round population-spared " % de votre population en imposant un confinement total de " round (nb-day-confinement) " jours. Espérons juste que personne n'est mort de faim...")]
-;
-;  [ifelse nb-day-confinement = 0
-;    [user-message (word "Bravo ! Tout le monde a été touché par le virus et les hôpitaux ont explosé, mais au moins personne n'a été empêché de sortir. Espérons juste que tout le monde est encore vivant...")]
-;    [ifelse nb-lockdown-episodes = 1
-;      [user-message (word "Bravo ! Vous avez réussi a protéger " round population-spared " % de votre population en imposant un confinement total de " round (nb-day-confinement) " jours et en limitant le pic épidémique à " round(max-I / population-size * 100)"%. C'est votre dernier mot ?")]
-;      [user-message (word "Bravo ! Vous avez réussi a protéger " round population-spared " % de votre population en imposant un confinement total de " round (nb-day-confinement) " jours et en limitant le pic épidémique à " round(max-I / population-size * 100)"%. Vous avez mis en phase plusieurs périodes de confinement. Si votre objectif était de faire en sorte que le nombre d'infectés ne dépasse pas une valeur seuil, alors vous avez exploré une stratégie actuellement étudiée par plusieurs équipes scientifiques !")]
-;]
-;
-;    ]
-;
-;end
 
 to update-max-I
   if nb-I > max-I [set max-I nb-I]
