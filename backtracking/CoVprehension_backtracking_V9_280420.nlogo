@@ -40,7 +40,8 @@ globals [ ;;global parameters
   contacts-to-warn
   contacts-to-warn-next
   list-mean-contacts
-
+  tracers-this-tick
+  traced-this-tick
   REACTING? ; doing anything?
   TRACING? ; contact-TRACING?
   TESTING? ; secondary testing, primary infected is always tested
@@ -246,6 +247,8 @@ to go
   get-in-contact
 
   if TRACING?[
+    set tracers-this-tick 0
+    set traced-this-tick 0
     if any? contacts-to-warn[
       warn-contacts 2
     ]
@@ -257,7 +260,7 @@ to go
     ]
     ask citizens with [to-be-tested = true][
       ifelse delayed-test = 0[
-        get-tested contact-order
+        get-tested
       ][
         set delayed-test delayed-test - 1
       ]
@@ -265,9 +268,11 @@ to go
   ]
 
   if TRACING?[
+    set traced-this-tick count contacts-to-warn-next
     set contacts-to-warn contacts-to-warn-next
     set contacts-to-warn-next no-turtles
   ]
+
 
   update-epidemics
   update-max-I
@@ -368,8 +373,6 @@ to get-in-contact
         set daily-contacts nobody
       ]
       let contacts (turtle-set other citizens-here citizens-on neighbors)
-      ;let contactsv other citizens-on neighbors
-      ;set difference (count contacts - count contactsv)
       set nb-contacts-ticks count contacts
       set daily-contacts (turtle-set daily-contacts contacts)
       if contagious? [set nb-contacts-total-Infectious nb-contacts-total-Infectious + nb-contacts-ticks]
@@ -407,10 +410,9 @@ to get-in-contact
 end
 
 
-to lockdown [order]
+to lockdown
   set lockdown? 1
   set lockdown-date ticks
-  set contact-order order
   move-to my-house
   set nb-step-confinement 0
   set nb-lockeddown nb-lockeddown + 1
@@ -421,7 +423,7 @@ to lockdown [order]
   ]
 end
 
-to get-tested [order]
+to get-tested
   ;citizens get tested
   set list-date-test lput ticks list-date-test
   set nb-tests nb-tests + 1
@@ -437,14 +439,14 @@ to get-tested [order]
           foreach my-humans[
             [my-human] -> ask my-human [
               if lockdown? = 0 [
-                lockdown order
+                lockdown
               ]
             ]
           ]
         ]
       ][
         if lockdown? = 0 [
-          lockdown order
+          lockdown
         ]
       ]
     ]
@@ -466,6 +468,7 @@ to detect-contacts
   let my-lockdown-date lockdown-date
   let j 0
 
+  set tracers-this-tick tracers-this-tick + 1
   repeat length liste-contacts[
     let date-j item j liste-contact-dates
     let contacts-j item j liste-contacts
@@ -486,11 +489,12 @@ to warn-contacts [order]
       set contact-order order
     ]
   ][
-    if random-float 1 < probability-respect-lockdown[
-      ask contacts-to-warn with [lockdown? = 0][
-      lockdown order
-      detect-contacts
+    ask contacts-to-warn with [lockdown? = 0][
+      if random-float 1 < probability-respect-lockdown[
+        set contact-order order
+        lockdown
       ]
+      detect-contacts
     ]
   ]
 
@@ -1104,24 +1108,6 @@ PENS
 "default" 1.0 1 -16777216 true "" "histogram [contact-order] of citizens with [contact-order > 0]"
 
 PLOT
-1301
-10
-1501
-160
-Family lockdown
-NIL
-NIL
-0.0
-10.0
-0.0
-10.0
-true
-false
-"" ""
-PENS
-"default" 1.0 0 -16777216 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) (family-locked-down)]"
-
-PLOT
 988
 414
 1258
@@ -1199,10 +1185,10 @@ nb-infected-identified
 11
 
 PLOT
-597
-647
-977
-870
+598
+691
+978
+909
 Contagieux vs Identifiés vs Confinés
 Durée de l'épidémie
 Nombre
@@ -1287,16 +1273,6 @@ max-conf
 1
 11
 
-TEXTBOX
-244
-871
-394
-889
-Tout est du cumulé
-11
-0.0
-1
-
 PLOT
 978
 692
@@ -1330,23 +1306,12 @@ symptom-detected
 11
 
 MONITOR
-1555
-800
-1722
-845
+1554
+790
+1721
+835
 Détections grâce à l'appli
 contact-detected
-17
-1
-11
-
-MONITOR
-1554
-866
-1782
-911
-proportion de R dans la population
-nb-R / population-size
 17
 1
 11
@@ -1393,7 +1358,7 @@ MONITOR
 160
 1696
 205
-# de membres d'une famille infectés après un famliy lockdown
+# de membres d'une famille infectés après confinement
 nb-co-infected
 17
 1
@@ -1476,6 +1441,39 @@ MONITOR
 652
 Nb de contacts moyens par jour (cumul)
 mean-mean-daily-contacts-nb
+17
+1
+11
+
+MONITOR
+1555
+835
+1695
+880
+Contactés par l'appli
+count citizens with [contact-order = 2]
+17
+1
+11
+
+MONITOR
+181
+855
+297
+900
+NIL
+tracers-this-tick
+17
+1
+11
+
+MONITOR
+297
+853
+408
+898
+NIL
+traced-this-tick
 17
 1
 11
