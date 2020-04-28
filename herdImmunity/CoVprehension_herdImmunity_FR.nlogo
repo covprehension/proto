@@ -17,8 +17,6 @@ turtles-own [
   nb-transmissions
   quarantined?
   distancing?
-;  xadr
-;  yadr
 ]
 
 
@@ -55,6 +53,7 @@ globals [
 
   lockdown?
   lockdown-counter
+  nb-lockdowns
   social-distancing?
   social-distancing-counter
 
@@ -124,6 +123,7 @@ to setup-globals
 
   set lockdown? false
   set lockdown-counter -1
+  set nb-lockdowns 0
   set social-distancing? false
   set social-distancing-counter -1
 
@@ -162,8 +162,6 @@ to setup-population
   create-turtles headless-population-size [
     setxy random-xcor random-ycor
     set size 0.3
-;    set xadr xcor
-;    set yadr ycor
     get-susceptible
     set my-travel-distance travel-distance
     set nb-infections 0
@@ -290,6 +288,8 @@ to quarantine-decision
 
     not lockdown? and prop-I > headless-lockdown-threshold [
       set lockdown? true
+      set nb-lockdowns nb-lockdowns + 1
+
       set lockdown-counter headless-lockdown-duration
 
       (ifelse
@@ -378,8 +378,8 @@ end
 GRAPHICS-WINDOW
 671
 10
-2749
-2089
+1309
+649
 -1
 -1
 30.0
@@ -392,10 +392,10 @@ GRAPHICS-WINDOW
 0
 0
 1
--34
-34
--34
-34
+-10
+10
+-10
+10
 1
 1
 1
@@ -593,7 +593,7 @@ HORIZONTAL
 SWITCH
 17
 198
-210
+223
 231
 immunite-partielle?
 immunite-partielle?
@@ -657,8 +657,8 @@ seuil-confinement
 seuil-confinement
 0
 100
-15.0
-5
+11.0
+1
 1
 %
 HORIZONTAL
@@ -745,6 +745,17 @@ duree-distanciation-sociale
 1
 semaines
 HORIZONTAL
+
+MONITOR
+777
+688
+928
+733
+Périodes de confinements
+nb-lockdowns
+17
+1
+11
 
 @#$#@#$#@
 ## Qu'est-ce que c'est ?
