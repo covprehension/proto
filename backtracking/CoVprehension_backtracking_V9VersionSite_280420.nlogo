@@ -738,11 +738,11 @@ end
 GRAPHICS-WINDOW
 3
 6
-620
-824
+621
+825
 -1
 -1
-18.062
+10.0
 1
 10
 1
@@ -839,7 +839,7 @@ CHOOSER
 SCENARIO
 SCENARIO
 "Laisser faire" "Confinement simple" "Traçage et confinement systématique" "Traçage et confinement sélectif"
-3
+2
 
 MONITOR
 1123
@@ -867,12 +867,12 @@ SLIDER
 404
 905
 674
-939
+938
 Probabilité-que-le-test-soit-efficace
 Probabilité-que-le-test-soit-efficace
 0
 1
-1.0
+0.7
 0.1
 1
 NIL
@@ -882,12 +882,12 @@ SLIDER
 405
 939
 675
-973
+972
 Probabilité-de-respect-du-confinement
 Probabilité-de-respect-du-confinement
 0
 1
-1.0
+0.7
 0.1
 1
 NIL
@@ -897,12 +897,12 @@ SLIDER
 3
 939
 403
-973
+972
 Profondeur-temporelle-pour-l'identification-des-contacts
 Profondeur-temporelle-pour-l'identification-des-contacts
 1
 5
-5.0
+1.0
 1
 1
 jours
@@ -912,12 +912,12 @@ SLIDER
 3
 869
 403
-903
+902
 Taux-de-couverture-de-l'application-de-traçage
 Taux-de-couverture-de-l'application-de-traçage
 0
 100
-30.0
+0.0
 10
 1
 %
@@ -927,12 +927,12 @@ SLIDER
 3
 904
 403
-938
+937
 Temps-d'attente-pour-la-réalisation-du-test
 Temps-d'attente-pour-la-réalisation-du-test
 0
 72
-12.0
+0.0
 6
 1
 heures
@@ -1112,21 +1112,11 @@ R0-fixé
 R0-fixé
 0
 10
-3.0
+1.0
 1
 1
 NIL
 HORIZONTAL
-
-TEXTBOX
-1677
-85
-2005
-895
-Modifs Arn\n\nto-report nb-detected%\n  report nb-detected / population-size * 100\nend\n\n\nto-report Max-Conf% \n  report max-conf / taille_population * 100\nend\n\n\nGlobals \n delay-before-test \n  incubation-duration \n  nb-days-before-test-tagging-contacts \n  proportion-equiped \n  probability-respect-lockdown \n  probability-success-test-infected \n  probability-asymptomatic-infection \n  R0-a-priori \n  initial-R-proportion\n  size_population \n  Nb_infected_initialisation \n infection-duration \n\n\nto setup-globals\nset delay-before-test  Temps-d'attente-pour-la-réalisation-du-test\n  set nb-days-before-test-tagging-contacts Profondeur-temporelle-pour-l'identification-des-contacts\n  set proportion-equiped Taux-de-couverture-de-l'application-de-traçage\n  set probability-respect-lockdown Probabilité-de-respect-du-confinement\n  set probability-success-test-infected Probabilité-que-le-test-soit-efficace\n\n  set R0-a-priori R0-fixé\n  set initial-R-proportion 0\n  set size_population 1750\n  set Nb_infected_initialisation 10\n  set fixed-seed? false\n  set probability-transmission R0-a-priori / (nb-contacts * contagion-duration)\n  set probability-transmission-asymptomatic probability-transmission / 2\nset incubation-duration 4\n  set infection-duration 14\n  set contagion-duration ((incubation-duration + infection-duration) * nb-step-per-day)\n  set probability-asymptomatic-infection 0.3
-12
-0.0
-1
 
 MONITOR
 628
@@ -1496,123 +1486,80 @@ NetLogo 6.1.1
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
-  <experiment name="Test_V2" repetitions="100" runMetricsEveryStep="false">
+  <experiment name="Explo_V9_Scenarios3-4" repetitions="100" runMetricsEveryStep="true">
     <setup>setup</setup>
     <go>go</go>
-    <exitCondition>nb-I = 0</exitCondition>
+    <exitCondition>not any? citizens with [contagious?]</exitCondition>
     <metric>MaxI%</metric>
-    <metric>epidemic-duration</metric>
-    <metric>%tested</metric>
-    <metric>nb-tests</metric>
-    <metric>%locked</metric>
     <metric>%nb-I-Total</metric>
-    <enumeratedValueSet variable="Confinement_avec_Test?">
-      <value value="false"/>
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="delay-before-test">
-      <value value="6"/>
-      <value value="12"/>
-      <value value="24"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="Nb_infected_initialisation">
-      <value value="1"/>
-      <value value="10"/>
-      <value value="50"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="nb-days-before-test-tagging-contacts">
+    <metric>epidemic-duration</metric>
+    <metric>Max-Conf%</metric>
+    <metric>%detected</metric>
+    <metric>nb-contagious-cumulated</metric>
+    <metric>nb-infected-identified</metric>
+    <metric>nb-infected-identified-removed</metric>
+    <metric>nb-non-infected-lockeddown</metric>
+    <metric>contact-detected</metric>
+    <metric>symptom-detected</metric>
+    <enumeratedValueSet variable="R0-fixé">
       <value value="1"/>
       <value value="2"/>
       <value value="3"/>
+      <value value="4"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="proportion-equiped">
-      <value value="10"/>
-      <value value="40"/>
-      <value value="70"/>
-      <value value="100"/>
-    </enumeratedValueSet>
-  </experiment>
-  <experiment name="Test_V3" repetitions="100" runMetricsEveryStep="false">
-    <setup>setup</setup>
-    <go>go</go>
-    <exitCondition>not any? citizens with [contagious?]</exitCondition>
-    <metric>MaxI%</metric>
-    <metric>epidemic-duration</metric>
-    <metric>%tested</metric>
-    <metric>nb-tests</metric>
-    <metric>%locked</metric>
-    <metric>%nb-I-Total</metric>
-    <metric>family-locked-down</metric>
-    <enumeratedValueSet variable="Confinement_avec_Test?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="delay-before-test">
-      <value value="6"/>
-      <value value="12"/>
-      <value value="24"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="Nb_infected_initialisation">
-      <value value="1"/>
-      <value value="5"/>
-      <value value="10"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="nb-days-before-test-tagging-contacts">
-      <value value="1"/>
-      <value value="3"/>
-      <value value="5"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="proportion-equiped">
-      <value value="40"/>
-      <value value="70"/>
-      <value value="100"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="family-lockdown?">
-      <value value="true"/>
-      <value value="false"/>
+    <steppedValueSet variable="Taux-de-couverture-de-l'application-de-traçage" first="0" step="10" last="100"/>
+    <steppedValueSet variable="Temps-d'attente-pour-la-réalisation-du-test" first="0" step="6" last="48"/>
+    <steppedValueSet variable="Profondeur-temporelle-pour-l'identification-des-contacts" first="1" step="1" last="4"/>
+    <steppedValueSet variable="Probabilité-que-le-test-soit-efficace" first="0.7" step="0.85" last="1"/>
+    <steppedValueSet variable="Probabilité-de-respect-du-confinement" first="0.7" step="0.85" last="1"/>
+    <enumeratedValueSet variable="SCENARIO">
+      <value value="&quot;Traçage et confinement systématique&quot;"/>
+      <value value="&quot;Traçage et confinement sélectif&quot;"/>
     </enumeratedValueSet>
   </experiment>
-  <experiment name="Test_V8" repetitions="100" runMetricsEveryStep="false">
+  <experiment name="Explo_V9_Scenario2" repetitions="100" runMetricsEveryStep="true">
     <setup>setup</setup>
     <go>go</go>
     <exitCondition>not any? citizens with [contagious?]</exitCondition>
     <metric>MaxI%</metric>
     <metric>%nb-I-Total</metric>
     <metric>epidemic-duration</metric>
-    <metric>max-conf</metric>
-    <metric>symptom-detected</metric>
+    <metric>Max-Conf%</metric>
+    <metric>%detected</metric>
+    <metric>nb-contagious-cumulated</metric>
+    <metric>nb-infected-identified</metric>
+    <metric>nb-infected-identified-removed</metric>
+    <metric>nb-non-infected-lockeddown</metric>
     <metric>contact-detected</metric>
-    <metric>nb-R / population-size</metric>
-    <enumeratedValueSet variable="Confinement_avec_Test?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="delay-before-test">
-      <value value="6"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="Nb_infected_initialisation">
-      <value value="10"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="population-size">
-      <value value="2000"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="nb-days-before-test-tagging-contacts">
+    <metric>symptom-detected</metric>
+    <enumeratedValueSet variable="R0-fixé">
       <value value="1"/>
+      <value value="2"/>
+      <value value="3"/>
+      <value value="4"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="fixed-seed">
-      <value value="false"/>
+    <steppedValueSet variable="Temps-d'attente-pour-la-réalisation-du-test" first="0" step="6" last="48"/>
+    <steppedValueSet variable="Probabilité-que-le-test-soit-efficace" first="0" step="0.2" last="1"/>
+    <steppedValueSet variable="Probabilité-de-respect-du-confinement" first="0" step="0.2" last="1"/>
+    <enumeratedValueSet variable="SCENARIO">
+      <value value="&quot;Confinement simple&quot;"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="proportion-equiped">
-      <value value="40"/>
-      <value value="70"/>
-      <value value="100"/>
+  </experiment>
+  <experiment name="Explo_V9_Scenario1" repetitions="100" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <exitCondition>not any? citizens with [contagious?]</exitCondition>
+    <metric>MaxI%</metric>
+    <metric>%nb-I-Total</metric>
+    <metric>epidemic-duration</metric>
+    <enumeratedValueSet variable="SCENARIO">
+      <value value="&quot;Laisser faire&quot;"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="family-lockdown?">
-      <value value="true"/>
-      <value value="false"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="initial-R-proportion">
-      <value value="0"/>
-      <value value="6"/>
-      <value value="60"/>
+    <enumeratedValueSet variable="R0-fixé">
+      <value value="1"/>
+      <value value="2"/>
+      <value value="3"/>
+      <value value="4"/>
     </enumeratedValueSet>
   </experiment>
 </experiments>
