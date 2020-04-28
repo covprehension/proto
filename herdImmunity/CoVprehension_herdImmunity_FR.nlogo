@@ -16,8 +16,7 @@ turtles-own [
   nb-infections
   nb-transmissions
   quarantined?
- ; xadr
- ; yadr
+  distancing?
 ]
 
 
@@ -39,6 +38,9 @@ globals [
   headless-lockdown-strategy
   headless-lockdown-threshold
   headless-lockdown-duration
+  headless-social-distancing-strategy
+  headless-social-distancing-threshold
+  headless-social-distancing-duration
 
   population-density
   nb-infected-initialisation
@@ -51,7 +53,9 @@ globals [
 
   lockdown?
   lockdown-counter
-  nb_LD
+  nb-lockdowns
+  social-distancing?
+  social-distancing-counter
 
   new-I
   new-R
@@ -104,18 +108,24 @@ to setup-GUI
   set headless-lockdown-strategy STRATEGIE-DE-CONFINEMENT
   set headless-lockdown-threshold seuil-confinement
   set headless-lockdown-duration duree-confinement * 7 ;; transform weeks into days
+  set headless-social-distancing-strategy STRATEGIE-DE-DISTANCIATION-SOCIALE
+  set headless-social-distancing-threshold seuil-distanciation-sociale
+  set headless-social-distancing-duration duree-distanciation-sociale * 7 ;; transform weeks into days
 end
 
 
 to setup-globals
 ;  set headless-population-size 10000
-  set population-density 105 ;; average for France
+;  set population-density 105 ;; average for France
   set nb-infected-initialisation 1
-  set transmission-distance 1
-  set travel-distance 3
+;  set transmission-distance 1
+  set travel-distance 5
 
   set lockdown? false
   set lockdown-counter -1
+  set nb-lockdowns 0
+  set social-distancing? false
+  set social-distancing-counter -1
 
   set total-nb-I 0
   set total-nb-R 0
@@ -131,11 +141,15 @@ end
 
 
 to setup-world
-  ;; resize the world to match given density and population-size
-  let patch-side-size 100 ;; meters
-  let width (sqrt (headless-population-size / population-density)) * 1000 / patch-side-size
+  let nb-contact 10
+  let width sqrt (headless-population-size / (nb-contact + 1))
   let max-cor floor ((width - 1) / 2)
   resize-world (- max-cor) (max-cor) (- max-cor) (max-cor)
+  ;; resize the world to match given density and population-size
+;  let patch-side-size 100 ;; meters
+;  let width (sqrt (headless-population-size / population-density)) * 1000 / patch-side-size
+;  let max-cor floor ((width - 1) / 2)
+;  resize-world (- max-cor) (max-cor) (- max-cor) (max-cor)
 
   ask patches [ set pcolor white ]
 end
@@ -147,12 +161,13 @@ to setup-population
   ;; susceptibles
   create-turtles headless-population-size [
     setxy random-xcor random-ycor
-  ;  set xadr xcor
-  ;  set yadr ycor
+    set size 0.3
     get-susceptible
+    set my-travel-distance travel-distance
     set nb-infections 0
     set nb-transmissions 0
     set quarantined? false
+    set distancing? false
   ]
 
   ;; immunised
@@ -172,13 +187,7 @@ end
 to go
   ifelse virus-present?
   [
-    reset-case-counts
-    move-randomly
-    virus-transmission
-    update-states
-    quarantine-decision
-
-    tick
+    headless-go
 ;    vid:record-view
   ]
   [
@@ -224,8 +233,11 @@ end
 
 to virus-transmission ;; turtle procedure
   ask infected with [not quarantined?] [
-    let potential-contacts turtles in-radius transmission-distance
-    let contacts n-of random (count potential-contacts) potential-contacts
+    let potential-contacts other turtles-here
+;    let potential-contacts (turtle-set other turtles-here turtles-on neighbors)
+;    let potential-contacts turtles in-radius transmission-distance
+    let contacts ifelse-value distancing? [ n-of random (count potential-contacts + 1) potential-contacts ] [ potential-contacts ]
+;    let contacts (turtle-set other turtles-here turtles-on neighbors)
 
     ask contacts with [breed = susceptibles] [
       if random-float 1 < headless-transmission-rate [
@@ -272,9 +284,11 @@ end
 
 to quarantine-decision
   (ifelse
+    headless-lockdown-strategy = "pas de confinement" [ stop ]
+
     not lockdown? and prop-I > headless-lockdown-threshold [
       set lockdown? true
-      set nb_LD nb_LD + 1
+      set nb-lockdowns nb-lockdowns + 1
 
       set lockdown-counter headless-lockdown-duration
 
@@ -307,14 +321,12 @@ to get-susceptible
   set breed susceptibles
   set color lput transparency color-susceptible
   set state-duration -1
-  set my-travel-distance travel-distance
 end
 
 to get-infected
   set breed infected
   set color lput transparency color-infected
   set state-duration gamma-law headless-avg-infectivity-duration 1
-  set my-travel-distance travel-distance
   set nb-infections nb-infections + 1
 
   set new-I new-I + 1
@@ -324,7 +336,6 @@ to get-immunised
   set breed immunised
   set color lput transparency color-recovered
   set state-duration gamma-law headless-avg-immunity-duration 4
-  set my-travel-distance travel-distance
   set nb-transmissions 0
   if headless-partial-immunity? [ set immunity-protection ((random 51) + 50) / 100 ]
 
@@ -367,11 +378,11 @@ end
 GRAPHICS-WINDOW
 671
 10
-1336
-676
+1309
+649
 -1
 -1
-9.525
+30.0
 1
 10
 1
@@ -381,10 +392,10 @@ GRAPHICS-WINDOW
 0
 0
 1
--34
-34
--34
-34
+-10
+10
+-10
+10
 1
 1
 1
@@ -426,10 +437,10 @@ NIL
 1
 
 PLOT
-18
-456
-666
-719
+12
+634
+660
+897
 Dynamique épidémique
 Jours
 % de cas
@@ -483,18 +494,18 @@ SLIDER
 taux-de-transmission
 taux-de-transmission
 0
-1
-0.12
-0.01
+0.5
+0.012
+0.001
 1
 NIL
 HORIZONTAL
 
 PLOT
-18
-718
-546
-981
+12
+896
+540
+1159
 Nombre de nouveaux cas par jour
 Jours
 Nombre de cas
@@ -510,10 +521,10 @@ PENS
 "Personnes immunisées" 1.0 0 -7500403 true "" "set-plot-pen-color color-recovered plot new-R"
 
 MONITOR
-20
-304
-159
-349
+12
+515
+163
+560
 nb de personnes saines
 nb-S
 17
@@ -521,10 +532,10 @@ nb-S
 11
 
 MONITOR
-165
-305
-321
-350
+182
+516
+347
+561
 nb de personnes infectées
 nb-I
 17
@@ -532,10 +543,10 @@ nb-I
 11
 
 MONITOR
-325
-305
-477
-350
+370
+516
+525
+561
 nb de personnes guéries
 nb-R
 17
@@ -543,10 +554,10 @@ nb-R
 11
 
 MONITOR
-17
-389
-397
-434
+11
+567
+391
+612
 temps nécessaire pour infecter 100% de la population (en jours)
 date-all-infected
 0
@@ -628,20 +639,20 @@ PENS
 "default" 0.01 1 -16777216 true "" "histogram [immunity-protection] of immunised"
 
 CHOOSER
-307
-228
-620
-273
+16
+251
+329
+296
 STRATEGIE-DE-CONFINEMENT
 STRATEGIE-DE-CONFINEMENT
-"tout le monde" "uniquement les personnes infectées"
-1
+"pas de confinement" "tout le monde" "uniquement les personnes infectées"
+0
 
 SLIDER
-309
-149
-511
-182
+15
+299
+217
+332
 seuil-confinement
 seuil-confinement
 0
@@ -653,10 +664,10 @@ seuil-confinement
 HORIZONTAL
 
 MONITOR
-414
-389
-647
-434
+408
+567
+641
+612
 % de personnes saines infectées
 total-prop-I
 2
@@ -664,15 +675,72 @@ total-prop-I
 11
 
 SLIDER
-307
-187
-574
-220
+16
+336
+283
+369
 duree-confinement
 duree-confinement
 1
 20
-3.0
+4.0
+1
+1
+semaines
+HORIZONTAL
+
+BUTTON
+516
+61
+667
+94
+temps exécution
+setup\nreset-timer\nwhile [virus-present?] [ headless-go ]\nshow timer
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+CHOOSER
+335
+251
+648
+296
+STRATEGIE-DE-DISTANCIATION-SOCIALE
+STRATEGIE-DE-DISTANCIATION-SOCIALE
+"pas de distanciation sociale" "tout le monde" "uniquement les personnes infectées"
+0
+
+SLIDER
+335
+301
+596
+334
+seuil-distanciation-sociale
+seuil-distanciation-sociale
+0
+100
+50.0
+5
+1
+%
+HORIZONTAL
+
+SLIDER
+334
+339
+660
+372
+duree-distanciation-sociale
+duree-distanciation-sociale
+1
+20
+20.0
 1
 1
 semaines
@@ -684,7 +752,7 @@ MONITOR
 928
 733
 Périodes de confinements
-nb_LD
+nb-lockdowns
 17
 1
 11
