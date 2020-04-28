@@ -1,8 +1,9 @@
 globals [ ;;global parameters
   population-size
-  nb-supermarkets
+  ;;nb-supermarkets
   color-citizens
   color-supermarket
+  global-stock
 ]
 
 breed [supermarkets supermarket]
@@ -12,14 +13,16 @@ breed [citizens citizen]
 citizens-own
 [
   need-basic  ;besoin en temps normal
-  need-confinement  ; besoin pour periode de confinement
-  need-penurie  ; stock en cas de penurie
+  ;;need-confinement  ; besoin pour periode de confinement
+  ;;need-penurie  ; stock en cas de penurie
   my-supermarket ; mon supermarché
   my-stock ;; my own stock
   need-threshold  ;; my usual threshold to buy new products
-  need-threshold-confinement  ;; my need in case of confinement
+  ;;need-threshold-confinement  ;; my need in case of confinement
   perception-penurie  ;; minimal quantity available at the supermarket below which the consumer perceives penurie
+  perception-penurie-threshold ;; rate of the missing stock in the supermarket that make the citizen think there is a penurie
   consommation  ;; consommation of product for each tick
+  panic? ;;to find who is panicking
 ]
 
 supermarkets-own
@@ -28,11 +31,13 @@ supermarkets-own
   stock-max ; capacité max de stockage
   qte-reapprovisionnement ; quantité de réapprovisionnement à chaque step
   nb-visite-consumer
+  taille-caddie
 ]
 
 to setup-globals
   set population-size 500
-  set nb-supermarkets population-size / 100
+  ;;set nb-supermarkets population-size / 100
+  set global-stock population-size / 5
   ;set walking-angle 50
   ;set speed 0.5
   setup-colors
@@ -47,13 +52,15 @@ end
 to setup-supermarket
   create-supermarkets nb-supermarkets[
     set shape "house"
-    setxy random-xcor random-ycor
-    set stock 20 ;+ random 100
-    set stock-max random 100
+    ;;setxy random-xcor random-ycor
+    set stock 10000 ;;(global-stock / nb-supermarkets)
+    set stock-max 10000 ;;population-size / (2 * nb-supermarkets) ;;random 100
     ;set qte-reapprovisionnement 10 ;+ random 5
-    set size stock / 10
+    set size 5 ;;stock / 10
     set color one-of base-colors
+    set taille-caddie 5.0 / nb-supermarkets
   ]
+  layout-circle supermarkets 15
 end
 
 to setup-population
@@ -64,16 +71,19 @@ to setup-population
 
     set color color-citizens
     set my-supermarket min-one-of supermarkets [distance (myself)]
+    create-link-with my-supermarket
     set my-stock random-float 2
     set size 1;my-stock
 
     set need-basic 1 ;besoin en temps normal
-    set need-confinement 2 ; besoin pour periode de confinement
-    set need-penurie 4 ; stock en cas de penurie
+    ;;set need-confinement 1 ; besoin pour periode de confinement
+    ;;set need-penurie 4 ; stock en cas de penurie
     set need-threshold 0 ;; my usual threshold to buy new products
-    set need-threshold-confinement 1 ;; my need in case of confinement
+    ;;set need-threshold-confinement 0;;1 ;; my need in case of confinement
     set perception-penurie 10 ;; minimal quantity available at the supermarket below which the consumer perceives penurie
     set consommation 0.1 ;; consommation of product for each tick
+    set perception-penurie-threshold random-float 1.0 ;;rate of the missing stock in supermarket to feel in penurie
+    set panic? false
   ]
 end
 
@@ -98,33 +108,10 @@ end
 
 to citizens-buy
 ask citizens[
-    ;;need for PQ ?
     set color green
-    ifelse confinement?
-    [
-      ;;confinement
-      if my-stock < need-threshold-confinement[
-        ;;need to buy new products
-        ;;choose one supermarket by default my usual supermarket
-        let my-store my-supermarket
-        ;;determine how much to take
-        let quantity min list need-confinement [stock] of my-store
+    set panic? false
 
-        if [stock] of my-store < perception-penurie[
-          set quantity min list need-penurie [stock] of my-store
-          set color red
-
-        ]
-        ;;update stock of supermarket
-        ask my-store [
-          set stock (stock - quantity)
-          set nb-visite-consumer nb-visite-consumer + 1
-        ]
-        ;;update my own stock
-        set my-stock (my-stock + quantity)
-      ]
-    ]
-    [ ;;no confinement
+    ;;need for PQ ?
     if my-stock <= need-threshold[
         ;;need to buy new products
         ;;choose one supermarket by default my usual supermarket
@@ -132,14 +119,27 @@ ask citizens[
         ;;determine how much to take
         let quantity min list need-basic [stock] of my-store
 
-        ;;update stock of supermarket
-        ask my-store [
-          set stock (stock - quantity)
+      if confinement?
+      [
+        ;;confinement
+        let missing-quantity-store-rate ([stock-max] of my-store - [stock] of my-store) / [stock-max] of my-store
+        if missing-quantity-store-rate > perception-penurie-threshold[
+          ;;feel in penurie
+          ;;set quantity min list need-penurie [stock] of my-store
+          set quantity min list [taille-caddie] of my-store [stock] of my-store
+          set color red
+          set panic? true
         ]
-        ;;update my own stock
-        set my-stock (my-stock + quantity)
       ]
+
+      ;;update stock of supermarket
+      ask my-store [
+        set stock (stock - quantity)
+      ]
+      ;;update my own stock
+      set my-stock (my-stock + quantity )
     ]
+
     ;;consumption of my own stock
    set my-stock max list 0 (my-stock - consommation)
     ;set size my-stock
@@ -150,7 +150,7 @@ end
 to supermarket-refill
   ask supermarkets [
     set stock min list stock-max (stock + reapprovisionnement)
-    set size stock / 10
+    ;;set size stock / 10
   ]
 end
 
@@ -169,13 +169,13 @@ end
 to plot-graph
   set-current-plot "indiv-supermarket-stocks"
   ask supermarkets [
-    set-plot-pen-color color ;pour renvoyer la couleur du fermier
+    set-plot-pen-color color ;pour renvoyer la couleur du supermarché
     plotxy ticks stock
     ]
   set-current-plot "affluence"
   ask supermarkets [
-    set-plot-pen-color color ;pour renvoyer la couleur du fermier
-    plotxy ticks nb-visite-consumer
+    set-plot-pen-color color ;pour renvoyer la couleur du supermarché
+    plotxy ticks count citizens with [panic?];;nb-visite-consumer
     ]
 end
 @#$#@#$#@
@@ -193,8 +193,8 @@ GRAPHICS-WINDOW
 1
 1
 0
-1
-1
+0
+0
 1
 -30
 30
@@ -271,7 +271,7 @@ reapprovisionnement
 reapprovisionnement
 0
 50
-11.0
+45.0
 1
 1
 NIL
@@ -340,6 +340,21 @@ false
 "" ""
 PENS
 "default" 1.0 2 -16777216 true "" ""
+
+SLIDER
+313
+435
+485
+468
+nb-supermarkets
+nb-supermarkets
+1
+10
+1.0
+1
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## TODO
@@ -662,7 +677,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.1.1
+NetLogo 6.1.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
