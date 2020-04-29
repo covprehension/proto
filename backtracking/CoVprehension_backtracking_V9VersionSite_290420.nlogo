@@ -1579,7 +1579,7 @@ NetLogo 6.1.1
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
-  <experiment name="Explo_V9_Scenarios3-4" repetitions="100" runMetricsEveryStep="false">
+  <experiment name="Explo_V9_Scenarios3-4" repetitions="30" runMetricsEveryStep="false">
     <setup>setup</setup>
     <go>go</go>
     <exitCondition>not any? citizens with [contagious?]</exitCondition>
@@ -1596,27 +1596,20 @@ NetLogo 6.1.1
     <metric>contact-detected%</metric>
     <metric>symptom-detected%</metric>
     <enumeratedValueSet variable="Nombre-de-cas-au-départ">
-      <value value="5"/>
       <value value="10"/>
-      <value value="20"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="R0-fixé">
       <value value="1"/>
       <value value="2"/>
       <value value="3"/>
     </enumeratedValueSet>
-    <steppedValueSet variable="Taux-de-couverture-de-l'application-de-traçage" first="0" step="10" last="100"/>
+    <steppedValueSet variable="Taux-de-couverture-de-l'application-de-traçage" first="20" step="10" last="100"/>
     <enumeratedValueSet variable="Temps-d'attente-pour-la-réalisation-du-test">
-      <value value="0"/>
       <value value="6"/>
-      <value value="12"/>
       <value value="24"/>
-      <value value="48"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="Profondeur-temporelle-de-recherche-des-contacts">
       <value value="1"/>
-      <value value="2"/>
-      <value value="3"/>
       <value value="4"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="Probabilité-que-le-test-soit-efficace">
