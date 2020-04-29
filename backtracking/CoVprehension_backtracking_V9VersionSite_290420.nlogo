@@ -633,6 +633,10 @@ to-report population-spared
 report (nb-S) / population-size * 100
 end
 
+to-report epidemic-duration-final
+  report round (ticks / nb-step-per-day)
+end
+
 
 to-report %locked
   report (count citizens with [lockdown? = 1] / population-size) * 100
@@ -642,12 +646,39 @@ to-report nb-tests-total
   report  sum [nb-tests] of citizens
 end
 
+to-report population-tested
+  report  count citizens with [nb-tests > 0]
+end
+
+to-report population-tested%
+  report  count citizens with [nb-tests > 0] / population-size * 100
+end
+
+to-report Population-locked%
+  report (nb-infected-identified-removed + nb-non-infected-lockeddown) / population-size * 100
+
+end
+
+
+to-report nb-non-infected-lockeddown%
+  report nb-non-infected-lockeddown / (nb-infected-identified-removed + nb-non-infected-lockeddown) * 100
+
+end
+
 to-report nb-detected
   report count citizens with [detected?]
 end
 
 to-report nb-detected%
   report nb-detected / population-size * 100
+end
+
+to-report contagious-identified%
+  report nb-infected-identified / nb-contagious-cumulated * 100
+end
+
+to-report contagious-identified&removed%
+  report nb-infected-identified-removed / nb-contagious-cumulated * 100
 end
 
 to-report %detected
@@ -664,7 +695,7 @@ to-report MaxI%
 end
 
 to-report Max-Conf%
-  report max-conf /  size_population  * 100
+  report max-conf /  population-size  * 100
 end
 
 to-report R0
@@ -694,8 +725,16 @@ to-report symptom-detected
   report count citizens with [detected? and contact-order = 1]
 end
 
+to-report symptom-detected%
+  report symptom-detected /  nb-detected  * 100
+end
+
 to-report contact-detected
   report count citizens with [detected? and contact-order = 2]
+end
+
+to-report contact-detected%
+  report contact-detected /  nb-detected  * 100
 end
 
 to-report citizens-per-house
@@ -709,6 +748,7 @@ end
 to-report mean-mean-daily-contacts-nb
   report mean mean-mean-daily-contacts
 end
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -740,9 +780,9 @@ to update-mean-mean-daily-contacts
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-3
+8
 6
-621
+626
 825
 -1
 -1
@@ -804,7 +844,7 @@ PLOT
 628
 6
 1401
-263
+265
 EVOLUTION DE L'EPIDEMIE
 Durée de l'épidémie
 % de population
@@ -826,9 +866,9 @@ PENS
 
 MONITOR
 897
-360
+362
 1120
-405
+407
 Population touchée par l'épidémie (%)
 %nb-I-Total
 1
@@ -843,27 +883,27 @@ CHOOSER
 SCENARIO
 SCENARIO
 "Laisser faire" "Confinement simple" "Traçage et confinement systématique" "Traçage et confinement sélectif"
-3
+1
 
 MONITOR
 1123
-360
+362
 1401
-405
+407
 Durée de l'épidémie (en jours)
-round (ticks / nb-step-per-day)
+epidemic-duration-final
 17
 1
 11
 
 MONITOR
 628
-359
+361
 895
-404
+406
 Pic épidémique (%)
 MaxI%
-2
+1
 1
 11
 
@@ -921,7 +961,7 @@ Taux-de-couverture-de-l'application-de-traçage
 Taux-de-couverture-de-l'application-de-traçage
 0
 100
-70.0
+80.0
 10
 1
 %
@@ -944,31 +984,31 @@ HORIZONTAL
 
 MONITOR
 1123
-408
+410
 1401
-453
-Nombre de tests réalisés
-nb-tests-total
-0
+455
+Population testée (%)
+population-tested%
+1
 1
 11
 
 MONITOR
 898
-408
+410
 1121
-453
-Population testée (%)
-%detected
-2
+455
+Population confinée (%)
+Population-locked%
+1
 1
 11
 
 MONITOR
 1122
-264
-1400
-309
+266
+1401
+311
 Nombre d'infectés
 nb-I
 17
@@ -977,9 +1017,9 @@ nb-I
 
 MONITOR
 1123
-312
+314
 1401
-357
+359
 Nombre de guéris
 nb-R
 17
@@ -988,9 +1028,9 @@ nb-R
 
 MONITOR
 897
-264
+266
 1120
-309
+311
 Nombre d'exposés
 nb-Ex
 17
@@ -999,9 +1039,9 @@ nb-Ex
 
 MONITOR
 628
-264
+266
 894
-309
+311
 Nombre de sains
 nb-S
 17
@@ -1009,32 +1049,32 @@ nb-S
 11
 
 MONITOR
-629
-730
-1009
-775
-Nombre de personnes contagieuses confinées
-nb-infected-identified-removed
-0
+1151
+733
+1402
+778
+Personnes contagieuses confinées (%)
+contagious-identified&removed%
+1
 1
 11
 
 MONITOR
-1011
-683
-1401
-728
-Nombre de personnes contagieuses Identifiées
-nb-infected-identified
-2
+893
+733
+1149
+778
+Personnes contagieuses Identifiées (%)
+contagious-identified%
+1
 1
 11
 
 PLOT
 629
-456
+458
 1401
-680
+731
 EFFICACITE DU DISPOSITIF
 Durée de l'épidémie
 Nombre cumulé
@@ -1050,60 +1090,49 @@ PENS
 "Contagieux identifiés" 1.0 0 -2674135 true "" "\nif population-size > 0 [plotxy (ticks / nb-step-per-day) nb-infected-identified]\n\n"
 "Contagieux confinés" 1.0 0 -5825686 true "" "\nif population-size > 0 [plotxy (ticks / nb-step-per-day) nb-infected-identified-removed]\n\n"
 "Sains confinés" 1.0 0 -13840069 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) nb-non-infected-lockeddown]"
-"Tests réalisés" 1.0 0 -12895429 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day)  nb-tests-total]"
+"Population testée" 1.0 0 -12895429 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day)  population-tested]"
 
 MONITOR
-629
-683
-1009
-728
-Nombre de personnes contagieuses (cumul)
+630
+733
+892
+778
+Nombre total de personnes contagieuses
 nb-contagious-cumulated
-17
-1
-11
-
-MONITOR
-1011
-730
-1401
-775
-Nombre de personnes non contagieuses confinées
-nb-non-infected-lockeddown
-17
-1
-11
-
-MONITOR
-628
-407
-895
-452
-Pic de confinement (%)
-Max-Conf%
 2
 1
 11
 
 MONITOR
-1012
-778
+628
+409
+895
+454
+Pic de confinement (%)
+Max-Conf%
+1
+1
+11
+
+MONITOR
+1019
+780
 1402
-823
-Nombre de personnes contagieuses identifiées suite aux symptômes
-symptom-detected
-17
+825
+Personnes contagieuses identifiées suite aux symptômes (%)
+symptom-detected%
+1
 1
 11
 
 MONITOR
 629
-778
-1011
-823
-Nombre de personnes contagieuses identifiées grâce au traçage
-contact-detected
-17
+780
+1018
+825
+Personnes contagieuses identifiées grâce au traçage (%)
+contact-detected%
+1
 1
 11
 
@@ -1124,9 +1153,9 @@ HORIZONTAL
 
 MONITOR
 628
-312
+314
 894
-357
+359
 Nombre d'infectés symptomatiques
 nb-Ir
 17
@@ -1135,9 +1164,9 @@ nb-Ir
 
 MONITOR
 897
-312
+314
 1119
-357
+359
 Nombre d'infectés asymptomatiques
 nb-Inr
 17
@@ -1496,15 +1525,16 @@ NetLogo 6.1.1
     <exitCondition>not any? citizens with [contagious?]</exitCondition>
     <metric>MaxI%</metric>
     <metric>%nb-I-Total</metric>
-    <metric>epidemic-duration</metric>
+    <metric>epidemic-duration-final</metric>
     <metric>Max-Conf%</metric>
-    <metric>%detected</metric>
-    <metric>nb-contagious-cumulated</metric>
-    <metric>nb-infected-identified</metric>
-    <metric>nb-infected-identified-removed</metric>
-    <metric>nb-non-infected-lockeddown</metric>
-    <metric>contact-detected</metric>
-    <metric>symptom-detected</metric>
+    <metric>Population-locked%</metric>
+    <metric>population-tested%</metric>
+    <metric>nb-tests-total</metric>
+    <metric>Contagious-identified%</metric>
+    <metric>contagious-identified&amp;removed%</metric>
+    <metric>nb-non-infected-lockeddown%</metric>
+    <metric>contact-detected%</metric>
+    <metric>symptom-detected%</metric>
     <enumeratedValueSet variable="R0-fixé">
       <value value="1"/>
       <value value="2"/>
@@ -1543,15 +1573,16 @@ NetLogo 6.1.1
     <exitCondition>not any? citizens with [contagious?]</exitCondition>
     <metric>MaxI%</metric>
     <metric>%nb-I-Total</metric>
-    <metric>epidemic-duration</metric>
+    <metric>epidemic-duration-final</metric>
     <metric>Max-Conf%</metric>
-    <metric>%detected</metric>
-    <metric>nb-contagious-cumulated</metric>
-    <metric>nb-infected-identified</metric>
-    <metric>nb-infected-identified-removed</metric>
-    <metric>nb-non-infected-lockeddown</metric>
-    <metric>contact-detected</metric>
-    <metric>symptom-detected</metric>
+    <metric>Population-locked%</metric>
+    <metric>population-tested%</metric>
+    <metric>nb-tests-total</metric>
+    <metric>Contagious-identified%</metric>
+    <metric>contagious-identified&amp;removed%</metric>
+    <metric>nb-non-infected-lockeddown%</metric>
+    <metric>contact-detected%</metric>
+    <metric>symptom-detected%</metric>
     <enumeratedValueSet variable="R0-fixé">
       <value value="1"/>
       <value value="2"/>
@@ -1583,7 +1614,7 @@ NetLogo 6.1.1
     <exitCondition>not any? citizens with [contagious?]</exitCondition>
     <metric>MaxI%</metric>
     <metric>%nb-I-Total</metric>
-    <metric>epidemic-duration</metric>
+    <metric>epidemic-duration-final</metric>
     <enumeratedValueSet variable="SCENARIO">
       <value value="&quot;Laisser faire&quot;"/>
     </enumeratedValueSet>
