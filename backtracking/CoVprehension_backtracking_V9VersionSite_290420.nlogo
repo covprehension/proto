@@ -131,11 +131,11 @@ to setup-globals
   ]
 
   set population-size  size_population
-  set nb-house (population-size / 2)
+  set nb-house (population-size / 3)
 
   set walking-angle 50
   set speed 0.5
-  set probability-car-travel 0.2
+  set probability-car-travel 0.5
   set transparency 145
   set nb-step-per-day 4
   set incubation-duration 4
@@ -638,6 +638,10 @@ to-report %locked
   report (count citizens with [lockdown? = 1] / population-size) * 100
 end
 
+to-report nb-tests-total
+  report  sum [nb-tests] of citizens
+end
+
 to-report nb-detected
   report count citizens with [detected?]
 end
@@ -839,7 +843,7 @@ CHOOSER
 SCENARIO
 SCENARIO
 "Laisser faire" "Confinement simple" "Traçage et confinement systématique" "Traçage et confinement sélectif"
-2
+3
 
 MONITOR
 1123
@@ -872,7 +876,7 @@ Probabilité-que-le-test-soit-efficace
 Probabilité-que-le-test-soit-efficace
 0
 1
-0.7
+1.0
 0.1
 1
 NIL
@@ -887,7 +891,7 @@ Probabilité-de-respect-du-confinement
 Probabilité-de-respect-du-confinement
 0
 1
-0.7
+1.0
 0.1
 1
 NIL
@@ -902,7 +906,7 @@ Profondeur-temporelle-pour-l'identification-des-contacts
 Profondeur-temporelle-pour-l'identification-des-contacts
 1
 5
-1.0
+5.0
 1
 1
 jours
@@ -917,7 +921,7 @@ Taux-de-couverture-de-l'application-de-traçage
 Taux-de-couverture-de-l'application-de-traçage
 0
 100
-0.0
+70.0
 10
 1
 %
@@ -932,7 +936,7 @@ Temps-d'attente-pour-la-réalisation-du-test
 Temps-d'attente-pour-la-réalisation-du-test
 0
 72
-0.0
+6.0
 6
 1
 heures
@@ -944,7 +948,7 @@ MONITOR
 1401
 453
 Nombre de tests réalisés
-nb-detected
+nb-tests-total
 0
 1
 11
@@ -1043,10 +1047,10 @@ true
 "" ""
 PENS
 "Contagieux (nombre total)" 1.0 0 -817084 true "" "\nif population-size > 0 [plotxy (ticks / nb-step-per-day) nb-contagious-cumulated ]"
-"Contagieux identifiés" 1.0 0 -13791810 true "" "\nif population-size > 0 [plotxy (ticks / nb-step-per-day) nb-infected-identified]\n\n"
+"Contagieux identifiés" 1.0 0 -2674135 true "" "\nif population-size > 0 [plotxy (ticks / nb-step-per-day) nb-infected-identified]\n\n"
 "Contagieux confinés" 1.0 0 -5825686 true "" "\nif population-size > 0 [plotxy (ticks / nb-step-per-day) nb-infected-identified-removed]\n\n"
-"Sains confinés" 1.0 0 -7500403 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) nb-non-infected-lockeddown]"
-"Tests réalisés" 1.0 0 -2674135 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day)  nb-detected]"
+"Sains confinés" 1.0 0 -13840069 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) nb-non-infected-lockeddown]"
+"Tests réalisés" 1.0 0 -12895429 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day)  nb-tests-total]"
 
 MONITOR
 629
@@ -1112,7 +1116,7 @@ R0-fixé
 R0-fixé
 0
 10
-1.0
+3.0
 1
 1
 NIL
