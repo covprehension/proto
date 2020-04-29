@@ -116,14 +116,14 @@ to setup-globals
   set R 4
 
   set delay-before-test  Temps-d'attente-pour-la-réalisation-du-test
-  set nb-days-before-test-tagging-contacts Profondeur-temporelle-pour-l'identification-des-contacts
+  set nb-days-before-test-tagging-contacts Profondeur-temporelle-de-recherche-des-contacts
   set proportion-equiped Taux-de-couverture-de-l'application-de-traçage
   set probability-respect-lockdown Probabilité-de-respect-du-confinement
   set probability-success-test-infected Probabilité-que-le-test-soit-efficace
   set R0-a-priori R0-fixé
   set initial-R-proportion 0
-  set size_population 1750
-  set Nb_infected_initialisation 10
+  set size_population 2000
+  set Nb_infected_initialisation Nombre-de-cas-au-départ
 
   set fixed-seed? false
   if fixed-seed?[
@@ -135,7 +135,7 @@ to setup-globals
 
   set walking-angle 50
   set speed 0.5
-  set probability-car-travel 0.5
+  set probability-car-travel 0.2
   set transparency 145
   set nb-step-per-day 4
   set incubation-duration 4
@@ -661,7 +661,9 @@ end
 
 
 to-report nb-non-infected-lockeddown%
-  report nb-non-infected-lockeddown / (nb-infected-identified-removed + nb-non-infected-lockeddown) * 100
+  ifelse (nb-infected-identified-removed + nb-non-infected-lockeddown) > 0
+  [report nb-non-infected-lockeddown / (nb-infected-identified-removed + nb-non-infected-lockeddown) * 100]
+  [report 0]
 
 end
 
@@ -674,11 +676,15 @@ to-report nb-detected%
 end
 
 to-report contagious-identified%
-  report nb-infected-identified / nb-contagious-cumulated * 100
+  ifelse nb-contagious-cumulated > 0
+  [report nb-infected-identified / nb-contagious-cumulated * 100]
+  [report 0]
 end
 
 to-report contagious-identified&removed%
-  report nb-infected-identified-removed / nb-contagious-cumulated * 100
+  ifelse nb-contagious-cumulated > 0
+  [report nb-infected-identified-removed / nb-contagious-cumulated * 100]
+  [report 0]
 end
 
 to-report %detected
@@ -726,7 +732,9 @@ to-report symptom-detected
 end
 
 to-report symptom-detected%
-  report symptom-detected /  nb-detected  * 100
+  ifelse nb-detected > 0
+  [report symptom-detected /  nb-detected  * 100]
+  [report 0]
 end
 
 to-report contact-detected
@@ -734,7 +742,9 @@ to-report contact-detected
 end
 
 to-report contact-detected%
-  report contact-detected /  nb-detected  * 100
+  ifelse nb-detected > 0
+  [report contact-detected /  nb-detected  * 100]
+  [report 0]
 end
 
 to-report citizens-per-house
@@ -807,10 +817,10 @@ ticks
 30.0
 
 BUTTON
-217
+630
 827
-306
-868
+736
+876
 Initialiser
 setup
 NIL
@@ -824,10 +834,10 @@ NIL
 1
 
 BUTTON
-307
-827
-396
-868
+630
+877
+736
+926
 Simuler
 go
 T
@@ -876,14 +886,14 @@ Population touchée par l'épidémie (%)
 11
 
 CHOOSER
-410
-841
-668
-886
+354
+844
+627
+889
 SCENARIO
 SCENARIO
 "Laisser faire" "Confinement simple" "Traçage et confinement systématique" "Traçage et confinement sélectif"
-1
+0
 
 MONITOR
 1123
@@ -908,10 +918,10 @@ MaxI%
 11
 
 SLIDER
-404
-905
-674
-938
+354
+904
+626
+937
 Probabilité-que-le-test-soit-efficace
 Probabilité-que-le-test-soit-efficace
 0
@@ -923,9 +933,9 @@ NIL
 HORIZONTAL
 
 SLIDER
-405
+354
 939
-675
+627
 972
 Probabilité-de-respect-du-confinement
 Probabilité-de-respect-du-confinement
@@ -940,10 +950,10 @@ HORIZONTAL
 SLIDER
 3
 939
-403
+353
 972
-Profondeur-temporelle-pour-l'identification-des-contacts
-Profondeur-temporelle-pour-l'identification-des-contacts
+Profondeur-temporelle-de-recherche-des-contacts
+Profondeur-temporelle-de-recherche-des-contacts
 1
 5
 5.0
@@ -955,13 +965,13 @@ HORIZONTAL
 SLIDER
 3
 869
-403
+353
 902
 Taux-de-couverture-de-l'application-de-traçage
 Taux-de-couverture-de-l'application-de-traçage
 0
 100
-80.0
+30.0
 10
 1
 %
@@ -970,7 +980,7 @@ HORIZONTAL
 SLIDER
 3
 904
-403
+354
 937
 Temps-d'attente-pour-la-réalisation-du-test
 Temps-d'attente-pour-la-réalisation-du-test
@@ -1137,10 +1147,10 @@ contact-detected%
 11
 
 SLIDER
-3
-829
-175
-862
+218
+834
+353
+867
 R0-fixé
 R0-fixé
 0
@@ -1174,29 +1184,79 @@ nb-Inr
 11
 
 TEXTBOX
-725
-843
-1368
-976
-EXPLICATIONS\n\nLa durée de la phase contagieuse est de 14 jours plus 4 jours d'incubation pendant laquelle la contagiosité croît linéairement jusqu'au début de la phase infectieuse.
+755
+833
+1398
+966
+EXPLICATIONS\n\nChoisissez un scénario et fixez des conditions initiales (curseurs en bas à gauche de l'écran). \nCliquez sur le bouton \"Initialiser\" puis lancez la simulation.\n\nNB : la durée de la période contagieuse est de 14 jours plus 4 jours d'incubation pendant lesquels la contagiosité croît linéairement jusqu'au début de la phase infectieuse.
 14
-65.0
+55.0
 1
 
+MONITOR
+630
+928
+736
+973
+Population Totale
+Population-size
+0
+1
+11
+
+SLIDER
+3
+834
+218
+867
+Nombre-de-cas-au-départ
+Nombre-de-cas-au-départ
+1
+100
+10.0
+1
+1
+NIL
+HORIZONTAL
+
 @#$#@#$#@
-## THINGS TO TRY
+## DESCRIPTION
 
-to be done 
+Ce modèle CoVprehension s'intéresse aux applications mobiles de traçage épidémiologique et à leurs possibles effet sur l’épidémie de COVID-19.
+          
+Il reprend les éléments de base du modèle de confinement de la [Q6](https://covprehension.org/2020/03/30/q6.html) en les enrichissant un peu.
+ 
+Les journées sont ainsi découpées en quatre tranches de 6 heures. Les trois premières tranches sont occupées par des déplacements et des rencontres (en moyenne 10 par jours). La plupart des déplacements se font à proximité du domicile mais 20% d’entre eux se font à plus longue distance. La dernière tranche de la journée s’effectue au domicile, partagé par trois personnes en moyenne. Au total, 2000 personnes occupent ce petit territoire virtuel.
+
+Par ailleurs, nous introduisons également une phase d’incubation (E pour Exposé) et deux catégories d’infection possibles : les symptomatiques et les asymptomatiques, ces dernières étant plus difficiles à identifier par simple diagnostic médical en raison de l’absence de symptômes. Il s’agit donc maintenant d’un modèle SEIR.
+
+A l’initialisation, tous les individus sont sains. On injecte alors un petit nombre d’individus infectés (paramètre *Nombre-de-cas-au-départ*) dans cette population initiale et on simule la propagation du virus à partir des comportements des individus modélisés.
+
+Les changements d’état s’opèrent de la manière suivante : 
+
+- Sain → Exposé : un individu sain deviendra exposé, au contact d’un individu infecté, selon une probabilité qui dépend de la valeur du R0 choisie et de la catégorie à laquelle appartient cet individu infecté (cf point suivant). La formule retenue pour calculer cette probabilité est la suivante : P(S→ E) = 1/R0 x c x d avec c le nombre de contacts moyens par jours ([fixé à 10 environ](https://covprehension.org/2020/04/02/q10.html)) et d la durée de la période contagieuse. 
+
+- Exposé → Infecté : un individu restera dans l’état exposé pendant sa période d’incubation (fixée ici à 4 jours), au cours de laquelle il deviendra progressivement contagieux, jusqu’à devenir Infecté  asymptomatique avec une probabilité de 0.3 et Infecté  symptomatique avec une probabilité de 0.7 (ce qui correspond à une proportion d’infectés asymptomatiques dans la population de l’ordre de 30%). La contagiosité d’un individu symptomatique est estimée à partir du R0 (cf point précédent) et est considérée comme étant deux fois supérieure à celle d’un individu asymptomatique.
+
+- Infecté → Guéri : au bout de 14 jours, un individu infecté est considéré comme guéri et non contagieux dans le modèle.
+
+Sur cette base, quatre scénarios distincts sont proposés (paramètre *SCENARIO*), dans une perspective comparative :
+
+- S1 : Laisser-faire : on ne fait rien, l’épidémie suit son cours sans aucune interférence
+- S2 : Confinement simple : on identifie les porteurs symptomatiques (test) et on les confine avec leur famille 
+- S3 : Traçage et confinement systématique : les infecté symptomatiques sont systématiquement testés et ceux qui sont positifs sont confinés avec leur famille, tandis que leurs contacts (et leur famille) sont confinés sans être testés
+- S4 : Traçage et confinement sélectif : els infecté symptomatiques sont systématiquement testés et ceux qui sont positifs sont confinés avec leur famille, tandis que leurs contacts (et leur famille) sont testés et confinés s'ils sont positifs, ainsi que leurs contacts et les contacts de leurs contacts...
 
 
-## THINGS TO NOTICE
 
-to be done
+## MARCHE A SUIVRE
+
+Choisissez un scénario et fixez des conditions initiales (curseurs en bas à gauche de l'écran). Cliquez sur le bouton "Initialiser" puis lancez la simulation.
 
 
-## AUTHOR
+## AUTEURS
 
-Developped by Arnaud Banos & Pierrick Tranouez for https://covprehension.org/
+Modèle développé par Arnaud Banos & Pierrick Tranouez pour CoVprehension (https://covprehension.org/)
 @#$#@#$#@
 default
 true
@@ -1519,7 +1579,7 @@ NetLogo 6.1.1
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
-  <experiment name="Explo_V9_Scenarios3-4" repetitions="100" runMetricsEveryStep="true">
+  <experiment name="Explo_V9_Scenarios3-4" repetitions="100" runMetricsEveryStep="false">
     <setup>setup</setup>
     <go>go</go>
     <exitCondition>not any? citizens with [contagious?]</exitCondition>
@@ -1535,6 +1595,11 @@ NetLogo 6.1.1
     <metric>nb-non-infected-lockeddown%</metric>
     <metric>contact-detected%</metric>
     <metric>symptom-detected%</metric>
+    <enumeratedValueSet variable="Nombre-de-cas-au-départ">
+      <value value="5"/>
+      <value value="10"/>
+      <value value="20"/>
+    </enumeratedValueSet>
     <enumeratedValueSet variable="R0-fixé">
       <value value="1"/>
       <value value="2"/>
@@ -1548,7 +1613,7 @@ NetLogo 6.1.1
       <value value="24"/>
       <value value="48"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="Profondeur-temporelle-pour-l'identification-des-contacts">
+    <enumeratedValueSet variable="Profondeur-temporelle-de-recherche-des-contacts">
       <value value="1"/>
       <value value="2"/>
       <value value="3"/>
@@ -1567,7 +1632,7 @@ NetLogo 6.1.1
       <value value="&quot;Traçage et confinement sélectif&quot;"/>
     </enumeratedValueSet>
   </experiment>
-  <experiment name="Explo_V9_Scenario2" repetitions="100" runMetricsEveryStep="true">
+  <experiment name="Explo_V9_Scenario2" repetitions="100" runMetricsEveryStep="false">
     <setup>setup</setup>
     <go>go</go>
     <exitCondition>not any? citizens with [contagious?]</exitCondition>
@@ -1583,6 +1648,11 @@ NetLogo 6.1.1
     <metric>nb-non-infected-lockeddown%</metric>
     <metric>contact-detected%</metric>
     <metric>symptom-detected%</metric>
+    <enumeratedValueSet variable="Nombre-de-cas-au-départ">
+      <value value="5"/>
+      <value value="10"/>
+      <value value="20"/>
+    </enumeratedValueSet>
     <enumeratedValueSet variable="R0-fixé">
       <value value="1"/>
       <value value="2"/>
@@ -1608,7 +1678,7 @@ NetLogo 6.1.1
       <value value="&quot;Confinement simple&quot;"/>
     </enumeratedValueSet>
   </experiment>
-  <experiment name="Explo_V9_Scenario1" repetitions="100" runMetricsEveryStep="true">
+  <experiment name="Explo_V9_Scenario1" repetitions="100" runMetricsEveryStep="false">
     <setup>setup</setup>
     <go>go</go>
     <exitCondition>not any? citizens with [contagious?]</exitCondition>
@@ -1617,6 +1687,11 @@ NetLogo 6.1.1
     <metric>epidemic-duration-final</metric>
     <enumeratedValueSet variable="SCENARIO">
       <value value="&quot;Laisser faire&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Nombre-de-cas-au-départ">
+      <value value="5"/>
+      <value value="10"/>
+      <value value="20"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="R0-fixé">
       <value value="1"/>
