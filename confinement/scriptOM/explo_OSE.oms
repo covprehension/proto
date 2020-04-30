@@ -1,0 +1,85 @@
+// LES INPUTS
+val seed = Val[Int]
+val difficulty = Val[String]
+val init_conf = Val[Double]
+val duration_conf = Val[Double]
+val relesae_conf = Val[Double]
+// LES OUTPUTS
+val nbS = Val[Double]
+val nbR = Val[Double]
+val nbIr = Val[Double]
+val nb_confinement = Val[Double]
+val pic_max = Val[Double]
+val jours_confinement = Val[Double]
+
+/*
+Dans Netlogo on a :
+["niveau-difficulté" "Difficile"]
+["confinement-tick" [10 1 30]]
+["confinement-duree" [5 2 30]]
+["temps_entre_confinement" [4 2 30]]
+*/
+
+
+
+val model =
+  NetLogo6Task(workDirectory / "CoVprehension_300320_Confinement_Q6_explo_pse.nlogo", 
+  setup = Seq("random-seed ${seed}", "setup_om"),
+  go = Seq("while [any? citizens with [epidemic-state = 1]][go]")) set (
+      name := "confinement-stg",
+      // Map the OpenMOLE variables to NetLogo variables
+        inputs += seed,
+        //outputs += (seed, density, difficulty, init_conf, duration_conf, relesae_conf, nbS, nbR, nbIr, nb_confinement),
+        inputs += (difficulty mapped "niveau-difficulté"),
+        inputs += (init_conf mapped "confinement-tick"),
+        inputs += (duration_conf mapped "confinement-duree"),
+        inputs += (relesae_conf mapped "temps_entre_confinement"),
+        outputs += (nbS mapped "nb-S"),
+        outputs += (nbIr mapped "nb-Ir"),
+        outputs += (nbR mapped "nb-R"),
+        outputs += (nb_confinement mapped "nb-confinement"),
+        outputs += (pic_max mapped "max-Ir"),
+        outputs += (jours_confinement mapped "nb-j-conf"),
+        //outputs += (duration_conf mapped "confinement-duree"),
+        //outputs += (relesae_conf mapped "temps_entre_confinement"),
+        // fixed values
+        difficulty := "Difficile"
+  )
+ 
+
+//val env = LocalEnvironment(2)
+//exploration on env
+ 
+/* Obj : 
+1. réuduire la durée du confienemnt (économique) DONE
+2. réduire le nombre de persionne touché à la fin (santé publique) nbIR + nbR
+3. reduire la tail du pic épidemic (soin, pas engorger les hopitaux)
+*/
+
+val evolution = OSEEvolution(
+  evaluation = model,
+  parallelism = 100,
+  termination = 20000,
+  distribution = Island(5 minutes),
+  origin = Seq(
+    init_conf in (20.0 to 80.0 by 4.0), // one day it's 4 ticks 
+    duration_conf in (20.0 to 240.0 by 4.0),
+    relesae_conf in (20.0 to 80.0 by 4.0)),
+  objectives = Seq(
+    jours_confinement under 25.0,
+    pic_max under 60.0),
+  stochastic = Stochastic(seed = seed, replications = 100)
+) hook (workDirectory / "results_ose", frequency = 100)
+
+val env =
+  SGEEnvironment(
+    "delay",
+    "cc2-login.cirad.fr",
+    workDirectory = "/homedir/delay/work",
+    queue = "short.q",
+    wallTime = 4 hour
+  )
+  
+
+evolution on env //by 20
+
