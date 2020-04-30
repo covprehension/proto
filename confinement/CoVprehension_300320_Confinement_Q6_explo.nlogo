@@ -21,6 +21,10 @@ globals [ ;;global parameters
   nb-lockdown-episodes
   max-Ir
   nb-confinement
+  nb-j-conf
+  Confinement-tick ;interface
+  confinement-duree ; interface
+  temps_entre_confinement ; interafce
 ]
 
 
@@ -53,8 +57,13 @@ to setup-globals
   set contagion-duration 14 * nb-step-per-day
   set confinement? false
   set previous-lockdown-state confinement?
-  set confinement? false
   set nb-confinement 0
+end
+
+to setup-interface
+  set Confinement-tick i-Confinement-init
+  set confinement-duree i-confinement-duree
+  set temps_entre_confinement i-temps_entre_confinement
 end
 
 to setup-houses
@@ -91,6 +100,15 @@ to setup
   setup-globals
   setup-houses
   setup-population
+  setup-interface
+end
+
+to setup_om
+  ;clear-all
+  reset-ticks
+  setup-globals
+  setup-houses
+  setup-population
 end
 
 to go
@@ -98,7 +116,7 @@ to go
   scenarios-confinement
   move-citizens
   update-epidemics
- update-max-Ir
+  update-max-Ir
   ;wait 0.1
   update-lockdown-date
   tick
@@ -182,6 +200,8 @@ to scenarios-confinement
    set confinement? false
     set Confinement-tick ticks + temps_entre_confinement
   ]
+
+  set nb-j-conf nb-day-confinement
 end
 
 ;###############################
@@ -235,13 +255,13 @@ end
 
 to send-user-message
   ifelse population-spared > 75 and nb-lockdown-episodes = 1
-  [user-message (word "Bravo ! Vous avez réussi a protéger " round population-spared " % de votre population en imposant un confinement total de " round (nb-day-confinement) " jours. Espérons juste que personne n'est mort de faim...")]
+  [user-message (word "Bravo ! Vous avez réussi a protéger " round population-spared " % de votre population en imposant un confinement total de " round (nb-j-conf) " jours. Espérons juste que personne n'est mort de faim...")]
 
   [ifelse nb-day-confinement = 0
     [user-message (word "Bravo ! Tout le monde a été touché par le virus et les hôpitaux ont explosé, mais au moins personne n'a été empêché de sortir. Espérons juste que tout le monde est encore vivant...")]
     [ifelse nb-lockdown-episodes = 1
-      [user-message (word "Bravo ! Vous avez réussi a protéger " round population-spared " % de votre population en imposant un confinement total de " round (nb-day-confinement) " jours et en limitant le pic épidémique à " round(max-Ir / population-size * 100)"%. C'est votre dernier mot ?")]
-      [user-message (word "Bravo ! Vous avez réussi a protéger " round population-spared " % de votre population en imposant un confinement total de " round (nb-day-confinement) " jours et en limitant le pic épidémique à " round(max-Ir / population-size * 100)"%. Vous avez mis en phase plusieurs périodes de confinement. Si votre objectif était de faire en sorte que le nombre d'infectés ne dépasse pas une valeur seuil, alors vous avez exploré une stratégie actuellement étudiée par plusieurs équipes scientifiques !")]
+      [user-message (word "Bravo ! Vous avez réussi a protéger " round population-spared " % de votre population en imposant un confinement total de " round (nb-j-conf) " jours et en limitant le pic épidémique à " round(max-Ir / population-size * 100)"%. C'est votre dernier mot ?")]
+      [user-message (word "Bravo ! Vous avez réussi a protéger " round population-spared " % de votre population en imposant un confinement total de " round (nb-j-conf) " jours et en limitant le pic épidémique à " round(max-Ir / population-size * 100)"%. Vous avez mis en phase plusieurs périodes de confinement. Si votre objectif était de faire en sorte que le nombre d'infectés ne dépasse pas une valeur seuil, alors vous avez exploré une stratégie actuellement étudiée par plusieurs équipes scientifiques !")]
 ]
 
     ]
@@ -373,7 +393,7 @@ MONITOR
 972
 457
 Nombre de jours de confinement
-round (nb-day-confinement)
+round (nb-j-conf)
 17
 1
 11
@@ -386,7 +406,7 @@ CHOOSER
 Niveau-Difficulté
 Niveau-Difficulté
 "Facile" "Difficile"
-0
+1
 
 PLOT
 592
@@ -421,8 +441,8 @@ INPUTBOX
 265
 1107
 325
-Confinement-tick
-70.0
+i-Confinement-init
+20.0
 1
 0
 Number
@@ -432,8 +452,8 @@ INPUTBOX
 202
 1109
 262
-confinement-duree
-20.0
+i-confinement-duree
+63.0
 1
 0
 Number
@@ -465,11 +485,21 @@ INPUTBOX
 329
 1143
 389
-temps_entre_confinement
-10.0
+i-temps_entre_confinement
+80.0
 1
 0
 Number
+
+TEXTBOX
+981
+177
+1131
+195
+1 day = 4 ticks
+12
+0.0
+1
 
 @#$#@#$#@
 ## THINGS TO TRY
@@ -809,6 +839,33 @@ NetLogo 6.1.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
+<experiments>
+  <experiment name="experiment" repetitions="100" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>nb-S</metric>
+    <metric>nb-Ir</metric>
+    <metric>nb-R</metric>
+    <metric>nb-confinement</metric>
+    <metric>max-Ir</metric>
+    <metric>nb-j-conf</metric>
+    <metric>confinement-duree</metric>
+    <metric>temps_entre_confinement</metric>
+    <metric>confinement-tick</metric>
+    <enumeratedValueSet variable="i-confinement-duree">
+      <value value="63"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Niveau-Difficulté">
+      <value value="&quot;Difficile&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="i-temps_entre_confinement">
+      <value value="80"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="i-Confinement-init">
+      <value value="20"/>
+    </enumeratedValueSet>
+  </experiment>
+</experiments>
 @#$#@#$#@
 @#$#@#$#@
 default
