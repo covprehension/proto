@@ -1,4 +1,4 @@
-# analyse des sortie de l'ago génétique d'openMole
+# analyse des sortie de l'ago OSE d'openMole
 # Auteur : E. Delay (CIRAD ES, GREEN)
 library(ggplot2)
 library(gganimate)
@@ -7,7 +7,7 @@ library(gridExtra)
 rm(list = ls())
 
 setwd("~/github/Covprehention/proto/confinement/")
-my.path <- "data/results_pse/"
+my.path <- "data/results_ose/"
 
 files.l <- list.files(my.path)
 data.df <- data.frame()
@@ -35,14 +35,14 @@ data.df$relesae_conf <- data.df$relesae_conf / 4
 # sel <- data.df$pause%%1==0
 
 g1 <- ggplot(data.df ) + 
-        geom_point(aes(x = duration_conf, y = pic_max , colour = init_conf, size = init_conf), alpha = 0.3)+
-        scale_color_gradient("1er jour de confinement")+
-        scale_size("Nombre de jour\nréelement confinés")+
-        labs(title="Résultat de l'ago PSE",
-             subtitle = "effets sur les parametres d'entrés",
-             x = "Durée du confinement imposé", 
-             y = "Nombre max de cas")+
-        theme_bw()
+  geom_point(aes(x = duration_conf, y = init_conf, colour = pic_max, size = jours_confinement), alpha = 0.3)+
+  scale_color_gradient("% de pop\nconserné\npar le pic")+
+  scale_size("Nombre de jour\nréelement confinés")+
+  labs(title="Résultat de l'ago PSE",
+       subtitle = "effets sur les parametres d'entrés",
+       x = "Durée du confinement imposé", 
+       y = "premier jours de confinement\n(après le premier cas)")+
+  theme_bw()
 g1
 
 
