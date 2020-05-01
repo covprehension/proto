@@ -67,12 +67,14 @@ rm(small1.df, small2.df)
 # gg1
 
 gg1 <- ggplot()+
-  geom_boxplot(data = data.dfgg, aes(x = as.factor(s.time), y = value, color= variable), alpha = 0.05)+
+  geom_boxplot(data = data.dfgg, aes(x = as.factor(s.time), y = value, color= variable), alpha = 0.03)+
   scale_x_discrete(breaks=seq(0, 127, 20))+
-  scale_color_manual(values=c("#0099ff", "#ff0000", "#ffffff"))+
+  # scale_color_manual(values=c("#0099ff", "#ff0000", "#ffffff"))+
+  scale_color_brewer(palette="Dark2", name="% de la population", labels=c("Saint","Infecté","Immunisé"))+
   labs(x = "temps", y = "% de la population")+
-  theme_dark()
+  # theme_dark()
+  theme_bw()
 gg1
 
-ggsave("img/out_ose_solution.png",gg1)
+ggsave("img/out_ose_solution.png",gg1, height = 6, width = 8)
 
