@@ -2,6 +2,18 @@
 ;;;;;;;;DECLARATION;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;Tentative naming conventions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; for reporter-like variables :
+; infected : in state I or IA
+; contagious : in state E, I or IA
+; nb-var or var : number of var at current tick
+; daily-var : number of var for the whole day
+; total-var : sum/cumulation of vars since the beginning of the simulation
+; var% : var / population size
+; proportion-var : var / something
+
 globals [ ;;global parameters
   ;epidemic symbolic constants
   S ; Susceptible
@@ -20,7 +32,7 @@ globals [ ;;global parameters
   R0-a-priori
   initial-R-proportion
   size_population
-  Nb_infected_initialisation
+  Nb_contagious_initialisation
 
   population-size
   nb-house
@@ -29,12 +41,12 @@ globals [ ;;global parameters
   walking-angle
   speed
   probability-car-travel
-  current-nb-new-infections-reported
-  current-nb-new-infections-asymptomatic
+  ;current-nb-new-infections-reported
+  ;current-nb-new-infections-asymptomatic
   transparency
   infection-duration
   contagion-duration
-  nb-step-per-day
+  nb-ticks-per-day
   lockdown-date
   previous-lockdown-state
   lock-down-color
@@ -42,17 +54,20 @@ globals [ ;;global parameters
   max-I
   max-conf
 
-  nb-infected-identified
-  nb-infected-identified-removed
-  nb-contagious-cumulated
-  nb-non-infected-lockeddown
+  nb-contagious-detected
+  nb-contagious-lockeddown
+  total-nb-contagious
+  nb-non-contagious-lockeddown
   nb-co-infected
-  mean-daily-contacts
-  mean-mean-daily-contacts
+  mean-daily-contacts ; for 1 tick
+  mean-mean-daily-contacts ; mean since the beginning of the simulation
   Estimated-mean-mean-daily-contacts
   contacts-to-warn
   contacts-to-warn-next
   list-mean-contacts
+
+  total-contagious-lockeddown-symptom
+  total-contagious-lockeddown-tracked
 
   tracers-this-tick
   traced-this-tick
@@ -79,7 +94,7 @@ citizens-own
   resistant? ; boolean - indicates in case of infection wether the citizen will express symptoms
   my-house
   lockdown? ; 0 free 1 locked
-  nb-step-confinement
+  nb-ticks-lockdown
   liste-contacts
   liste-contact-dates
   daily-contacts
@@ -90,7 +105,7 @@ citizens-own
   contact-order ;0 not contacted, 1 contacted at first order, 2 contacted at second order
   nb-contacts-ticks
   nb-contacts-total-Infectious ; total number of contacts during infectious period
-  nb-lockeddown
+  total-nb-lockeddown
   difference
   potential-co-infected
   family-infection?
@@ -124,7 +139,7 @@ to setup-globals
   set R0-a-priori R0-fixé
   set initial-R-proportion 0
   set size_population 2000
-  set Nb_infected_initialisation Nombre-de-cas-au-départ
+  set Nb_contagious_initialisation Nombre-de-cas-au-départ
 
   set fixed-seed? false
   if fixed-seed?[
@@ -138,15 +153,15 @@ to setup-globals
   set speed 0.5
   set probability-car-travel 0.2
   set transparency 145
-  set nb-step-per-day 4
+  set nb-ticks-per-day 4
   set incubation-duration 4
   set infection-duration 14
-  set contagion-duration ((incubation-duration + infection-duration) * nb-step-per-day) ;
+  set contagion-duration ((incubation-duration + infection-duration) * nb-ticks-per-day) ;
   set probability-asymptomatic-infection 0.3
 
   set Estimated-mean-mean-daily-contacts 0.004 * population-size + 3.462 ;calibrated from systematic experiments from 1000 to 10000 agents, on same world
   ;let nb-contacts 5 ;(((population-size  / count patches) * 9) - 1) / 2 ; the / 2 is an approximate experimental value on how to go from #contacts per ticks to #contacts per day, without counting a contact twice
-  set probability-transmission R0-a-priori / ((Estimated-mean-mean-daily-contacts / nb-step-per-day)  * contagion-duration)
+  set probability-transmission R0-a-priori / ((Estimated-mean-mean-daily-contacts / nb-ticks-per-day)  * contagion-duration) ; probability per tick
   set probability-transmission-asymptomatic probability-transmission / 2
 
   set contacts-to-warn-next no-turtles
@@ -244,7 +259,7 @@ end
 
 
 to set-infected-initialisation
-  ask n-of Nb_infected_initialisation citizens [
+  ask n-of Nb_contagious_initialisation citizens [
     become-exposed
   ]
 end
@@ -320,7 +335,7 @@ end
 to move-citizens
   ask citizens[
     ifelse lockdown? = 1[
-      set nb-step-confinement (nb-step-confinement + 1)
+      set nb-ticks-lockdown (nb-ticks-lockdown + 1)
       if epidemic-state = R[
         if clean? my-house[
           ask my-house[
@@ -333,9 +348,9 @@ to move-citizens
         ]
       ]
     ][
-      let nighttime? (ticks mod 4) = 0
+      let nighttime? (ticks mod nb-ticks-per-day) = 0
       ifelse nighttime?[
-        move-to my-house ; night time
+        move-to my-house
       ][
         ifelse random-float 1 < probability-car-travel[
           move-to one-of patches with [wall = 0]
@@ -362,12 +377,12 @@ end
 
 to update-epidemics
   ;;update the counters for the infected at this timestep
-  set current-nb-new-infections-reported 0
-  set  current-nb-new-infections-asymptomatic 0
+  ;set current-nb-new-infections-reported 0
+  ;set  current-nb-new-infections-asymptomatic 0
   ;;update recovered
   ask citizens with [contagious?][
     set contagion-counter (contagion-counter - 1)
-    if ( (ticks - infection-date) = (incubation-duration * nb-step-per-day)) [
+    if ( (ticks - infection-date) = (incubation-duration * nb-ticks-per-day)) [
       ifelse resistant?
         [ become-asymptomatic-infected ]
         [ become-infected ]
@@ -398,7 +413,7 @@ to get-in-contact
   ask citizens
   [
     ifelse lockdown? = 0[
-      if (((ticks - 1) mod 4) = 0)[
+      if (((ticks - 1) mod nb-ticks-per-day) = 0)[
         set daily-contacts nobody
       ]
       let contacts (turtle-set other citizens-here citizens-on neighbors)
@@ -443,12 +458,17 @@ to lockdown
   set lockdown? 1
   set lockdown-date ticks
   move-to my-house
-  set nb-step-confinement 0
-  set nb-lockeddown nb-lockeddown + 1
+  set nb-ticks-lockdown 0
+  set total-nb-lockeddown total-nb-lockeddown + 1
   ifelse contagious?[
-    set nb-infected-identified-removed nb-infected-identified-removed + 1
+    set nb-contagious-lockeddown nb-contagious-lockeddown + 1
+    ifelse contact-order = 1 [
+      set total-contagious-lockeddown-symptom total-contagious-lockeddown-symptom + 1
+    ][
+      set total-contagious-lockeddown-tracked total-contagious-lockeddown-tracked + 1
+    ]
   ][
-    set nb-non-infected-lockeddown nb-non-infected-lockeddown + 1
+    set nb-non-contagious-lockeddown nb-non-contagious-lockeddown + 1
   ]
 end
 
@@ -461,7 +481,7 @@ to get-tested
   ;test results and consequences
   if contagious? and random-float 1 < probability-success-test-infected [
     set detected? true
-    set  nb-infected-identified nb-infected-identified + 1
+    set  nb-contagious-detected nb-contagious-detected + 1
     if (random-float 1 < probability-respect-lockdown)[
       ifelse FAMILY-LOCKDOWN? [
         ask my-house[
@@ -503,7 +523,7 @@ to detect-contacts
     let contacts-j item j liste-contacts
 
     if is-agentset? contacts-j[
-      if date-j >= (my-lockdown-date - (nb-days-before-test-tagging-contacts * nb-step-per-day))[
+      if date-j >= (my-lockdown-date - (nb-days-before-test-tagging-contacts * nb-ticks-per-day))[
         set contacts-to-warn-next (turtle-set contacts-to-warn-next (contacts-j with [detected? = false]))
       ]
     ]
@@ -538,8 +558,8 @@ to become-exposed
   set epidemic-state Ex
   set contagion-counter contagion-duration
   set infection-date ticks
-  set current-nb-new-infections-reported (current-nb-new-infections-reported + 1)
-  set nb-contagious-cumulated nb-contagious-cumulated + 1
+  ;set current-nb-new-infections-reported (current-nb-new-infections-reported + 1)
+  set total-nb-contagious total-nb-contagious + 1
   set color violet ;
   set resistant? (random-float 1 < probability-asymptomatic-infection)
   set contagious? true
@@ -570,9 +590,9 @@ end
 to-report contagiousness [a-citizen]
   if ([epidemic-state] of a-citizen) = Ex [
     ifelse resistant? [
-      report (((ticks - infection-date) / (incubation-duration * nb-step-per-day)) * probability-transmission-asymptomatic) ; linear growth from 0 at infection time to full asymptomatic transmission probability at the end of incubation time
+      report (((ticks - infection-date) / (incubation-duration * nb-ticks-per-day)) * probability-transmission-asymptomatic) ; linear growth from 0 at infection time to full asymptomatic transmission probability at the end of incubation time
     ][
-      report (((ticks - infection-date) / (incubation-duration * nb-step-per-day)) * probability-transmission) ; linear growth from 0 at infection time to full symptomatic transmission probability at the end of incubation time
+      report (((ticks - infection-date) / (incubation-duration * nb-ticks-per-day)) * probability-transmission) ; linear growth from 0 at infection time to full symptomatic transmission probability at the end of incubation time
     ]
   ]
 
@@ -626,25 +646,25 @@ end
   report count citizens with [epidemic-state = R]
 end
 
-to-report %nb-I-Total
+to-report nb-I%
   report (population-size - nb-S) / population-size * 100
 end
 
 
-to-report population-spared
+to-report nb-S%
 report (nb-S) / population-size * 100
 end
 
 to-report epidemic-duration-final
-  report round (ticks / nb-step-per-day)
+  report round (ticks / nb-ticks-per-day)
 end
 
 
-to-report %locked
+to-report lockdowned%
   report (count citizens with [lockdown? = 1] / population-size) * 100
 end
 
-to-report nb-tests-total
+to-report total-nb-tests
   report  sum [nb-tests] of citizens
 end
 
@@ -657,14 +677,13 @@ to-report population-tested%
 end
 
 to-report Population-locked%
-  report (nb-infected-identified-removed + nb-non-infected-lockeddown) / population-size * 100
+  report (nb-contagious-lockeddown + nb-non-contagious-lockeddown) / population-size * 100
 
 end
 
-
-to-report nb-non-infected-lockeddown%
-  ifelse (nb-infected-identified-removed + nb-non-infected-lockeddown) > 0
-  [report nb-non-infected-lockeddown / (nb-infected-identified-removed + nb-non-infected-lockeddown) * 100]
+to-report proportion-non-contagious-lockeddown%
+  ifelse (nb-contagious-lockeddown + nb-non-contagious-lockeddown) > 0
+  [report nb-non-contagious-lockeddown / (nb-contagious-lockeddown + nb-non-contagious-lockeddown) * 100]
   [report 0]
 
 end
@@ -677,15 +696,15 @@ to-report nb-detected%
   report nb-detected / population-size * 100
 end
 
-to-report contagious-identified%
-  ifelse nb-contagious-cumulated > 0
-  [report nb-infected-identified / nb-contagious-cumulated * 100]
+to-report contagious-detected%
+  ifelse total-nb-contagious > 0
+  [report nb-contagious-detected / total-nb-contagious * 100]
   [report 0]
 end
 
-to-report contagious-identified&removed%
-  ifelse nb-contagious-cumulated > 0
-  [report nb-infected-identified-removed / nb-contagious-cumulated * 100]
+to-report contagious-lockeddown%
+  ifelse total-nb-contagious > 0
+  [report nb-contagious-lockeddown / total-nb-contagious * 100]
   [report 0]
 end
 
@@ -694,7 +713,7 @@ to-report %detected
 end
 
 to-report epidemic-duration
-  report round (ticks / nb-step-per-day)
+  report round (ticks / nb-ticks-per-day)
 
 end
 
@@ -725,10 +744,6 @@ to-report mean-contacts-ticks
   report mean [nb-contacts-ticks] of citizens
 end
 
-to-report mean-difference
-  report mean [difference] of citizens
-end
-
 to-report symptom-detected
   report count citizens with [detected? and contact-order = 1]
 end
@@ -747,6 +762,18 @@ to-report contact-detected%
   ifelse nb-detected > 0
   [report contact-detected /  nb-detected  * 100]
   [report 0]
+end
+
+to-report contagious-lockeddown-tracked
+  report count citizens with [(lockdown? = 1) and (contagious?) and (contact-order = 2)]
+end
+
+to-report proportion-total-contagious-lockeddown-tracked
+  report total-contagious-lockeddown-tracked / (total-contagious-lockeddown-tracked + total-contagious-lockeddown-symptom) * 100
+end
+
+to-report proportion-total-contagious-lockeddown-symptom
+  report total-contagious-lockeddown-symptom / (total-contagious-lockeddown-tracked + total-contagious-lockeddown-symptom) * 100
 end
 
 to-report citizens-per-house
@@ -868,13 +895,13 @@ true
 true
 "" ""
 PENS
-"Sains" 1.0 0 -13840069 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) (nb-S / population-size * 100)]"
-"Exposés" 1.0 0 -6459832 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) (nb-Ex / population-size  * 100)]"
-"I. Symptomatiques" 1.0 0 -2139308 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) (nb-Ir  / population-size * 100)]"
-"I. Asymptomatiques" 1.0 0 -1184463 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) (nb-Inr  / population-size * 100)]"
-"Contagieux" 1.0 0 -955883 true "" "\nif population-size > 0 [plotxy (ticks / nb-step-per-day) ((nb-Ir + nb-Inr + nb-Ex) / population-size  * 100)]"
-"Guéris" 1.0 0 -13791810 true "" "\nif population-size > 0 [plotxy (ticks / nb-step-per-day) (nb-R / population-size  * 100)]"
-"Confinés" 1.0 0 -8630108 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) %locked] "
+"Sains" 1.0 0 -13840069 true "" "if population-size > 0 [plotxy (ticks / nb-ticks-per-day) (nb-S / population-size * 100)]"
+"Exposés" 1.0 0 -6459832 true "" "if population-size > 0 [plotxy (ticks / nb-ticks-per-day) (nb-Ex / population-size  * 100)]"
+"I. Symptomatiques" 1.0 0 -2139308 true "" "if population-size > 0 [plotxy (ticks / nb-ticks-per-day) (nb-Ir  / population-size * 100)]"
+"I. Asymptomatiques" 1.0 0 -1184463 true "" "if population-size > 0 [plotxy (ticks / nb-ticks-per-day) (nb-Inr  / population-size * 100)]"
+"Contagieux" 1.0 0 -955883 true "" "\nif population-size > 0 [plotxy (ticks / nb-ticks-per-day) ((nb-Ir + nb-Inr + nb-Ex) / population-size  * 100)]"
+"Guéris" 1.0 0 -13791810 true "" "\nif population-size > 0 [plotxy (ticks / nb-ticks-per-day) (nb-R / population-size  * 100)]"
+"Confinés" 1.0 0 -8630108 true "" "if population-size > 0 [plotxy (ticks / nb-ticks-per-day) lockdowned%] "
 
 MONITOR
 897
@@ -882,7 +909,7 @@ MONITOR
 1120
 407
 Population touchée par l'épidémie (%)
-%nb-I-Total
+nb-I%
 1
 1
 11
@@ -895,7 +922,7 @@ CHOOSER
 SCENARIO
 SCENARIO
 "Laisser faire" "Confinement simple" "Traçage et confinement systématique" "Traçage et confinement sélectif"
-0
+3
 
 MONITOR
 1123
@@ -943,7 +970,7 @@ Probabilité-de-respect-du-confinement
 Probabilité-de-respect-du-confinement
 0
 1
-1.0
+0.8
 0.1
 1
 NIL
@@ -973,7 +1000,7 @@ Taux-de-couverture-de-l'application-de-traçage
 Taux-de-couverture-de-l'application-de-traçage
 0
 100
-40.0
+80.0
 10
 1
 %
@@ -1066,7 +1093,7 @@ MONITOR
 1402
 778
 Personnes contagieuses confinées (%)
-contagious-identified&removed%
+contagious-lockeddown%
 1
 1
 11
@@ -1077,7 +1104,7 @@ MONITOR
 1149
 778
 Personnes contagieuses Identifiées (%)
-contagious-identified%
+contagious-detected%
 1
 1
 11
@@ -1098,11 +1125,11 @@ true
 true
 "" ""
 PENS
-"Contagieux (nombre total)" 1.0 0 -817084 true "" "\nif population-size > 0 [plotxy (ticks / nb-step-per-day) nb-contagious-cumulated ]"
-"Contagieux identifiés" 1.0 0 -2674135 true "" "\nif population-size > 0 [plotxy (ticks / nb-step-per-day) nb-infected-identified]\n\n"
-"Contagieux confinés" 1.0 0 -5825686 true "" "\nif population-size > 0 [plotxy (ticks / nb-step-per-day) nb-infected-identified-removed]\n\n"
-"Sains confinés" 1.0 0 -13840069 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) nb-non-infected-lockeddown]"
-"Population testée" 1.0 0 -12895429 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day)  population-tested]"
+"Contagieux (nombre total)" 1.0 0 -817084 true "" "\nif population-size > 0 [plotxy (ticks / nb-ticks-per-day) total-nb-contagious ]"
+"Contagieux identifiés" 1.0 0 -2674135 true "" "\nif population-size > 0 [plotxy (ticks / nb-ticks-per-day) nb-contagious-detected]\n\n"
+"Contagieux confinés" 1.0 0 -5825686 true "" "\nif population-size > 0 [plotxy (ticks / nb-ticks-per-day) nb-contagious-lockeddown]\n\n"
+"Sains ou guéris confinés" 1.0 0 -13840069 true "" "if population-size > 0 [plotxy (ticks / nb-ticks-per-day) nb-non-contagious-lockeddown]"
+"Population testée" 1.0 0 -12895429 true "" "if population-size > 0 [plotxy (ticks / nb-ticks-per-day)  population-tested]"
 
 MONITOR
 630
@@ -1110,7 +1137,7 @@ MONITOR
 892
 778
 Nombre total de personnes contagieuses
-nb-contagious-cumulated
+total-nb-contagious
 2
 1
 11
@@ -1142,7 +1169,7 @@ MONITOR
 780
 1018
 825
-Personnes contagieuses identifiées grâce au traçage (%)
+Personnes contagieuses identifiées suite au traçage (%)
 contact-detected%
 1
 1
@@ -1231,6 +1258,56 @@ Nombre-de-cas-au-départ / Population-size * 100
 2
 1
 11
+
+MONITOR
+1404
+622
+1731
+667
+Personnes contagieuses confinées suite au traçage
+total-contagious-lockeddown-tracked
+17
+1
+11
+
+MONITOR
+1404
+668
+1835
+713
+Proportion des personnes contagieuses confinées : suite au traçage
+proportion-total-contagious-lockeddown-tracked
+1
+1
+11
+
+MONITOR
+1401
+713
+1874
+758
+Proportion des personnes contagieuses confinées : suite à des symptômes
+proportion-total-contagious-lockeddown-symptom
+1
+1
+11
+
+BUTTON
+1467
+463
+1530
+496
+Step
+go
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## DESCRIPTION
