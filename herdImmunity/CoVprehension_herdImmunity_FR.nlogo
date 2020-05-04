@@ -42,20 +42,22 @@ globals [
   headless-social-distancing-threshold
   headless-social-distancing-duration
 
-  population-density
+;  population-density
   nb-infected-initialisation
-  transmission-distance
+;  transmission-distance
   nb-contacts
   travel-distance
-  walking-angle
-  speed
+  distanciation-distance
+;  walking-angle
+;  speed
   transparency
 
   lockdown?
   lockdown-counter
   nb-lockdowns
   social-distancing?
-  social-distancing-counter
+;  social-distancing-counter
+  nb-social-distancing
 
   new-I
   new-R
@@ -103,14 +105,15 @@ to setup-GUI
   set headless-proportion-immunised proportion-personnes-immunisees
   set headless-transmission-rate taux-de-transmission
   set headless-avg-infectivity-duration duree-de-contagiosite
-  set headless-avg-immunity-duration duree-immunite * 30 ;; transform months into days
+;  set headless-avg-immunity-duration duree-immunite * 30 ;; transform months into days
+  set headless-avg-immunity-duration 999999
   set headless-partial-immunity? immunite-partielle?
   set headless-lockdown-strategy STRATEGIE-DE-CONFINEMENT
   set headless-lockdown-threshold seuil-confinement
   set headless-lockdown-duration duree-confinement * 7 ;; transform weeks into days
   set headless-social-distancing-strategy STRATEGIE-DE-DISTANCIATION-SOCIALE
   set headless-social-distancing-threshold seuil-distanciation-sociale
-  set headless-social-distancing-duration duree-distanciation-sociale * 7 ;; transform weeks into days
+;  set headless-social-distancing-duration duree-distanciation-sociale * 7 ;; transform weeks into days
 end
 
 
@@ -120,12 +123,14 @@ to setup-globals
   set nb-infected-initialisation 1
 ;  set transmission-distance 1
   set travel-distance 5
+  set distanciation-distance 1
 
   set lockdown? false
   set lockdown-counter -1
   set nb-lockdowns 0
   set social-distancing? false
-  set social-distancing-counter -1
+;  set social-distancing-counter -1
+  set nb-social-distancing 0
 
   set total-nb-I 0
   set total-nb-R 0
@@ -198,10 +203,11 @@ end
 
 to headless-go
   reset-case-counts
-  move-randomly
+  move
   virus-transmission
   update-states
   quarantine-decision
+  distancing-decision
 
   tick
 end
@@ -213,31 +219,51 @@ to reset-case-counts
 end
 
 
-to move-randomly ;; turtle procedure
+to move ;; turtle procedure
   ask turtles with [not quarantined?] [
-    ;  set xcor xadr         ;;;; Il RESTE AUTOUR DE CHEZ LUI
-    ;  set ycor yadr
+    ifelse distancing?
+    [ avoid-others ]
+    [
+      set heading random 360
+      move-randomly
+    ]
+  ]
+end
 
+
+to avoid-others
+  ; closest neighbour in radius
+  let target min-one-of other turtles in-radius distanciation-distance [distance myself]
+  ifelse is-agent? target
+  [
+    face target
+    right 180
+    move-randomly
+  ]
+  ; otherwise move randomly
+  [
     set heading random 360
+    move-randomly
+  ]
+end
 
-    while [my-travel-distance > 0] [
+
+to move-randomly ;; turtle procedure
+  while [my-travel-distance > 0] [
       while [patch-ahead 1 = nobody] [ right random 360 ]
       jump 1
       set my-travel-distance my-travel-distance - 1
     ]
 
     set my-travel-distance travel-distance
-  ]
 end
 
 
 to virus-transmission ;; turtle procedure
   ask infected with [not quarantined?] [
     let potential-contacts other turtles-here
-;    let potential-contacts (turtle-set other turtles-here turtles-on neighbors)
-;    let potential-contacts turtles in-radius transmission-distance
-    let contacts ifelse-value distancing? [ n-of random (count potential-contacts + 1) potential-contacts ] [ potential-contacts ]
-;    let contacts (turtle-set other turtles-here turtles-on neighbors)
+;    let contacts ifelse-value distancing? [ n-of random (count potential-contacts + 1) potential-contacts ] [ potential-contacts ]
+    let contacts potential-contacts
 
     ask contacts with [breed = susceptibles] [
       if random-float 1 < headless-transmission-rate [
@@ -284,8 +310,10 @@ end
 
 to quarantine-decision
   (ifelse
-    headless-lockdown-strategy = "pas de confinement" [ stop ]
+    ;; no lockdown
+    member? "1" headless-lockdown-strategy [  ]
 
+    ;; start a lockdown
     not lockdown? and prop-I > headless-lockdown-threshold [
       set lockdown? true
       set nb-lockdowns nb-lockdowns + 1
@@ -293,22 +321,58 @@ to quarantine-decision
       set lockdown-counter headless-lockdown-duration
 
       (ifelse
-        headless-lockdown-strategy = "tout le monde" [ ask turtles [ set quarantined? true ] ]
-        headless-lockdown-strategy = "uniquement les personnes infectées" [ ask infected [ set quarantined? true ] ]
+        ;; everyone
+        member? "2" headless-lockdown-strategy [ ask turtles [ set quarantined? true ] ]
+        ;; only infected
+        member? "3" headless-lockdown-strategy [
+          let prop-infected-quarantined 0.9
+          ask n-of (prop-infected-quarantined * nb-I) infected [ set quarantined? true ]
+        ]
       )
     ]
 
+    ;; continue lockdown
     lockdown? and lockdown-counter > 0 [
       set lockdown-counter lockdown-counter - 1
     ]
 
+    ;; stop lockdown
     lockdown? and lockdown-counter = 0 [
       set lockdown? false
       set lockdown-counter -1
       ask turtles [ set quarantined? false ]
     ]
   )
+end
 
+
+to distancing-decision
+  (ifelse
+    ;; no distancing
+    member? "1" headless-social-distancing-strategy [  ]
+
+    ;; start social-distancing
+    not social-distancing? and prop-I > headless-social-distancing-threshold [
+      set social-distancing? true
+      set nb-social-distancing nb-social-distancing + 1
+
+      (ifelse
+        ;; everyone
+        member? "2" headless-social-distancing-strategy [ ask turtles [ set distancing? true ] ]
+        ;; only infected
+        member? "3" headless-social-distancing-strategy [ ask infected [ set distancing? true ] ]
+      )
+    ]
+
+    ;; continue social-distancing
+    social-distancing? and prop-I > headless-social-distancing-threshold [  ]
+
+    ;; stop social-distancing
+    social-distancing? and prop-I < headless-social-distancing-threshold [
+      set social-distancing? false
+      ask turtles [ set distancing? false ]
+    ]
+  )
 end
 
 
@@ -641,12 +705,12 @@ PENS
 CHOOSER
 16
 251
-329
+348
 296
 STRATEGIE-DE-CONFINEMENT
 STRATEGIE-DE-CONFINEMENT
-"pas de confinement" "tout le monde" "uniquement les personnes infectées"
-0
+"1- aucun" "2- tout le monde" "3- uniquement les personnes infectées"
+2
 
 SLIDER
 15
@@ -657,7 +721,7 @@ seuil-confinement
 seuil-confinement
 0
 100
-11.0
+20.0
 1
 1
 %
@@ -709,12 +773,12 @@ NIL
 CHOOSER
 335
 251
-648
+667
 296
 STRATEGIE-DE-DISTANCIATION-SOCIALE
 STRATEGIE-DE-DISTANCIATION-SOCIALE
-"pas de distanciation sociale" "tout le monde" "uniquement les personnes infectées"
-0
+"1- aucune" "2- tout le monde" "3- uniquement les personnes infectées"
+1
 
 SLIDER
 335
@@ -725,25 +789,10 @@ seuil-distanciation-sociale
 seuil-distanciation-sociale
 0
 100
-50.0
+15.0
 5
 1
 %
-HORIZONTAL
-
-SLIDER
-334
-339
-660
-372
-duree-distanciation-sociale
-duree-distanciation-sociale
-1
-20
-20.0
-1
-1
-semaines
 HORIZONTAL
 
 MONITOR
