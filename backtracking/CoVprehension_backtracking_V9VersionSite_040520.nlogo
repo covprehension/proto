@@ -34,7 +34,7 @@ globals [ ;;global parameters
   transparency
   infection-duration
   contagion-duration
-  nb-ticks-per-day
+  nb-step-per-day
   lockdown-date
   previous-lockdown-state
   lock-down-color
@@ -138,15 +138,15 @@ to setup-globals
   set speed 0.5
   set probability-car-travel 0.2
   set transparency 145
-  set nb-ticks-per-day 4
+  set nb-step-per-day 4
   set incubation-duration 4
   set infection-duration 14
-  set contagion-duration ((incubation-duration + infection-duration) * nb-ticks-per-day) ;
+  set contagion-duration ((incubation-duration + infection-duration) * nb-step-per-day) ;
   set probability-asymptomatic-infection 0.3
 
   set Estimated-mean-mean-daily-contacts 0.004 * population-size + 3.462 ;calibrated from systematic experiments from 1000 to 10000 agents, on same world
   ;let nb-contacts 5 ;(((population-size  / count patches) * 9) - 1) / 2 ; the / 2 is an approximate experimental value on how to go from #contacts per ticks to #contacts per day, without counting a contact twice
-  set probability-transmission R0-a-priori / ((Estimated-mean-mean-daily-contacts / nb-ticks-per-day)  * contagion-duration)
+  set probability-transmission R0-a-priori / ((Estimated-mean-mean-daily-contacts / nb-step-per-day)  * contagion-duration)
   set probability-transmission-asymptomatic probability-transmission / 2
 
   set contacts-to-warn-next no-turtles
@@ -367,7 +367,7 @@ to update-epidemics
   ;;update recovered
   ask citizens with [contagious?][
     set contagion-counter (contagion-counter - 1)
-    if ( (ticks - infection-date) = (incubation-duration * nb-ticks-per-day)) [
+    if ( (ticks - infection-date) = (incubation-duration * nb-step-per-day)) [
       ifelse resistant?
         [ become-asymptomatic-infected ]
         [ become-infected ]
@@ -503,7 +503,7 @@ to detect-contacts
     let contacts-j item j liste-contacts
 
     if is-agentset? contacts-j[
-      if date-j >= (my-lockdown-date - (nb-days-before-test-tagging-contacts * nb-ticks-per-day))[
+      if date-j >= (my-lockdown-date - (nb-days-before-test-tagging-contacts * nb-step-per-day))[
         set contacts-to-warn-next (turtle-set contacts-to-warn-next (contacts-j with [detected? = false]))
       ]
     ]
@@ -570,9 +570,9 @@ end
 to-report contagiousness [a-citizen]
   if ([epidemic-state] of a-citizen) = Ex [
     ifelse resistant? [
-      report (((ticks - infection-date) / (incubation-duration * nb-ticks-per-day)) * probability-transmission-asymptomatic) ; linear growth from 0 at infection time to full asymptomatic transmission probability at the end of incubation time
+      report (((ticks - infection-date) / (incubation-duration * nb-step-per-day)) * probability-transmission-asymptomatic) ; linear growth from 0 at infection time to full asymptomatic transmission probability at the end of incubation time
     ][
-      report (((ticks - infection-date) / (incubation-duration * nb-ticks-per-day)) * probability-transmission) ; linear growth from 0 at infection time to full symptomatic transmission probability at the end of incubation time
+      report (((ticks - infection-date) / (incubation-duration * nb-step-per-day)) * probability-transmission) ; linear growth from 0 at infection time to full symptomatic transmission probability at the end of incubation time
     ]
   ]
 
@@ -636,7 +636,7 @@ report (nb-S) / population-size * 100
 end
 
 to-report epidemic-duration-final
-  report round (ticks / nb-ticks-per-day)
+  report round (ticks / nb-step-per-day)
 end
 
 
@@ -694,7 +694,7 @@ to-report %detected
 end
 
 to-report epidemic-duration
-  report round (ticks / nb-ticks-per-day)
+  report round (ticks / nb-step-per-day)
 
 end
 
@@ -1157,7 +1157,7 @@ R0-fixé
 R0-fixé
 0
 10
-1.1
+2.5
 0.1
 1
 NIL
@@ -1215,7 +1215,7 @@ Nombre-de-cas-au-départ
 Nombre-de-cas-au-départ
 1
 100
-1.0
+4.0
 1
 1
 NIL
