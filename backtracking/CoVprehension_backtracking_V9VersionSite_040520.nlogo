@@ -10,6 +10,18 @@ globals [ ;;global parameters
   I ; Infected symptomatic
   R ; Recovered
 
+  delay-before-test
+  incubation-duration
+  nb-days-before-test-tagging-contacts
+  proportion-equiped
+  probability-respect-lockdown
+  probability-success-test-infected
+  probability-asymptomatic-infection
+  R0-a-priori
+  initial-R-proportion
+  size_population
+  Nb_infected_initialisation
+
   population-size
   nb-house
   probability-transmission
@@ -20,15 +32,15 @@ globals [ ;;global parameters
   current-nb-new-infections-reported
   current-nb-new-infections-asymptomatic
   transparency
+  infection-duration
   contagion-duration
-  nb-step-per-day
+  nb-ticks-per-day
   lockdown-date
   previous-lockdown-state
   lock-down-color
   nb-lockdown-episodes
   max-I
   max-conf
-  list-colors-contacts
 
   nb-infected-identified
   nb-infected-identified-removed
@@ -37,15 +49,18 @@ globals [ ;;global parameters
   nb-co-infected
   mean-daily-contacts
   mean-mean-daily-contacts
+  Estimated-mean-mean-daily-contacts
   contacts-to-warn
   contacts-to-warn-next
   list-mean-contacts
+
   tracers-this-tick
   traced-this-tick
   REACTING? ; doing anything?
   TRACING? ; contact-TRACING?
   TESTING? ; secondary testing, primary infected is always tested
   FAMILY-LOCKDOWN?
+  fixed-seed?
 ]
 
 patches-own [wall]
@@ -101,30 +116,44 @@ to setup-globals
   set I 3
   set R 4
 
+  set delay-before-test  Temps-d'attente-pour-la-réalisation-du-test
+  set nb-days-before-test-tagging-contacts Profondeur-temporelle-de-recherche-des-contacts
+  set proportion-equiped Taux-de-couverture-de-l'application-de-traçage
+  set probability-respect-lockdown Probabilité-de-respect-du-confinement
+  set probability-success-test-infected Probabilité-que-le-test-soit-efficace
+  set R0-a-priori R0-fixé
+  set initial-R-proportion 0
+  set size_population 2000
+  set Nb_infected_initialisation Nombre-de-cas-au-départ
+
+  set fixed-seed? false
   if fixed-seed?[
-    random-seed seed
+    random-seed 10
   ]
 
-  set population-size Taille_population
-  set nb-house (population-size / 2)
+  set population-size  size_population
+  set nb-house (population-size / 3)
 
   set walking-angle 50
   set speed 0.5
   set probability-car-travel 0.2
   set transparency 145
-  set nb-step-per-day 4
+  set nb-ticks-per-day 4
+  set incubation-duration 4
+  set infection-duration 14
+  set contagion-duration ((incubation-duration + infection-duration) * nb-ticks-per-day) ;
+  set probability-asymptomatic-infection 0.3
 
-  set contagion-duration ((incubation-duration + 14) * nb-step-per-day)
-
-  let nb-contacts (((population-size  / count patches) * 9) - 1) / 2 ; the / 2 is an approximate experimental value on how to go from #contacts per ticks to #contacts per day, without counting a contact twice
-  set probability-transmission R0-a-priori / (nb-contacts * contagion-duration)
+  set Estimated-mean-mean-daily-contacts 0.004 * population-size + 3.462 ;calibrated from systematic experiments from 1000 to 10000 agents, on same world
+  ;let nb-contacts 5 ;(((population-size  / count patches) * 9) - 1) / 2 ; the / 2 is an approximate experimental value on how to go from #contacts per ticks to #contacts per day, without counting a contact twice
+  set probability-transmission R0-a-priori / ((Estimated-mean-mean-daily-contacts / nb-ticks-per-day)  * contagion-duration)
   set probability-transmission-asymptomatic probability-transmission / 2
 
-  set list-colors-contacts [white 125]
   set contacts-to-warn-next no-turtles
   set contacts-to-warn no-turtles
   set list-mean-contacts []
   set mean-mean-daily-contacts []
+
 
   ifelse SCENARIO = "Laisser faire"[
     set REACTING? false
@@ -338,7 +367,7 @@ to update-epidemics
   ;;update recovered
   ask citizens with [contagious?][
     set contagion-counter (contagion-counter - 1)
-    if ( (ticks - infection-date) = (incubation-duration * nb-step-per-day )) [
+    if ( (ticks - infection-date) = (incubation-duration * nb-ticks-per-day)) [
       ifelse resistant?
         [ become-asymptomatic-infected ]
         [ become-infected ]
@@ -474,7 +503,7 @@ to detect-contacts
     let contacts-j item j liste-contacts
 
     if is-agentset? contacts-j[
-      if date-j >= (my-lockdown-date - (nb-days-before-test-tagging-contacts * nb-step-per-day))[
+      if date-j >= (my-lockdown-date - (nb-days-before-test-tagging-contacts * nb-ticks-per-day))[
         set contacts-to-warn-next (turtle-set contacts-to-warn-next (contacts-j with [detected? = false]))
       ]
     ]
@@ -541,9 +570,9 @@ end
 to-report contagiousness [a-citizen]
   if ([epidemic-state] of a-citizen) = Ex [
     ifelse resistant? [
-      report (((ticks - infection-date) / (incubation-duration * nb-step-per-day)) * probability-transmission-asymptomatic) ; linear growth from 0 at infection time to full asymptomatic transmission probability at the end of incubation time
+      report (((ticks - infection-date) / (incubation-duration * nb-ticks-per-day)) * probability-transmission-asymptomatic) ; linear growth from 0 at infection time to full asymptomatic transmission probability at the end of incubation time
     ][
-      report (((ticks - infection-date) / (incubation-duration * nb-step-per-day)) * probability-transmission) ; linear growth from 0 at infection time to full symptomatic transmission probability at the end of incubation time
+      report (((ticks - infection-date) / (incubation-duration * nb-ticks-per-day)) * probability-transmission) ; linear growth from 0 at infection time to full symptomatic transmission probability at the end of incubation time
     ]
   ]
 
@@ -606,13 +635,58 @@ to-report population-spared
 report (nb-S) / population-size * 100
 end
 
+to-report epidemic-duration-final
+  report round (ticks / nb-ticks-per-day)
+end
+
 
 to-report %locked
   report (count citizens with [lockdown? = 1] / population-size) * 100
 end
 
+to-report nb-tests-total
+  report  sum [nb-tests] of citizens
+end
+
+to-report population-tested
+  report  count citizens with [nb-tests > 0]
+end
+
+to-report population-tested%
+  report  count citizens with [nb-tests > 0] / population-size * 100
+end
+
+to-report Population-locked%
+  report (nb-infected-identified-removed + nb-non-infected-lockeddown) / population-size * 100
+
+end
+
+
+to-report nb-non-infected-lockeddown%
+  ifelse (nb-infected-identified-removed + nb-non-infected-lockeddown) > 0
+  [report nb-non-infected-lockeddown / (nb-infected-identified-removed + nb-non-infected-lockeddown) * 100]
+  [report 0]
+
+end
+
 to-report nb-detected
   report count citizens with [detected?]
+end
+
+to-report nb-detected%
+  report nb-detected / population-size * 100
+end
+
+to-report contagious-identified%
+  ifelse nb-contagious-cumulated > 0
+  [report nb-infected-identified / nb-contagious-cumulated * 100]
+  [report 0]
+end
+
+to-report contagious-identified&removed%
+  ifelse nb-contagious-cumulated > 0
+  [report nb-infected-identified-removed / nb-contagious-cumulated * 100]
+  [report 0]
 end
 
 to-report %detected
@@ -620,12 +694,16 @@ to-report %detected
 end
 
 to-report epidemic-duration
-  report round (ticks / nb-step-per-day)
+  report round (ticks / nb-ticks-per-day)
 
 end
 
 to-report MaxI%
  report max-I / population-size * 100
+end
+
+to-report Max-Conf%
+  report max-conf /  population-size  * 100
 end
 
 to-report R0
@@ -655,8 +733,20 @@ to-report symptom-detected
   report count citizens with [detected? and contact-order = 1]
 end
 
+to-report symptom-detected%
+  ifelse nb-detected > 0
+  [report symptom-detected /  nb-detected  * 100]
+  [report 0]
+end
+
 to-report contact-detected
   report count citizens with [detected? and contact-order = 2]
+end
+
+to-report contact-detected%
+  ifelse nb-detected > 0
+  [report contact-detected /  nb-detected  * 100]
+  [report 0]
 end
 
 to-report citizens-per-house
@@ -670,6 +760,7 @@ end
 to-report mean-mean-daily-contacts-nb
   report mean mean-mean-daily-contacts
 end
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -701,13 +792,13 @@ to update-mean-mean-daily-contacts
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-2
-10
-591
-790
+8
+6
+626
+825
 -1
 -1
-9.525
+10.0
 1
 10
 1
@@ -728,10 +819,10 @@ ticks
 30.0
 
 BUTTON
-660
-576
-748
-631
+628
+827
+722
+877
 Initialiser
 setup
 NIL
@@ -745,10 +836,10 @@ NIL
 1
 
 BUTTON
-749
-576
-837
-631
+724
+827
+813
+877
 Simuler
 go
 T
@@ -762,10 +853,10 @@ NIL
 1
 
 PLOT
-593
-10
-1013
-266
+628
+6
+1401
+265
 EVOLUTION DE L'EPIDEMIE
 Durée de l'épidémie
 % de population
@@ -777,19 +868,19 @@ true
 true
 "" ""
 PENS
-"S" 1.0 0 -13840069 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) (nb-S / population-size * 100)]"
-"Ir" 1.0 0 -2674135 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) (nb-Ir  / population-size * 100)]"
-"Inr" 1.0 0 -13345367 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) (nb-Inr  / population-size * 100)]\n"
-"I" 1.0 0 -955883 true "" "\nif population-size > 0 [plotxy (ticks / nb-step-per-day) ((nb-Ir + nb-Inr + nb-Ex) / population-size  * 100)]"
-"R" 1.0 0 -7500403 true "" "\nif population-size > 0 [plotxy (ticks / nb-step-per-day) (nb-R / population-size  * 100)]"
-"Ex" 1.0 0 -8630108 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) (nb-Ex / population-size  * 100)]"
-"%Locked" 1.0 0 -6459832 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) %locked] "
+"Sains" 1.0 0 -13840069 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) (nb-S / population-size * 100)]"
+"Exposés" 1.0 0 -6459832 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) (nb-Ex / population-size  * 100)]"
+"I. Symptomatiques" 1.0 0 -2139308 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) (nb-Ir  / population-size * 100)]"
+"I. Asymptomatiques" 1.0 0 -1184463 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) (nb-Inr  / population-size * 100)]"
+"Contagieux" 1.0 0 -955883 true "" "\nif population-size > 0 [plotxy (ticks / nb-step-per-day) ((nb-Ir + nb-Inr + nb-Ex) / population-size  * 100)]"
+"Guéris" 1.0 0 -13791810 true "" "\nif population-size > 0 [plotxy (ticks / nb-step-per-day) (nb-R / population-size  * 100)]"
+"Confinés" 1.0 0 -8630108 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) %locked] "
 
 MONITOR
-786
-269
-1013
-314
+897
+362
+1120
+407
 Population touchée par l'épidémie (%)
 %nb-I-Total
 1
@@ -797,72 +888,44 @@ Population touchée par l'épidémie (%)
 11
 
 CHOOSER
-624
-489
-941
-534
+354
+844
+627
+889
 SCENARIO
 SCENARIO
 "Laisser faire" "Confinement simple" "Traçage et confinement systématique" "Traçage et confinement sélectif"
 0
 
 MONITOR
-593
-317
-784
+1123
 362
+1401
+407
 Durée de l'épidémie (en jours)
-round (ticks / nb-step-per-day)
+epidemic-duration-final
 17
 1
 11
 
 MONITOR
-593
-269
-783
-314
-Pic épidémique (Max I)
+628
+361
+895
+406
+Pic épidémique (%)
 MaxI%
-2
+1
 1
 11
 
-SWITCH
-23
-846
-165
-879
-Montre-liens?
-Montre-liens?
-1
-1
--1000
-
-BUTTON
-23
-881
-125
-914
-Cache liens
-ask links [die]
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
 SLIDER
-1015
-198
-1278
-231
-probability-success-test-infected
-probability-success-test-infected
+354
+904
+626
+937
+Probabilité-que-le-test-soit-efficace
+Probabilité-que-le-test-soit-efficace
 0
 1
 1.0
@@ -872,12 +935,12 @@ NIL
 HORIZONTAL
 
 SLIDER
-1015
-160
-1297
-193
-probability-respect-lockdown
-probability-respect-lockdown
+354
+939
+627
+972
+Probabilité-de-respect-du-confinement
+Probabilité-de-respect-du-confinement
 0
 1
 1.0
@@ -887,611 +950,345 @@ NIL
 HORIZONTAL
 
 SLIDER
-1014
-84
-1292
-117
-nb-days-before-test-tagging-contacts
-nb-days-before-test-tagging-contacts
+3
+939
+353
+972
+Profondeur-temporelle-de-recherche-des-contacts
+Profondeur-temporelle-de-recherche-des-contacts
 1
 5
 5.0
 1
 1
-days
+jours
 HORIZONTAL
 
-MONITOR
-786
-317
-1013
-362
-Population confinée (%)
-%locked
-2
-1
-11
-
 SLIDER
-1015
-122
-1193
-155
-proportion-equiped
-proportion-equiped
+3
+869
+353
+902
+Taux-de-couverture-de-l'application-de-traçage
+Taux-de-couverture-de-l'application-de-traçage
 0
 100
-70.0
+40.0
 10
 1
-NIL
+%
 HORIZONTAL
 
 SLIDER
-1014
-46
-1209
-79
-incubation-duration
-incubation-duration
-0
-5
-5.0
-1
-1
-days
-HORIZONTAL
-
-SLIDER
-1013
-10
-1216
-43
-delay-before-test
-delay-before-test
+3
+904
+354
+937
+Temps-d'attente-pour-la-réalisation-du-test
+Temps-d'attente-pour-la-réalisation-du-test
 0
 72
-12.0
+6.0
 6
 1
-hours
+heures
 HORIZONTAL
 
 MONITOR
-787
-364
-1013
-409
-Nombre de tests réalisés
-nb-detected
-0
-1
-11
-
-SLIDER
-1015
-326
-1187
-359
-Taille_population
-Taille_population
-0
-10000
-1750.0
-250
-1
-NIL
-HORIZONTAL
-
-MONITOR
-593
-364
-785
-409
+1123
+410
+1401
+455
 Population testée (%)
-%detected
-17
+population-tested%
+1
 1
 11
 
-SLIDER
-1015
-363
-1187
-396
-Nb_infected_initialisation
-Nb_infected_initialisation
-1
-50
-2.0
+MONITOR
+898
+410
+1121
+455
+Population confinée (%)
+Population-locked%
 1
 1
-NIL
-HORIZONTAL
+11
 
 MONITOR
-1304
-250
-1361
-295
-NIL
+1122
+266
+1401
+311
+Nombre d'infectés
 nb-I
 17
 1
 11
 
 MONITOR
-1419
-250
-1476
-295
-NIL
+1123
+314
+1401
+359
+Nombre de guéris
 nb-R
 17
 1
 11
 
 MONITOR
-1362
-250
-1419
-295
-NIL
+897
+266
+1120
+311
+Nombre d'exposés
 nb-Ex
 17
 1
 11
 
 MONITOR
-1478
-249
-1535
-294
-NIL
+628
+266
+894
+311
+Nombre de sains
 nb-S
 17
 1
 11
 
-PLOT
-1582
-294
-1782
-444
-R0
-Durée de l'épidémie
-R0
-0.0
-70.0
-0.0
-5.0
-true
-false
-"" ""
-PENS
-"R0" 1.0 0 -16777216 true "" "if (nb-R > 0) [plotxy (ticks / nb-step-per-day) (R0)]"
-
-PLOT
-1295
-294
-1575
-444
-Nombre d'infections secondaires
-NIL
-NIL
-0.0
-13.0
-0.0
-10.0
-true
-false
-"" ""
-PENS
-"default" 1.0 1 -16777216 true "" "histogram [nb-other-infected] of citizens with [nb-other-infected > 0]"
-
-PLOT
-1579
-591
-1779
-741
-Histogramme des ordres
-NIL
-NIL
-0.0
-30.0
-0.0
-10.0
-true
-false
-"" ""
-PENS
-"default" 1.0 1 -16777216 true "" "histogram [contact-order] of citizens with [contact-order > 0]"
-
-PLOT
-988
-414
-1258
-564
-nombre de contacts
-nombre de contacts par ticks
-NIL
-0.0
-20.0
-0.0
-10.0
-true
-false
-"" ""
-PENS
-"default" 1.0 1 -16777216 true "" "histogram [nb-contacts-ticks] of citizens"
+MONITOR
+1151
+733
+1402
+778
+Personnes contagieuses confinées (%)
+contagious-identified&removed%
+1
+1
+11
 
 MONITOR
-988
-561
-1276
-606
-Nb de contacts moyen par ticks
-mean-contacts-ticks
-17
+893
+733
+1149
+778
+Personnes contagieuses Identifiées (%)
+contagious-identified%
+1
+1
+11
+
+PLOT
+629
+458
+1401
+731
+EFFICACITE DU DISPOSITIF
+Durée de l'épidémie
+Nombre cumulé
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"Contagieux (nombre total)" 1.0 0 -817084 true "" "\nif population-size > 0 [plotxy (ticks / nb-step-per-day) nb-contagious-cumulated ]"
+"Contagieux identifiés" 1.0 0 -2674135 true "" "\nif population-size > 0 [plotxy (ticks / nb-step-per-day) nb-infected-identified]\n\n"
+"Contagieux confinés" 1.0 0 -5825686 true "" "\nif population-size > 0 [plotxy (ticks / nb-step-per-day) nb-infected-identified-removed]\n\n"
+"Sains confinés" 1.0 0 -13840069 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) nb-non-infected-lockeddown]"
+"Population testée" 1.0 0 -12895429 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day)  population-tested]"
+
+MONITOR
+630
+733
+892
+778
+Nombre total de personnes contagieuses
+nb-contagious-cumulated
+2
+1
+11
+
+MONITOR
+628
+409
+895
+454
+Pic de confinement (%)
+Max-Conf%
+1
+1
+11
+
+MONITOR
+1019
+780
+1402
+825
+Personnes contagieuses identifiées suite aux symptômes (%)
+symptom-detected%
+1
+1
+11
+
+MONITOR
+629
+780
+1018
+825
+Personnes contagieuses identifiées grâce au traçage (%)
+contact-detected%
+1
 1
 11
 
 SLIDER
-1015
-231
-1289
-264
-probability-asymptomatic-infection
-probability-asymptomatic-infection
+218
+834
+353
+867
+R0-fixé
+R0-fixé
 0
-1
-1.0
+10
+1.1
 0.1
 1
 NIL
 HORIZONTAL
 
 MONITOR
-1476
-446
-1534
-491
+628
+314
+894
+359
+Nombre d'infectés symptomatiques
+nb-Ir
+17
+1
+11
+
+MONITOR
+897
+314
+1119
+359
+Nombre d'infectés asymptomatiques
+nb-Inr
+17
+1
+11
+
+TEXTBOX
+823
+834
+1412
+970
+EXPLICATIONS\n\nChoisissez un scénario et fixez des conditions initiales (curseurs en bas à gauche de l'écran). \nCliquez sur le bouton \"Initialiser\" puis lancez la simulation.\n\nNB : la durée de la période contagieuse est de 14 jours plus 4 jours d'incubation pendant lesquels la contagiosité croît linéairement jusqu'au début de la phase infectieuse.
+12
+55.0
+1
+
+MONITOR
+628
+882
+814
+927
+Population Totale
+Population-size
+0
+1
+11
+
+SLIDER
+3
+834
+218
+867
+Nombre-de-cas-au-départ
+Nombre-de-cas-au-départ
+1
+100
+1.0
+1
+1
 NIL
-R0
+HORIZONTAL
+
+MONITOR
+628
+928
+814
+973
+% Population Infectée au départ
+Nombre-de-cas-au-départ / Population-size * 100
 2
 1
 11
 
-MONITOR
-432
-806
-556
-851
-Confinés infectés
-nb-infected-identified-removed
-0
-1
-11
-
-MONITOR
-272
-804
-422
-849
-Identifiés
-nb-infected-identified
-17
-1
-11
-
-PLOT
-598
-691
-978
-909
-Contagieux vs Identifiés vs Confinés
-Durée de l'épidémie
-Nombre
-0.0
-10.0
-0.0
-10.0
-true
-true
-"" ""
-PENS
-"Contagieux" 1.0 0 -817084 true "" "\nif population-size > 0 [plotxy (ticks / nb-step-per-day) nb-contagious-cumulated ]"
-"Identifiés" 1.0 0 -13791810 true "" "\nif population-size > 0 [plotxy (ticks / nb-step-per-day) nb-infected-identified]\n\n"
-"Confinés" 1.0 0 -5825686 true "" "\nif population-size > 0 [plotxy (ticks / nb-step-per-day) nb-infected-identified-removed]\n\n"
-"Confinés pas contagieux" 1.0 0 -7500403 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) nb-non-infected-lockeddown]"
-
-MONITOR
-125
-804
-265
-849
-Contagieux (cumul)
-nb-contagious-cumulated
-17
-1
-11
-
-MONITOR
-431
-853
-577
-898
-Confinés pas infectés
-nb-non-infected-lockeddown
-17
-1
-11
-
-PLOT
-1579
-444
-1779
-594
-Lockeddown
-NIL
-NIL
-0.0
-10.0
-0.0
-10.0
-true
-false
-"" ""
-PENS
-"default" 1.0 1 -16777216 true "" "histogram [nb-lockeddown] of citizens"
-
-BUTTON
-838
-576
-917
-628
-Step
-go
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-MONITOR
-591
-409
-787
-454
-Pic de confinement (max-conf)
-max-conf
-17
-1
-11
-
-PLOT
-978
-692
-1424
-908
-Instantané : contagieux - détectés - confinés détectés - confinés non détectés
-Durée de l'épidémie
-Nombre
-0.0
-10.0
-0.0
-10.0
-true
-true
-"" ""
-PENS
-"Contagieux" 1.0 0 -955883 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) count citizens with [contagious?]]"
-"Détectés" 1.0 0 -2674135 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) count citizens with [detected? and contagious?]]"
-"Confinés détectés" 1.0 0 -13345367 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) count citizens with [detected? and lockdown? = 1]]"
-"Confinés non détectés" 1.0 0 -11221820 true "" "if population-size > 0 [plotxy (ticks / nb-step-per-day) count citizens with [not detected? and lockdown? = 1]]"
-
-MONITOR
-1553
-745
-1750
-790
-Détections suite à symptômes
-symptom-detected
-17
-1
-11
-
-MONITOR
-1554
-790
-1721
-835
-Détections grâce à l'appli
-contact-detected
-17
-1
-11
-
-SLIDER
-1015
-296
-1192
-329
-initial-R-proportion
-initial-R-proportion
-0
-100
-46.0
-1
-1
-NIL
-HORIZONTAL
-
-SWITCH
-1513
-60
-1642
-93
-fixed-seed?
-fixed-seed?
-0
-1
--1000
-
-INPUTBOX
-1503
-92
-1652
-152
-seed
-15.0
-1
-0
-Number
-
-MONITOR
-1302
-160
-1696
-205
-# de membres d'une famille infectés après confinement
-nb-co-infected
-17
-1
-11
-
-MONITOR
-1303
-205
-1774
-250
-Nombre de personnes infectées par des gens qui habitent la même maison
-count citizens with [family-infection?]
-17
-1
-11
-
-MONITOR
-1506
-10
-1629
-55
-NIL
-citizens-per-house
-17
-1
-11
-
-MONITOR
-989
-605
-1276
-650
-Nb de contacts moyens depuis le début
-mean-contacts
-17
-1
-11
-
-SLIDER
-1015
-262
-1187
-295
-R0-a-priori
-R0-a-priori
-0
-10
-4.0
-1
-1
-NIL
-HORIZONTAL
-
-MONITOR
-1298
-447
-1476
-492
-Probabilté de transmission
-probability-transmission
-17
-1
-11
-
-MONITOR
-1277
-562
-1516
-607
-Nb de contacts moyen par jour (inst)
-mean-daily-contacts
-17
-1
-11
-
-MONITOR
-1276
-607
-1537
-652
-Nb de contacts moyens par jour (cumul)
-mean-mean-daily-contacts-nb
-17
-1
-11
-
-MONITOR
-1555
-835
-1695
-880
-Contactés par l'appli
-count citizens with [contact-order = 2]
-17
-1
-11
-
-MONITOR
-181
-855
-297
-900
-NIL
-tracers-this-tick
-17
-1
-11
-
-MONITOR
-297
-853
-408
-898
-NIL
-traced-this-tick
-17
-1
-11
-
 @#$#@#$#@
-## THINGS TO TRY
+## DESCRIPTION
 
-to be done 
+Ce modèle CoVprehension s'intéresse aux applications mobiles de traçage épidémiologique et à leurs possibles effet sur l’épidémie de COVID-19.
+          
+Il reprend les éléments de base du modèle de confinement de la [Q6](https://covprehension.org/2020/03/30/q6.html) en les enrichissant un peu.
+ 
+Les journées sont ainsi découpées en quatre tranches de 6 heures. Les trois premières tranches sont occupées par des déplacements et des rencontres (en moyenne 10 par jours). La plupart des déplacements se font à proximité du domicile mais 20% d’entre eux se font à plus longue distance. La dernière tranche de la journée s’effectue au domicile, partagé par trois personnes en moyenne. Au total, 2000 personnes occupent ce petit territoire virtuel.
+
+Par ailleurs, nous introduisons également une phase d’incubation (E pour Exposé) et deux catégories d’infection possibles : les symptomatiques et les asymptomatiques, ces dernières étant plus difficiles à identifier par simple diagnostic médical en raison de l’absence de symptômes. Il s’agit donc maintenant d’un modèle SEIR.
+
+A l’initialisation, tous les individus sont sains. On injecte alors un petit nombre d’individus infectés (paramètre *Nombre-de-cas-au-départ*) dans cette population initiale et on simule la propagation du virus à partir des comportements des individus modélisés.
+
+Les changements d’état s’opèrent de la manière suivante : 
+
+- *Sain → Exposé* : un individu sain deviendra exposé, au contact d’un individu infecté, selon une probabilité qui dépend de la valeur du R0 choisie et de la catégorie à laquelle appartient cet individu infecté (cf point suivant). La formule retenue pour calculer cette probabilité est la suivante : P(S→ E) = 1/R0 x c x d avec c le nombre de contacts moyens par jours ([fixé à 10 environ](https://covprehension.org/2020/04/02/q10.html)) et d la durée de la période contagieuse. 
+
+- *Exposé → Infecté* : un individu restera dans l’état exposé pendant sa période d’incubation (fixée ici à 4 jours), au cours de laquelle il deviendra progressivement contagieux, jusqu’à devenir Infecté  asymptomatique avec une probabilité de 0.3 et Infecté  symptomatique avec une probabilité de 0.7 (ce qui correspond à une proportion d’infectés asymptomatiques dans la population de l’ordre de 30%). La contagiosité d’un individu symptomatique est estimée à partir du R0 (cf point précédent) et est considérée comme étant deux fois supérieure à celle d’un individu asymptomatique.
+
+- *Infecté → Guéri* : au bout de 14 jours, un individu infecté est considéré comme guéri et non contagieux dans le modèle.
+
+Sur cette base, quatre scénarios distincts sont proposés (paramètre *SCENARIO*), dans une perspective comparative :
+
+- *S1 : Laisser-faire* : on ne fait rien, l’épidémie suit son cours sans aucune interférence
+- *S2 : Confinement simple* : on identifie les porteurs symptomatiques (test) et on les confine avec leur famille 
+- *S3 : Traçage et confinement systématique* : les infecté symptomatiques sont systématiquement testés et ceux qui sont positifs sont confinés avec leur famille, tandis que leurs contacts (et leur famille) sont confinés sans être testés
+- *S4 : Traçage et confinement sélectif* : els infecté symptomatiques sont systématiquement testés et ceux qui sont positifs sont confinés avec leur famille, tandis que leurs contacts (et leur famille) sont testés et confinés s'ils sont positifs, ainsi que leurs contacts et les contacts de leurs contacts...
 
 
-## THINGS TO NOTICE
 
-to be done
+## MARCHE A SUIVRE
+
+Choisissez un scénario et fixez des conditions initiales (curseurs en bas à gauche de l'écran). Cliquez sur le bouton "Initialiser" puis lancez la simulation.
 
 
-## AUTHOR
+## PRECISIONS SUR LE R0
 
-Developped by Arnaud Banos & Pierrick Tranouez for https://covprehension.org/
+Le R0, ou nombre de reproduction de base, est un indicateur global de la dynamique épidémique. De manière intuitive on peut le voir comme un indicateur du nombre de personnes saines qu’une personne infectée infectera, en moyenne, pendant la durée de l’épidémie. 
+
+Si R0 est inférieur à 1, l'épidémie va s'éteindre d'elle même, sans passer par une phase de flambée épidémique.
+Si R0 est supérieur à 1, alors l'épidémie pourra se développer. 
+
+Vous pouvez tester ce point en fixant les paramètres suivants :
+- *SCENARIO* : "Laisser faire"
+- *Nombre-de-cas-au-départ* : 1 
+- *R0-fixé* : faites varier la valeur autour de 1, cliquez sur le bouton "Initialiser" puis lancez la simulation. 
+
+NB : vous pouvez éventuellement obtenir des départs d'épidémie pour des valeurs inférieures à 1, en raison du caractère discret et stochastique du modèle.
+
+Attention, cet indicateur est une composition de processus couplés : le taux de contacts dans la population, la probabilité de transmission du virus à chaque contact et la durée de la phase contagieuse de la maladie développée. Par ailleurs, comme tout indicateur global,il ne rend pas compte des situations locales, qui peuvent être très différenciées. Il doit donc être manipulé avec précaution.
+
+Son utilisation dans ce modèle permet de caractériser des dynamiques épidémiques types. A titre d'exemple, le R0 en France au moment de la mise en place de la période de confinement (17 mars 2020) était estimé à une valeur comprise entre 2,5 et 3. Après plusieurs semaines de confinement, il était estimé à 0,6.  
+
+
+## AUTEURS
+
+Modèle développé par Arnaud Banos & Pierrick Tranouez pour CoVprehension (https://covprehension.org/)
 @#$#@#$#@
 default
 true
@@ -1814,123 +1611,118 @@ NetLogo 6.1.1
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
-  <experiment name="Test_V2" repetitions="100" runMetricsEveryStep="false">
+  <experiment name="Explo_V9_Scenarios3-4" repetitions="30" runMetricsEveryStep="false">
     <setup>setup</setup>
     <go>go</go>
-    <exitCondition>nb-I = 0</exitCondition>
+    <exitCondition>not any? citizens with [contagious?]</exitCondition>
     <metric>MaxI%</metric>
-    <metric>epidemic-duration</metric>
-    <metric>%tested</metric>
-    <metric>nb-tests</metric>
-    <metric>%locked</metric>
     <metric>%nb-I-Total</metric>
-    <enumeratedValueSet variable="Confinement_avec_Test?">
-      <value value="false"/>
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="delay-before-test">
-      <value value="6"/>
-      <value value="12"/>
-      <value value="24"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="Nb_infected_initialisation">
-      <value value="1"/>
+    <metric>epidemic-duration-final</metric>
+    <metric>Max-Conf%</metric>
+    <metric>Population-locked%</metric>
+    <metric>population-tested%</metric>
+    <metric>nb-tests-total</metric>
+    <metric>Contagious-identified%</metric>
+    <metric>contagious-identified&amp;removed%</metric>
+    <metric>nb-non-infected-lockeddown%</metric>
+    <metric>contact-detected%</metric>
+    <metric>symptom-detected%</metric>
+    <enumeratedValueSet variable="Nombre-de-cas-au-départ">
       <value value="10"/>
-      <value value="50"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="nb-days-before-test-tagging-contacts">
+    <enumeratedValueSet variable="R0-fixé">
       <value value="1"/>
       <value value="2"/>
       <value value="3"/>
+      <value value="4"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="proportion-equiped">
-      <value value="10"/>
-      <value value="40"/>
-      <value value="70"/>
-      <value value="100"/>
-    </enumeratedValueSet>
-  </experiment>
-  <experiment name="Test_V3" repetitions="100" runMetricsEveryStep="false">
-    <setup>setup</setup>
-    <go>go</go>
-    <exitCondition>not any? citizens with [contagious?]</exitCondition>
-    <metric>MaxI%</metric>
-    <metric>epidemic-duration</metric>
-    <metric>%tested</metric>
-    <metric>nb-tests</metric>
-    <metric>%locked</metric>
-    <metric>%nb-I-Total</metric>
-    <metric>family-locked-down</metric>
-    <enumeratedValueSet variable="Confinement_avec_Test?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="delay-before-test">
-      <value value="6"/>
-      <value value="12"/>
-      <value value="24"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="Nb_infected_initialisation">
-      <value value="1"/>
-      <value value="5"/>
-      <value value="10"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="nb-days-before-test-tagging-contacts">
-      <value value="1"/>
-      <value value="3"/>
-      <value value="5"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="proportion-equiped">
-      <value value="40"/>
-      <value value="70"/>
-      <value value="100"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="family-lockdown?">
-      <value value="true"/>
-      <value value="false"/>
-    </enumeratedValueSet>
-  </experiment>
-  <experiment name="Test_V8" repetitions="100" runMetricsEveryStep="false">
-    <setup>setup</setup>
-    <go>go</go>
-    <exitCondition>not any? citizens with [contagious?]</exitCondition>
-    <metric>MaxI%</metric>
-    <metric>%nb-I-Total</metric>
-    <metric>epidemic-duration</metric>
-    <metric>max-conf</metric>
-    <metric>symptom-detected</metric>
-    <metric>contact-detected</metric>
-    <metric>nb-R / population-size</metric>
-    <enumeratedValueSet variable="Confinement_avec_Test?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="delay-before-test">
-      <value value="6"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="Nb_infected_initialisation">
-      <value value="10"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="population-size">
-      <value value="2000"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="nb-days-before-test-tagging-contacts">
-      <value value="1"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="fixed-seed">
-      <value value="false"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="proportion-equiped">
-      <value value="40"/>
-      <value value="70"/>
-      <value value="100"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="family-lockdown?">
-      <value value="true"/>
-      <value value="false"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="initial-R-proportion">
+    <steppedValueSet variable="Taux-de-couverture-de-l'application-de-traçage" first="20" step="10" last="100"/>
+    <enumeratedValueSet variable="Temps-d'attente-pour-la-réalisation-du-test">
       <value value="0"/>
       <value value="6"/>
-      <value value="60"/>
+      <value value="24"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Profondeur-temporelle-de-recherche-des-contacts">
+      <value value="1"/>
+      <value value="4"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Probabilité-que-le-test-soit-efficace">
+      <value value="0.7"/>
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Probabilité-de-respect-du-confinement">
+      <value value="0.7"/>
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="SCENARIO">
+      <value value="&quot;Traçage et confinement systématique&quot;"/>
+      <value value="&quot;Traçage et confinement sélectif&quot;"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="Explo_V9_Scenario2" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <exitCondition>not any? citizens with [contagious?]</exitCondition>
+    <metric>MaxI%</metric>
+    <metric>%nb-I-Total</metric>
+    <metric>epidemic-duration-final</metric>
+    <metric>Max-Conf%</metric>
+    <metric>Population-locked%</metric>
+    <metric>population-tested%</metric>
+    <metric>nb-tests-total</metric>
+    <metric>Contagious-identified%</metric>
+    <metric>contagious-identified&amp;removed%</metric>
+    <metric>nb-non-infected-lockeddown%</metric>
+    <metric>contact-detected%</metric>
+    <metric>symptom-detected%</metric>
+    <enumeratedValueSet variable="Nombre-de-cas-au-départ">
+      <value value="5"/>
+      <value value="10"/>
+      <value value="20"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="R0-fixé">
+      <value value="1"/>
+      <value value="2"/>
+      <value value="3"/>
+      <value value="4"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Temps-d'attente-pour-la-réalisation-du-test">
+      <value value="0"/>
+      <value value="6"/>
+      <value value="24"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Probabilité-que-le-test-soit-efficace">
+      <value value="0.7"/>
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Probabilité-de-respect-du-confinement">
+      <value value="0.7"/>
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="SCENARIO">
+      <value value="&quot;Confinement simple&quot;"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="Explo_V9_Scenario1" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <exitCondition>not any? citizens with [contagious?]</exitCondition>
+    <metric>MaxI%</metric>
+    <metric>%nb-I-Total</metric>
+    <metric>epidemic-duration-final</metric>
+    <enumeratedValueSet variable="SCENARIO">
+      <value value="&quot;Laisser faire&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Nombre-de-cas-au-départ">
+      <value value="5"/>
+      <value value="10"/>
+      <value value="20"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="R0-fixé">
+      <value value="1"/>
+      <value value="2"/>
+      <value value="3"/>
+      <value value="4"/>
     </enumeratedValueSet>
   </experiment>
 </experiments>
