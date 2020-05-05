@@ -45,7 +45,7 @@ globals [ ;;global parameters
   ;current-nb-new-infections-asymptomatic
   transparency
   infection-duration
-  contagion-duration
+  contagion-duration-tick
   nb-ticks-per-day
   lockdown-date
   previous-lockdown-state
@@ -91,6 +91,7 @@ citizens-own
   nb-other-infected
   contagion-counter ;;counter to go from state 1 or 2 (infected) to state 3 recovered
   contagious? ; boolean
+  my-contagiousness
   resistant? ; boolean - indicates in case of infection wether the citizen will express symptoms
   my-house
   lockdown? ; 0 free 1 locked
@@ -156,12 +157,11 @@ to setup-globals
   set nb-ticks-per-day 4
   set incubation-duration 4
   set infection-duration 14
-  set contagion-duration ((incubation-duration + infection-duration) * nb-ticks-per-day) ;
-  set probability-asymptomatic-infection 0.3
+  set contagion-duration-tick ((incubation-duration + infection-duration) * nb-ticks-per-day) ;
+  set probability-asymptomatic-infection 0.1
 
   set Estimated-mean-mean-daily-contacts 0.004 * population-size + 3.462 ;calibrated from systematic experiments from 1000 to 10000 agents, on same world
-  ;let nb-contacts 5 ;(((population-size  / count patches) * 9) - 1) / 2 ; the / 2 is an approximate experimental value on how to go from #contacts per ticks to #contacts per day, without counting a contact twice
-  set probability-transmission R0-a-priori / ((Estimated-mean-mean-daily-contacts / nb-ticks-per-day)  * contagion-duration) ; probability per tick
+  set probability-transmission R0-a-priori / ((Estimated-mean-mean-daily-contacts / nb-ticks-per-day)  * contagion-duration-tick) ; probability per tick
   set probability-transmission-asymptomatic probability-transmission / 2
 
   set contacts-to-warn-next no-turtles
@@ -170,7 +170,7 @@ to setup-globals
   set mean-mean-daily-contacts []
 
 
-  ifelse SCENARIO = "Laisser faire"[
+  ifelse SCENARIO = "Laisser-faire"[
     set REACTING? false
     set TRACING? false
     set TESTING? false
@@ -270,6 +270,7 @@ to set-R-initialisation
   ]
 end
 
+
 to setup
   clear-all
   reset-ticks
@@ -324,6 +325,7 @@ to go
   update-list-mean-contacts
   update-mean-daily-contacts
   update-mean-mean-daily-contacts
+  update-my-contagiousness
 
   tick
 end
@@ -556,29 +558,33 @@ end
 
 to become-exposed
   set epidemic-state Ex
-  set contagion-counter contagion-duration
+  set contagion-counter contagion-duration-tick
   set infection-date ticks
   ;set current-nb-new-infections-reported (current-nb-new-infections-reported + 1)
   set total-nb-contagious total-nb-contagious + 1
-  set color violet ;
+  set color brown ;
   set resistant? (random-float 1 < probability-asymptomatic-infection)
   set contagious? true
+  set my-contagiousness contagiousness self
 end
 
 to become-infected
   set epidemic-state I
   set color red ;
+set my-contagiousness contagiousness self
 end
 
 to become-asymptomatic-infected
   set epidemic-state Ia
   set color blue ;
+set my-contagiousness contagiousness self
 end
 
 to become-recovered
   set epidemic-state R
   set contagious? false
   set color yellow ;
+  set my-contagiousness 0
 end
 
 
@@ -603,7 +609,6 @@ to-report contagiousness [a-citizen]
   if ([epidemic-state] of a-citizen) = Ia [
       report probability-transmission-asymptomatic
   ]
-
 
 end
 
@@ -817,6 +822,13 @@ end
 to update-mean-mean-daily-contacts
   set mean-mean-daily-contacts lput mean-daily-contacts mean-mean-daily-contacts
 end
+
+;we update contagiousness only for Exposed citizens, as the value grows as ticks pass
+to update-my-contagiousness
+  ask citizens with [epidemic-state = 1 ]
+  [set my-contagiousness contagiousness self]
+
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 8
@@ -921,8 +933,8 @@ CHOOSER
 889
 SCENARIO
 SCENARIO
-"Laisser faire" "Confinement simple" "Traçage et confinement systématique" "Traçage et confinement sélectif"
-3
+"Laisser-faire" "Confinement simple" "Traçage et confinement systématique" "Traçage et confinement sélectif"
+0
 
 MONITOR
 1123
@@ -955,7 +967,7 @@ Probabilité-que-le-test-soit-efficace
 Probabilité-que-le-test-soit-efficace
 0
 1
-1.0
+0.7
 0.1
 1
 NIL
@@ -970,7 +982,7 @@ Probabilité-de-respect-du-confinement
 Probabilité-de-respect-du-confinement
 0
 1
-0.8
+0.7
 0.1
 1
 NIL
@@ -1091,7 +1103,7 @@ MONITOR
 1151
 733
 1402
-778
+779
 Personnes contagieuses confinées (%)
 contagious-lockeddown%
 1
@@ -1153,28 +1165,6 @@ Max-Conf%
 1
 11
 
-MONITOR
-1019
-780
-1402
-825
-Personnes contagieuses identifiées suite aux symptômes (%)
-symptom-detected%
-1
-1
-11
-
-MONITOR
-629
-780
-1018
-825
-Personnes contagieuses identifiées suite au traçage (%)
-contact-detected%
-1
-1
-11
-
 SLIDER
 218
 834
@@ -1184,7 +1174,7 @@ R0-fixé
 R0-fixé
 0
 10
-2.5
+0.8
 0.1
 1
 NIL
@@ -1242,7 +1232,7 @@ Nombre-de-cas-au-départ
 Nombre-de-cas-au-départ
 1
 100
-4.0
+1.0
 1
 1
 NIL
@@ -1260,54 +1250,77 @@ Nombre-de-cas-au-départ / Population-size * 100
 11
 
 MONITOR
-1404
-622
-1731
-667
-Personnes contagieuses confinées suite au traçage
-total-contagious-lockeddown-tracked
-17
-1
-11
-
-MONITOR
-1404
-668
-1835
-713
-Proportion des personnes contagieuses confinées : suite au traçage
+631
+780
+993
+826
+Proportion des personnes contagieuses confinées par traçage
 proportion-total-contagious-lockeddown-tracked
 1
 1
 11
 
 MONITOR
-1401
-713
-1874
-758
-Proportion des personnes contagieuses confinées : suite à des symptômes
+994
+780
+1403
+826
+Proportion des personnes contagieuses confinées par symptômes
 proportion-total-contagious-lockeddown-symptom
 1
 1
 11
 
-BUTTON
-1467
-463
+INPUTBOX
+1528
+460
+1621
+520
+ID_Citizen
+1500.0
+1
+0
+Number
+
+MONITOR
 1530
-496
-Step
-go
-NIL
+527
+1672
+573
+my-contagiousness
+[my-contagiousness] of citizen ID_citizen
+6
 1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
+11
+
+MONITOR
+1531
+579
+1641
+625
+Epidemic-state
+[epidemic-state] of citizen  ID_citizen
+0
 1
+11
+
+PLOT
+1527
+234
+1839
+454
+Check Contagiousness
+NIL
+NIL
+0.0
+3.0
+0.0
+0.001
+true
+false
+"" ""
+PENS
+"default" 1.0 2 -2674135 true "" "if is-agent? citizen ID_citizen\n[plotxy [epidemic-state] of citizen ID_citizen [my-contagiousness] of citizen ID_citizen]"
 
 @#$#@#$#@
 ## DESCRIPTION
