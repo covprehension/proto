@@ -45,7 +45,7 @@ globals [ ;;global parameters
   ;current-nb-new-infections-asymptomatic
   transparency
   infection-duration
-  contagion-duration
+  contagion-duration-tick
   nb-ticks-per-day
   lockdown-date
   previous-lockdown-state
@@ -55,9 +55,9 @@ globals [ ;;global parameters
   max-conf
 
   nb-contagious-detected
-  nb-contagious-lockeddown
+  total-nb-contagious-lockeddown
   total-nb-contagious
-  nb-non-contagious-lockeddown
+  total-nb-non-contagious-lockeddown
   nb-co-infected
   mean-daily-contacts ; for 1 tick
   mean-mean-daily-contacts ; mean since the beginning of the simulation
@@ -91,6 +91,7 @@ citizens-own
   nb-other-infected
   contagion-counter ;;counter to go from state 1 or 2 (infected) to state 3 recovered
   contagious? ; boolean
+  my-contagiousness
   resistant? ; boolean - indicates in case of infection wether the citizen will express symptoms
   my-house
   lockdown? ; 0 free 1 locked
@@ -156,12 +157,11 @@ to setup-globals
   set nb-ticks-per-day 4
   set incubation-duration 4
   set infection-duration 14
-  set contagion-duration ((incubation-duration + infection-duration) * nb-ticks-per-day) ;
-  set probability-asymptomatic-infection 0.3
+  set contagion-duration-tick ((incubation-duration + infection-duration) * nb-ticks-per-day) ;
+  set probability-asymptomatic-infection 0.1
 
   set Estimated-mean-mean-daily-contacts 0.004 * population-size + 3.462 ;calibrated from systematic experiments from 1000 to 10000 agents, on same world
-  ;let nb-contacts 5 ;(((population-size  / count patches) * 9) - 1) / 2 ; the / 2 is an approximate experimental value on how to go from #contacts per ticks to #contacts per day, without counting a contact twice
-  set probability-transmission R0-a-priori / ((Estimated-mean-mean-daily-contacts / nb-ticks-per-day)  * contagion-duration) ; probability per tick
+  set probability-transmission R0-a-priori / ((Estimated-mean-mean-daily-contacts / nb-ticks-per-day)  * contagion-duration-tick) ; probability per tick
   set probability-transmission-asymptomatic probability-transmission / 2
 
   set contacts-to-warn-next no-turtles
@@ -170,7 +170,7 @@ to setup-globals
   set mean-mean-daily-contacts []
 
 
-  ifelse SCENARIO = "Laisser faire"[
+  ifelse SCENARIO = "Laisser-faire"[
     set REACTING? false
     set TRACING? false
     set TESTING? false
@@ -270,6 +270,7 @@ to set-R-initialisation
   ]
 end
 
+
 to setup
   clear-all
   reset-ticks
@@ -324,6 +325,7 @@ to go
   update-list-mean-contacts
   update-mean-daily-contacts
   update-mean-mean-daily-contacts
+  update-my-contagiousness
 
   tick
 end
@@ -461,14 +463,14 @@ to lockdown
   set nb-ticks-lockdown 0
   set total-nb-lockeddown total-nb-lockeddown + 1
   ifelse contagious?[
-    set nb-contagious-lockeddown nb-contagious-lockeddown + 1
+    set total-nb-contagious-lockeddown total-nb-contagious-lockeddown + 1
     ifelse contact-order = 1 [
       set total-contagious-lockeddown-symptom total-contagious-lockeddown-symptom + 1
     ][
       set total-contagious-lockeddown-tracked total-contagious-lockeddown-tracked + 1
     ]
   ][
-    set nb-non-contagious-lockeddown nb-non-contagious-lockeddown + 1
+    set total-nb-non-contagious-lockeddown total-nb-non-contagious-lockeddown + 1
   ]
 end
 
@@ -556,29 +558,33 @@ end
 
 to become-exposed
   set epidemic-state Ex
-  set contagion-counter contagion-duration
+  set contagion-counter contagion-duration-tick
   set infection-date ticks
   ;set current-nb-new-infections-reported (current-nb-new-infections-reported + 1)
   set total-nb-contagious total-nb-contagious + 1
-  set color violet ;
+  set color brown ;
   set resistant? (random-float 1 < probability-asymptomatic-infection)
   set contagious? true
+  set my-contagiousness contagiousness self
 end
 
 to become-infected
   set epidemic-state I
   set color red ;
+set my-contagiousness contagiousness self
 end
 
 to become-asymptomatic-infected
   set epidemic-state Ia
   set color blue ;
+set my-contagiousness contagiousness self
 end
 
 to become-recovered
   set epidemic-state R
   set contagious? false
   set color yellow ;
+  set my-contagiousness 0
 end
 
 
@@ -603,7 +609,6 @@ to-report contagiousness [a-citizen]
   if ([epidemic-state] of a-citizen) = Ia [
       report probability-transmission-asymptomatic
   ]
-
 
 end
 
@@ -677,13 +682,13 @@ to-report population-tested%
 end
 
 to-report Population-locked%
-  report (nb-contagious-lockeddown + nb-non-contagious-lockeddown) / population-size * 100
+  report (total-nb-contagious-lockeddown + total-nb-non-contagious-lockeddown) / population-size * 100
 
 end
 
 to-report proportion-non-contagious-lockeddown%
-  ifelse (nb-contagious-lockeddown + nb-non-contagious-lockeddown) > 0
-  [report nb-non-contagious-lockeddown / (nb-contagious-lockeddown + nb-non-contagious-lockeddown) * 100]
+  ifelse (total-nb-contagious-lockeddown + total-nb-non-contagious-lockeddown) > 0
+  [report total-nb-non-contagious-lockeddown / (total-nb-contagious-lockeddown + total-nb-non-contagious-lockeddown) * 100]
   [report 0]
 
 end
@@ -704,7 +709,7 @@ end
 
 to-report contagious-lockeddown%
   ifelse total-nb-contagious > 0
-  [report nb-contagious-lockeddown / total-nb-contagious * 100]
+  [report total-nb-contagious-lockeddown / total-nb-contagious * 100]
   [report 0]
 end
 
@@ -817,6 +822,13 @@ end
 to update-mean-mean-daily-contacts
   set mean-mean-daily-contacts lput mean-daily-contacts mean-mean-daily-contacts
 end
+
+;we update contagiousness only for Exposed citizens, as the value grows as ticks pass
+to update-my-contagiousness
+  ask citizens with [epidemic-state = 1 ]
+  [set my-contagiousness contagiousness self]
+
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 8
@@ -921,8 +933,8 @@ CHOOSER
 889
 SCENARIO
 SCENARIO
-"Laisser faire" "Confinement simple" "Traçage et confinement systématique" "Traçage et confinement sélectif"
-3
+"Laisser-faire" "Confinement simple" "Traçage et confinement systématique" "Traçage et confinement sélectif"
+2
 
 MONITOR
 1123
@@ -970,7 +982,7 @@ Probabilité-de-respect-du-confinement
 Probabilité-de-respect-du-confinement
 0
 1
-0.8
+1.0
 0.1
 1
 NIL
@@ -1022,10 +1034,10 @@ heures
 HORIZONTAL
 
 MONITOR
-1123
+1184
 410
-1401
-455
+1403
+456
 Population testée (%)
 population-tested%
 1
@@ -1033,10 +1045,10 @@ population-tested%
 11
 
 MONITOR
-898
+783
 410
-1121
-455
+937
+456
 Population confinée (%)
 Population-locked%
 1
@@ -1112,8 +1124,8 @@ contagious-detected%
 PLOT
 629
 458
-1401
-731
+1403
+732
 EFFICACITE DU DISPOSITIF
 Durée de l'épidémie
 Nombre cumulé
@@ -1127,8 +1139,8 @@ true
 PENS
 "Contagieux (nombre total)" 1.0 0 -817084 true "" "\nif population-size > 0 [plotxy (ticks / nb-ticks-per-day) total-nb-contagious ]"
 "Contagieux identifiés" 1.0 0 -2674135 true "" "\nif population-size > 0 [plotxy (ticks / nb-ticks-per-day) nb-contagious-detected]\n\n"
-"Contagieux confinés" 1.0 0 -5825686 true "" "\nif population-size > 0 [plotxy (ticks / nb-ticks-per-day) nb-contagious-lockeddown]\n\n"
-"Sains ou guéris confinés" 1.0 0 -13840069 true "" "if population-size > 0 [plotxy (ticks / nb-ticks-per-day) nb-non-contagious-lockeddown]"
+"Contagieux confinés" 1.0 0 -5825686 true "" "\nif population-size > 0 [plotxy (ticks / nb-ticks-per-day) total-nb-contagious-lockeddown]\n\n"
+"Sains ou guéris confinés" 1.0 0 -13840069 true "" "if population-size > 0 [plotxy (ticks / nb-ticks-per-day) total-nb-non-contagious-lockeddown]"
 "Population testée" 1.0 0 -12895429 true "" "if population-size > 0 [plotxy (ticks / nb-ticks-per-day)  population-tested]"
 
 MONITOR
@@ -1145,32 +1157,10 @@ total-nb-contagious
 MONITOR
 628
 409
-895
-454
+782
+455
 Pic de confinement (%)
 Max-Conf%
-1
-1
-11
-
-MONITOR
-1019
-780
-1402
-825
-Personnes contagieuses identifiées suite aux symptômes (%)
-symptom-detected%
-1
-1
-11
-
-MONITOR
-629
-780
-1018
-825
-Personnes contagieuses identifiées suite au traçage (%)
-contact-detected%
 1
 1
 11
@@ -1184,7 +1174,7 @@ R0-fixé
 R0-fixé
 0
 10
-2.5
+2.2
 0.1
 1
 NIL
@@ -1242,7 +1232,7 @@ Nombre-de-cas-au-départ
 Nombre-de-cas-au-départ
 1
 100
-4.0
+10.0
 1
 1
 NIL
@@ -1260,54 +1250,37 @@ Nombre-de-cas-au-départ / Population-size * 100
 11
 
 MONITOR
-1404
-622
-1731
-667
-Personnes contagieuses confinées suite au traçage
-total-contagious-lockeddown-tracked
-17
-1
-11
-
-MONITOR
-1404
-668
-1835
-713
-Proportion des personnes contagieuses confinées : suite au traçage
+631
+780
+993
+825
+Proportion des personnes contagieuses confinées par traçage
 proportion-total-contagious-lockeddown-tracked
 1
 1
 11
 
 MONITOR
-1401
-713
-1874
-758
-Proportion des personnes contagieuses confinées : suite à des symptômes
+994
+780
+1403
+825
+Proportion des personnes contagieuses confinées par symptômes
 proportion-total-contagious-lockeddown-symptom
 1
 1
 11
 
-BUTTON
-1467
-463
-1530
-496
-Step
-go
-NIL
+MONITOR
+938
+410
+1182
+456
+Population confinée non contagieuse (%) 
+proportion-non-contagious-lockeddown%
+2
 1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
+11
 
 @#$#@#$#@
 ## DESCRIPTION
@@ -1688,7 +1661,7 @@ NetLogo 6.1.1
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
-  <experiment name="Explo_V9_Scenarios3-4" repetitions="30" runMetricsEveryStep="false">
+  <experiment name="Explo_V9_Scenarios3-4" repetitions="100" runMetricsEveryStep="false">
     <setup>setup</setup>
     <go>go</go>
     <exitCondition>not any? citizens with [contagious?]</exitCondition>
@@ -1699,11 +1672,12 @@ NetLogo 6.1.1
     <metric>Population-locked%</metric>
     <metric>population-tested%</metric>
     <metric>nb-tests-total</metric>
-    <metric>Contagious-identified%</metric>
-    <metric>contagious-identified&amp;removed%</metric>
-    <metric>nb-non-infected-lockeddown%</metric>
-    <metric>contact-detected%</metric>
-    <metric>symptom-detected%</metric>
+    <metric>total-nb-contagious</metric>
+    <metric>contagious-detected%</metric>
+    <metric>contagious-lockeddown%</metric>
+    <metric>proportion-non-contagious-lockeddown%</metric>
+    <metric>proportion-total-contagious-lockeddown-tracked</metric>
+    <metric>proportion-total-contagious-lockeddown-symptom</metric>
     <enumeratedValueSet variable="Nombre-de-cas-au-départ">
       <value value="10"/>
     </enumeratedValueSet>
@@ -1711,16 +1685,12 @@ NetLogo 6.1.1
       <value value="1"/>
       <value value="2"/>
       <value value="3"/>
-      <value value="4"/>
     </enumeratedValueSet>
-    <steppedValueSet variable="Taux-de-couverture-de-l'application-de-traçage" first="20" step="10" last="100"/>
+    <steppedValueSet variable="Taux-de-couverture-de-l'application-de-traçage" first="10" step="10" last="100"/>
     <enumeratedValueSet variable="Temps-d'attente-pour-la-réalisation-du-test">
       <value value="0"/>
-      <value value="6"/>
-      <value value="24"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="Profondeur-temporelle-de-recherche-des-contacts">
-      <value value="1"/>
       <value value="4"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="Probabilité-que-le-test-soit-efficace">
@@ -1747,26 +1717,22 @@ NetLogo 6.1.1
     <metric>Population-locked%</metric>
     <metric>population-tested%</metric>
     <metric>nb-tests-total</metric>
-    <metric>Contagious-identified%</metric>
-    <metric>contagious-identified&amp;removed%</metric>
-    <metric>nb-non-infected-lockeddown%</metric>
-    <metric>contact-detected%</metric>
-    <metric>symptom-detected%</metric>
+    <metric>total-nb-contagious</metric>
+    <metric>contagious-detected%</metric>
+    <metric>contagious-lockeddown%</metric>
+    <metric>proportion-non-contagious-lockeddown%</metric>
+    <metric>proportion-total-contagious-lockeddown-tracked</metric>
+    <metric>proportion-total-contagious-lockeddown-symptom</metric>
     <enumeratedValueSet variable="Nombre-de-cas-au-départ">
-      <value value="5"/>
       <value value="10"/>
-      <value value="20"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="R0-fixé">
       <value value="1"/>
       <value value="2"/>
       <value value="3"/>
-      <value value="4"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="Temps-d'attente-pour-la-réalisation-du-test">
       <value value="0"/>
-      <value value="6"/>
-      <value value="24"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="Probabilité-que-le-test-soit-efficace">
       <value value="0.7"/>
@@ -1799,7 +1765,6 @@ NetLogo 6.1.1
       <value value="1"/>
       <value value="2"/>
       <value value="3"/>
-      <value value="4"/>
     </enumeratedValueSet>
   </experiment>
 </experiments>
