@@ -11,12 +11,15 @@
 library(ggplot2)
 library(dplyr)
 library(reshape2)
-library(ggConvexHull)
 
 rm(list = ls())
 
 setwd("~/github/Covprehention/proto/confinement/")
-data.df <- read.csv(file = "data/CoVprehension_Confinement_Q6_explo_BS-table.csv",
+# data.df <- read.csv(file = "data/CoVprehension_Confinement_Q6_explo_BS-table.csv",
+#                     skip = 6, 
+#                     header = T)
+
+data.df <- read.csv(file = "data/CoVprehension_300320_Confinement_Q6_explo experiment-table100000ose.csv",
                     skip = 6, 
                     header = T)
 
@@ -43,17 +46,20 @@ data.dfgg <- subset(data.df, select =c(s.time,nb.S, nb.Ir, nb.R)) %>%
                 melt(id.vars = "s.time")
 
 
-## Preparer l'enveloppe des point
-small.df <- subset(data.df, select =c(s.time,nb.S, nb.Ir, nb.R)) %>%
-              group_by(s.time) %>%
-              summarise_each(funs(min, max)) ## Calucler le min et max de chaque tick
 
-small1.df <- small.df[,1:4] %>%
-                melt(id.vars = "s.time") ## Couper par min et convertir en 3 colonnes
-small2.df <- small.df[,c(1,5:7)] %>%
-                melt(id.vars = "s.time") ## Couper par max et convertir en 3 colonnes
-small.df <- small1.df %>% left_join(small2.df, by = "s.time") ## jointure des deux sous data frame
-rm(small1.df, small2.df)
+data.dfgg <- data.dfgg[!data.dfgg$s.time%%1,]
+
+# ## Preparer l'enveloppe des point
+# small.df <- subset(data.df, select =c(s.time,nb.S, nb.Ir, nb.R)) %>%
+#               group_by(s.time) %>%
+#               summarise_each(funs(min, max)) ## Calucler le min et max de chaque tick
+# 
+# small1.df <- small.df[,1:4] %>%
+#                 melt(id.vars = "s.time") ## Couper par min et convertir en 3 colonnes
+# small2.df <- small.df[,c(1,5:7)] %>%
+#                 melt(id.vars = "s.time") ## Couper par max et convertir en 3 colonnes
+# small.df <- small1.df %>% left_join(small2.df, by = "s.time") ## jointure des deux sous data frame
+# rm(small1.df, small2.df)
 
 ## Plot
 # gg1 <- ggplot()+
@@ -68,13 +74,51 @@ rm(small1.df, small2.df)
 
 gg1 <- ggplot()+
   geom_boxplot(data = data.dfgg, aes(x = as.factor(s.time), y = value, color= variable), alpha = 0.03)+
-  scale_x_discrete(breaks=seq(0, 127, 20))+
-  # scale_color_manual(values=c("#0099ff", "#ff0000", "#ffffff"))+
-  scale_color_brewer(palette="Dark2", name="% de la population", labels=c("Saint","Infecté","Immunisé"))+
-  labs(x = "temps", y = "% de la population")+
-  # theme_dark()
+  scale_x_discrete(breaks=seq(0, 130, 20))+
+  geom_vline(xintercept = c(6, 21, 41, 56, 75, 90, 110,125), linetype="twodash")+
+  annotate("rect", xmin = c(6,41,75,110), xmax = c(21, 56, 90, 125), ymin = 0, ymax = 100, alpha = .2)+
+  annotate("text", x = c(6,21,41,56, 75,90, 110,125)+2, y = 90, label = c("confinement","déconfinement",
+                                                                 "confinement","déconfinement",
+                                                                 "confinement","déconfinement",
+                                                                 "confinement","déconfinement"),
+           angle = 90,)+
+  scale_color_brewer(palette="Dark2", name="Proportion\nde la population", labels=c("Sains","Infectés","Immunisés"))+
+  labs(x = "Durée de l'épidémie en jour", y = "Proportion de la population")+
   theme_bw()
 gg1
 
-ggsave("img/out_ose_solution.png",gg1, height = 6, width = 8)
+ggsave("img/Q6-A1-BS.png",gg1, height = 8, width = 10)
 
+
+#########################################################################################
+## On veut regarder par simulation si on ne dépasse jamais les critère de l'ago génétique 
+#########################################################################################
+# On va partir de data.df
+# On selection toutes les ticks qui remplisse les condition de l'algo générique
+# C'est à dire (considérant résultat de PSE):
+#  (jours_confinement = nb.j.conf ) < 15
+#  (pic_max = max.Ir) < 40
+#  (nbS = nb.S) > 60
+#  (nb conf=nb.confinement) <=2
+#  (init_conf=i.Confinement.init) <=10
+
+sel <- data.df$nb.j.conf <=15 & data.df$max.Ir <= 50 & data.df$nb.S >= 40 & 
+        data.df$nb.confinement <= 2 & data.df$i.Confinement.init <= 10
+summary(sel)
+
+good.condition.df <- data.frame()
+
+for(i in c(1:max(data.df$X.run.number.))){
+  sub.df <- data.df[data.df$X.run.number. == i,]
+  if(max(sub.df$nb.j.conf) <=15){
+    if(max(sub.df$max.Ir) <= 40){
+      if(max(sub.df$nb.S) > 60){
+        if(max(sub.df$nb.confinement <= 2)){
+          if(max(sub.df$i.Confinement.init) <= 10){
+            good.condition.df <- rbind(good.condition.df, sub.df)
+          }
+        }
+      }
+    }
+  }
+}
