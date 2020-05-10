@@ -61,6 +61,7 @@ globals [ ;;global parameters
   total-nb-contagious
   total-nb-non-contagious-lockeddown
   total-nb-lockeddown
+  total-lockeddown-tracked
   nb-co-infected
   mean-daily-contacts ; for 1 tick
   mean-mean-daily-contacts ; mean since the beginning of the simulation
@@ -161,7 +162,7 @@ to setup-globals
   set nb-ticks-per-day 4
   set incubation-duration 4
   set infection-duration 14
-  set quarantine-time infection-duration * nb-ticks-per-day;why not?
+  set quarantine-time (infection-duration + incubation-duration) * nb-ticks-per-day ;why not?
   set contagion-duration-tick ((incubation-duration + infection-duration) * nb-ticks-per-day) ;
   set probability-asymptomatic-infection 0.1
 
@@ -244,6 +245,7 @@ to setup-population
     set daily-contacts nobody
     set nb-other-infected 0
     set contact-order 0
+    set to-be-tested false
     set potential-co-infected false
     set family-infection? false
     set equiped? false
@@ -297,8 +299,8 @@ to go
   get-in-contact
 
   if TRACING?[
-    set tracers-this-tick 0
-    set traced-this-tick 0
+;    set tracers-this-tick 0
+;    set traced-this-tick 0
     if any? contacts-to-warn[
       warn-contacts 2
     ]
@@ -335,6 +337,7 @@ to go
   update-my-contagiousness
 
   tick
+
 end
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -415,14 +418,14 @@ to get-in-contact
   ask citizens
   [
     ifelse lockdown? = 0[
-      if (((ticks - 1) mod nb-ticks-per-day) = 0)[
-        set daily-contacts nobody
-      ]
+;      if (((ticks - 1) mod nb-ticks-per-day) = 0)[
+;        set daily-contacts nobody
+;      ]
       let contacts (turtle-set other citizens-here citizens-on neighbors)
-      set nb-contacts-ticks count contacts
+;      set nb-contacts-ticks count contacts
       set daily-contacts (turtle-set daily-contacts contacts)
 
-      if contagious? [set nb-contacts-total-Infectious nb-contacts-total-Infectious + nb-contacts-ticks]
+;      if contagious? [set nb-contacts-total-Infectious nb-contacts-total-Infectious + nb-contacts-ticks]
 
       let family []
       ask my-house[
@@ -468,7 +471,7 @@ end
 to get-tested
   set list-date-test lput ticks list-date-test
   set nb-tests nb-tests + 1
-  set delayed-test delay-before-test / 6
+  ;set delayed-test delay-before-test / 6
   set to-be-tested false
   ;test results and consequences
   if contagious? and random-float 1 < probability-success-test-infected [
@@ -521,6 +524,9 @@ to lockdown
     ][
       set total-nb-non-contagious-lockeddown total-nb-non-contagious-lockeddown + 1
     ]
+  if contact-order = 2[
+    set total-lockeddown-tracked total-lockeddown-tracked + 1
+  ]
 end
 
 to update-lockdown
@@ -563,6 +569,7 @@ to detect-contacts
     ]
     set j j + 1
   ]
+  set liste-contacts []
 end
 
 to warn-contacts [order]
@@ -581,6 +588,7 @@ to warn-contacts [order]
       ][
         set nb-ticks-lockdown quarantine-time
      ]
+     detect-contacts
     ]
   ]
 end
@@ -729,7 +737,7 @@ to-report population-tested%
   report  count citizens with [nb-tests > 0] / population-size * 100
 end
 
-to-report Population-locked%
+to-report total-population-locked%
   report total-nb-lockeddown / population-size * 100
 
 end
@@ -1100,7 +1108,7 @@ MONITOR
 937
 455
 Population confinée (%)
-Population-locked%
+total-population-locked%
 1
 1
 11
@@ -1350,6 +1358,56 @@ MONITOR
 388
 Record de confinements
 max-nb-lockdown
+17
+1
+11
+
+BUTTON
+1495
+581
+1558
+614
+Step
+go
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+MONITOR
+1411
+222
+1793
+267
+NIL
+count citizens with [epidemic-state = I and lockdown? = 1]
+17
+1
+11
+
+MONITOR
+1436
+36
+1686
+81
+NIL
+total-contagious-lockeddown-tracked
+17
+1
+11
+
+MONITOR
+1510
+461
+1684
+506
+NIL
+total-lockeddown-tracked
 17
 1
 11
@@ -1741,7 +1799,7 @@ NetLogo 6.1.1
     <metric>nb-non-S%</metric>
     <metric>epidemic-duration-final</metric>
     <metric>Max-Conf%</metric>
-    <metric>Population-locked%</metric>
+    <metric>total-population-locked%</metric>
     <metric>population-tested%</metric>
     <metric>total-nb-tests</metric>
     <metric>total-nb-contagious</metric>
@@ -1786,7 +1844,7 @@ NetLogo 6.1.1
     <metric>nb-non-S%</metric>
     <metric>epidemic-duration-final</metric>
     <metric>Max-Conf%</metric>
-    <metric>Population-locked%</metric>
+    <metric>total-population-locked%</metric>
     <metric>population-tested%</metric>
     <metric>total-nb-tests</metric>
     <metric>total-nb-contagious</metric>
