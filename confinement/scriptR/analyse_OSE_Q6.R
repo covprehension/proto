@@ -14,12 +14,12 @@ library(reshape2)
 
 rm(list = ls())
 
-setwd("~/github/Covprehention/proto/confinement/")
+setwd("~/github/CoVprehension_git/proto/confinement/")
 # data.df <- read.csv(file = "data/CoVprehension_Confinement_Q6_explo_BS-table.csv",
 #                     skip = 6, 
 #                     header = T)
 
-data.df <- read.csv(file = "data/CoVprehension_300320_Confinement_Q6_explo experiment-table100000ose.csv",
+data.df <- read.csv(file = "data/CoVprehension_300320_Confinement_Q6_explo experiment-table10000ose.csv",
                     skip = 6, 
                     header = T)
 
@@ -102,9 +102,6 @@ ggsave("img/Q6-A1-BS.png",gg1, height = 8, width = 10)
 #  (nb conf=nb.confinement) <=2
 #  (init_conf=i.Confinement.init) <=10
 
-sel <- data.df$nb.j.conf <=15 & data.df$max.Ir <= 50 & data.df$nb.S >= 40 & 
-        data.df$nb.confinement <= 2 & data.df$i.Confinement.init <= 10
-summary(sel)
 
 good.condition.df <- data.frame()
 
@@ -112,13 +109,24 @@ for(i in c(1:max(data.df$X.run.number.))){
   sub.df <- data.df[data.df$X.run.number. == i,]
   if(max(sub.df$nb.j.conf) <=15){
     if(max(sub.df$max.Ir) <= 40){
-      if(max(sub.df$nb.S) > 60){
+      if(max(sub.df$nb.S) > 56){ # remplacer 60 par 56
         if(max(sub.df$nb.confinement <= 2)){
-          if(max(sub.df$i.Confinement.init) <= 10){
+          #if(max(sub.df$i.Confinement.init) <= 10){
             good.condition.df <- rbind(good.condition.df, sub.df)
-          }
+          #}
         }
       }
     }
   }
 }
+
+gg3 <- ggplot(data = good.condition.df)+
+  geom_point(aes(x = s.time, y = nb.S, color = X.run.number.))+
+  annotate("rect", xmin = c(6,41,75,110), xmax = c(21, 56, 90, 125), ymin = 0, ymax = 100, alpha = .2)+
+  annotate("text", x = c(6,21,41,56, 75,90, 110,125)+2, y = 90, label = c("confinement","déconfinement",
+                                                                          "confinement","déconfinement",
+                                                                          "confinement","déconfinement",
+                                                                          "confinement","déconfinement"),
+           angle = 90,)+
+  theme_bw()
+gg3
