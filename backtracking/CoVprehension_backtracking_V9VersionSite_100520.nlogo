@@ -147,7 +147,7 @@ to setup-globals
   set size_population 2000
   set Nb_contagious_initialisation Nombre-de-cas-au-départ
 
-  set fixed-seed? false
+  set fixed-seed? true
   if fixed-seed?[
     random-seed 30
   ]
@@ -556,20 +556,21 @@ to detect-contacts
   let me self
   let my-lockdown-date lockdown-date
   let j 0
-
   set tracers-this-tick tracers-this-tick + 1
   repeat length liste-contacts[
+
     let date-j item j liste-contact-dates
     let contacts-j item j liste-contacts
 
     if is-agentset? contacts-j[
       if date-j >= (my-lockdown-date - (nb-days-before-test-tagging-contacts * nb-ticks-per-day))[
-        set contacts-to-warn-next (turtle-set contacts-to-warn-next (contacts-j with [detected? = false]))
+        set contacts-to-warn-next (turtle-set contacts-to-warn-next contacts-j) ; with [detected? = false]
       ]
     ]
     set j j + 1
   ]
   set liste-contacts []
+  set liste-contact-dates []
 end
 
 to warn-contacts [order]
@@ -1070,7 +1071,7 @@ Taux-de-couverture-de-l'application-de-traçage
 Taux-de-couverture-de-l'application-de-traçage
 0
 100
-50.0
+80.0
 10
 1
 %
@@ -1085,7 +1086,7 @@ Temps-d'attente-pour-la-réalisation-du-test
 Temps-d'attente-pour-la-réalisation-du-test
 0
 72
-0.0
+6.0
 6
 1
 heures
