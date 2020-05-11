@@ -64,7 +64,7 @@ globals [
   total-nb-I
   total-nb-R
   total-prop-I
-  date-all-infected
+  date-herd-immunity
 
   ;; colors
   color-susceptible
@@ -80,7 +80,7 @@ globals [
 
 to setup
   clear-all
-  random-seed 25
+  random-seed 42
   reset-ticks
 
   setup-GUI
@@ -122,7 +122,7 @@ to setup-globals
 ;  set population-density 105 ;; average for France
   set nb-infected-initialisation 1
 ;  set transmission-distance 1
-  set travel-distance 5
+  set travel-distance 2
   set distanciation-distance 1
 
   set lockdown? false
@@ -135,7 +135,7 @@ to setup-globals
   set total-nb-I 0
   set total-nb-R 0
   set total-prop-I 0
-  set date-all-infected 0
+  set date-herd-immunity 0
 
   ;; colors
   set color-susceptible [0 153 255]
@@ -304,7 +304,7 @@ to update-states
   set total-nb-I total-nb-I + new-I
   set total-nb-R total-nb-R + new-R
   set total-prop-I total-nb-I / ((1 - headless-proportion-immunised / 100) * headless-population-size) * 100
-  if count turtles with [nb-infections > 0] = headless-population-size and date-all-infected = 0 [ set date-all-infected ticks ]
+  if count immunised > 0.6 * headless-population-size and date-herd-immunity = 0 [ set date-herd-immunity ticks ]
 end
 
 
@@ -325,6 +325,7 @@ to quarantine-decision
         member? "2" headless-lockdown-strategy [ ask turtles [ set quarantined? true ] ]
         ;; only infected
         member? "3" headless-lockdown-strategy [
+          ;; some infected don't respect lockdown OR asymptomatic
           let prop-infected-quarantined 0.9
           ask n-of (prop-infected-quarantined * nb-I) infected [ set quarantined? true ]
         ]
@@ -332,15 +333,13 @@ to quarantine-decision
     ]
 
     ;; continue lockdown
-    lockdown? and lockdown-counter > 0 [
-      set lockdown-counter lockdown-counter - 1
-    ]
+    lockdown? and lockdown-counter > 0 [ set lockdown-counter lockdown-counter - 1 ]
 
     ;; stop lockdown
     lockdown? and lockdown-counter = 0 [
       set lockdown? false
       set lockdown-counter -1
-      ask turtles [ set quarantined? false ]
+      ask (turtle-set susceptibles incubating) [ set quarantined? false ]
     ]
   )
 end
@@ -370,7 +369,7 @@ to distancing-decision
     ;; stop social-distancing
     social-distancing? and prop-I < headless-social-distancing-threshold [
       set social-distancing? false
-      ask turtles [ set distancing? false ]
+      ask (turtle-set susceptibles incubating) [ set distancing? false ]
     ]
   )
 end
@@ -402,6 +401,8 @@ to get-immunised
   set state-duration gamma-law headless-avg-immunity-duration 4
   set nb-transmissions 0
   if headless-partial-immunity? [ set immunity-protection ((random 51) + 50) / 100 ]
+  set quarantined? false
+  set distancing? false
 
   set new-R new-R + 1
 end
@@ -442,8 +443,8 @@ end
 GRAPHICS-WINDOW
 671
 10
-1309
-649
+1549
+889
 -1
 -1
 30.0
@@ -456,10 +457,10 @@ GRAPHICS-WINDOW
 0
 0
 1
--10
-10
--10
-10
+-14
+14
+-14
+14
 1
 1
 1
@@ -620,10 +621,10 @@ nb-R
 MONITOR
 11
 567
-391
+385
 612
-temps nécessaire pour infecter 100% de la population (en jours)
-date-all-infected
+temps nécessaire pour infecter 60% de la population (en jours)
+date-herd-immunity
 0
 1
 11
@@ -634,7 +635,7 @@ INPUTBOX
 529
 143
 population-size
-5000.0
+10000.0
 1
 0
 Number
@@ -710,7 +711,7 @@ CHOOSER
 STRATEGIE-DE-CONFINEMENT
 STRATEGIE-DE-CONFINEMENT
 "1- aucun" "2- tout le monde" "3- uniquement les personnes infectées"
-2
+0
 
 SLIDER
 15
@@ -721,16 +722,16 @@ seuil-confinement
 seuil-confinement
 0
 100
-20.0
+0.0
 1
 1
 %
 HORIZONTAL
 
 MONITOR
-408
+389
 567
-641
+592
 612
 % de personnes saines infectées
 total-prop-I
@@ -778,7 +779,7 @@ CHOOSER
 STRATEGIE-DE-DISTANCIATION-SOCIALE
 STRATEGIE-DE-DISTANCIATION-SOCIALE
 "1- aucune" "2- tout le monde" "3- uniquement les personnes infectées"
-1
+0
 
 SLIDER
 335
@@ -789,7 +790,7 @@ seuil-distanciation-sociale
 seuil-distanciation-sociale
 0
 100
-15.0
+5.0
 5
 1
 %
