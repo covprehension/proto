@@ -41,7 +41,7 @@ globals [ ;;global parameters
   probability-transmission-asymptomatic
   walking-angle
   speed
-  probability-car-travel
+  ;probability-car-travel
   ;current-nb-new-infections-reported
   ;current-nb-new-infections-asymptomatic
   transparency
@@ -157,7 +157,7 @@ to setup-globals
 
   set walking-angle 50
   set speed 0.5
-  set probability-car-travel 0.2
+  ;set probability-car-travel 0.2
   set transparency 145
   set nb-ticks-per-day 4
   set incubation-duration 4
@@ -168,6 +168,7 @@ to setup-globals
 
   set Estimated-mean-mean-daily-contacts 0.004 * population-size + 3.462 ;calibrated from systematic experiments from 1000 to 10000 agents, on same world
   set probability-transmission R0-a-priori / ((Estimated-mean-mean-daily-contacts / nb-ticks-per-day)  * contagion-duration-tick) ; probability per tick
+  set probability-transmission probability-transmission / proba-divider
   set probability-transmission-asymptomatic probability-transmission / 2
 
   set contacts-to-warn-next no-turtles
@@ -421,7 +422,12 @@ to get-in-contact
 ;      if (((ticks - 1) mod nb-ticks-per-day) = 0)[
 ;        set daily-contacts nobody
 ;      ]
-      let contacts (turtle-set other citizens-here citizens-on neighbors)
+      let contacts no-turtles
+      ifelse big-neighborhood[
+        set contacts (turtle-set other citizens-here citizens-on neighbors)
+      ][
+        set contacts other citizens-here
+      ]
 ;      set nb-contacts-ticks count contacts
       set daily-contacts (turtle-set daily-contacts contacts)
 
@@ -993,7 +999,7 @@ CHOOSER
 SCENARIO
 SCENARIO
 "Laisser-faire" "Confinement simple" "Traçage et confinement systématique" "Traçage et confinement sélectif"
-3
+0
 
 MONITOR
 1123
@@ -1412,6 +1418,47 @@ total-lockeddown-tracked
 17
 1
 11
+
+SLIDER
+1474
+676
+1646
+709
+proba-divider
+proba-divider
+0
+10
+1.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1472
+643
+1660
+676
+probability-car-travel
+probability-car-travel
+0
+1
+0.1
+0.1
+1
+NIL
+HORIZONTAL
+
+SWITCH
+1513
+786
+1685
+819
+big-neighborhood
+big-neighborhood
+1
+1
+-1000
 
 @#$#@#$#@
 ## DESCRIPTION
