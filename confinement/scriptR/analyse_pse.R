@@ -6,7 +6,7 @@ library(ggplot2)
 
 rm(list = ls())
 
-setwd("~/github/Covprehention/proto/confinement/")
+setwd("~/github/CoVprehension_git/proto/confinement/")
 
 data.df <- read.csv("data/results_pse/population20000.csv", header = T)
 
@@ -28,6 +28,7 @@ g2 <- ggplot() +
   annotate("text", x = 54, y = 10, label = "Simu. 1")+
   annotate("segment", x = 13.5, y = 10, xend = 7, yend = 50)+
   annotate("text", x = 7, y = 52, label = "Simu. 2")+
+  annotate("rect", xmin = 0, xmax = 27, ymin = 0, ymax = 25, alpha = .2)+
   scale_color_gradient("% de pop\nnon touché par\nle virus")+
   scale_size("Robustesse\ndu résultat")+
   labs(x = "Nombre de jours de confinement effectif", 
@@ -41,7 +42,8 @@ ggsave("img/Q6-A1-1-PSE.png", plot = g2 ,width = 10, height = 8, dpi = 120)
 
 
 ## identifier les paramètres de simulation
-
+sel <- data.df$jours_confinement < 30 & data.df$pic_max < 25
+small.df <- data.df[sel,]
 
 data.df$nb_conf_effectif <- data.df$jours_confinement / data.df$duration_conf
 length(data.df[data.df$nb_conf_effectif >= 1,1])
