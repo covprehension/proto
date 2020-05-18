@@ -115,7 +115,7 @@ end
 ;; generic setup
 to setup-globals
   set infinity 99999
-  set population-size 2000
+  set population-size 5000
   set number-daily-tests daily-tests-per-10000 * population-size / 10000
   set nb-infected-initialisation 1
   set probability-transmission 0.03
@@ -426,7 +426,7 @@ to update-states
   ask turtles with [epidemic-state = "Incubating" and
                      ticks > infection-date + incubation-duration] [
     ; probability to be (a)symptomatic
-    ifelse random 100 < %unreported-infections
+    ifelse age < 65 and random 100 < %unreported-infections
     [ get-asymptomatic ]
     [ get-symptomatic ]
   ]
@@ -619,11 +619,6 @@ to-report sliding-mean
   report mean list-tests
 end
 
-; untested infected = "missed" tests
-to-report nb-untested-infected
-  report count turtles with [infected? and not tested?]
-end
-
 to-report nb-undetected-infected
   report total-nb-infected - TP-tests
 end
@@ -631,8 +626,8 @@ end
 GRAPHICS-WINDOW
 595
 10
-1123
-539
+1443
+859
 -1
 -1
 40.0
@@ -645,10 +640,10 @@ GRAPHICS-WINDOW
 0
 0
 1
--6
-6
--6
-6
+-10
+10
+-10
+10
 1
 1
 1
@@ -676,14 +671,14 @@ PLOT
 16
 272
 387
-465
+497
 Epidemic dynamics
 Days
 % cases
 0.0
 10.0
 0.0
-10.0
+100.0
 true
 true
 "" ""
@@ -736,17 +731,17 @@ start-testing-threshold
 start-testing-threshold
 0
 50
-10.0
+0.0
 1
 1
 %
 HORIZONTAL
 
 PLOT
-16
-478
-387
-671
+18
+510
+389
+735
 Reconstructed epidemic curve
 Days
 % cases
@@ -758,14 +753,14 @@ true
 true
 "" ""
 PENS
-"Real % infected" 1.0 0 -2674135 true "plot 0" "plot nb-to-prop nb-I population-size"
-"sliding7" 1.0 0 -13840069 true "" "if ticks > window-size [ plot sliding-mean ]"
+"Real cases" 1.0 0 -2674135 true "plot 0" "set-plot-pen-color color-recovered plot nb-to-prop nb-I population-size"
+"Estimated cases" 1.0 0 -13840069 true "" "set-plot-pen-color color-susceptible ifelse ticks > window-size [ plot sliding-mean ] [ plot 0 ]"
 
 PLOT
-17
-685
-938
-1060
+18
+749
+389
+974
 Estimated nb of infected
 Days
 %
@@ -777,9 +772,10 @@ true
 true
 "" ""
 PENS
-"Unnecessary quarantines" 1.0 0 -7500403 true "" "plot nb-to-prop FP-tests positive-tests"
-"Detected cases" 1.0 0 -2674135 true "" "plot nb-to-prop positive-tests total-nb-infected"
-"Coverage of screening target" 1.0 0 -6459832 true "" "ifelse total-tests > 0 [ plot 100 - nb-to-prop (count target-population) (count total-target-population) ] [ plot 0 ]"
+"Vrais positifs" 1.0 0 -16777216 true "" "set-plot-pen-color [166 97 26] plot nb-to-prop TP-tests total-nb-infected"
+"Faux négatifs" 1.0 0 -16777216 true "" "set-plot-pen-color [223 194 125] plot nb-to-prop FN-tests total-nb-infected"
+"Part de la pop cible dans la pop totale" 1.0 0 -16777216 true "" "set-plot-pen-color [128 205 193] ifelse total-tests > 0 [ plot nb-to-prop (count total-target-population) population-size ] [ plot 0 ]"
+"Part de personnes testées dans la pop totale" 1.0 0 -16777216 true "" "set-plot-pen-color [1 133 113] ifelse total-tests > 0 [ plot nb-to-prop total-tests population-size ] [ plot 0 ]"
 
 MONITOR
 413
@@ -848,10 +844,21 @@ INPUTBOX
 516
 423
 seed
-0.0
+42.0
 1
 0
 Number
+
+MONITOR
+337
+171
+456
+216
+NIL
+total-nb-infected
+17
+1
+11
 
 @#$#@#$#@
 ## Qu'est-ce que c'est ?
