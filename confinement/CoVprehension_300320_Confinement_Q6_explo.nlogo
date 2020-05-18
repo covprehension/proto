@@ -442,7 +442,7 @@ INPUTBOX
 1107
 325
 i-Confinement-init
-20.0
+1.0
 1
 0
 Number
@@ -453,7 +453,7 @@ INPUTBOX
 1109
 262
 i-confinement-duree
-63.0
+53.0
 1
 0
 Number
@@ -486,7 +486,7 @@ INPUTBOX
 1143
 389
 i-temps_entre_confinement
-80.0
+77.0
 1
 0
 Number
@@ -863,6 +863,31 @@ NetLogo 6.1.1
     </enumeratedValueSet>
     <enumeratedValueSet variable="i-Confinement-init">
       <value value="20"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="experiment-ose" repetitions="1000" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>nb-S</metric>
+    <metric>nb-Ir</metric>
+    <metric>nb-R</metric>
+    <metric>nb-confinement</metric>
+    <metric>max-Ir</metric>
+    <metric>nb-j-conf</metric>
+    <metric>confinement-duree</metric>
+    <metric>temps_entre_confinement</metric>
+    <metric>confinement-tick</metric>
+    <enumeratedValueSet variable="i-confinement-duree">
+      <value value="53"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Niveau-Difficulté">
+      <value value="&quot;Difficile&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="i-temps_entre_confinement">
+      <value value="77"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="i-Confinement-init">
+      <value value="1"/>
     </enumeratedValueSet>
   </experiment>
 </experiments>
