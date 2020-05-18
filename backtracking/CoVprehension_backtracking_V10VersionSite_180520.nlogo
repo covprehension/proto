@@ -28,7 +28,7 @@ globals [ ;;global parameters
   proportion-equiped
   probability-respect-lockdown
   probability-success-test-infected
-  probability-asymptomatic-infection
+  ;probability-asymptomatic-infection
   R0-a-priori
   initial-R-proportion
   size_population
@@ -41,7 +41,7 @@ globals [ ;;global parameters
   probability-transmission-asymptomatic
   walking-angle
   speed
-  ;probability-car-travel
+  probability-car-travel
   ;current-nb-new-infections-reported
   ;current-nb-new-infections-asymptomatic
   transparency
@@ -79,7 +79,7 @@ globals [ ;;global parameters
   TRACING? ; contact-TRACING?
   TESTING? ; secondary testing, primary infected is always tested
   FAMILY-LOCKDOWN?
-  fixed-seed?
+  ;fixed-seed?
 ]
 
 patches-own [wall]
@@ -147,7 +147,7 @@ to setup-globals
   set size_population 2000
   set Nb_contagious_initialisation Nombre-de-cas-au-départ
 
-  set fixed-seed? false
+  ;set fixed-seed? true
   if fixed-seed?[
     random-seed 30
   ]
@@ -157,18 +157,17 @@ to setup-globals
 
   set walking-angle 50
   set speed 0.5
-  ;set probability-car-travel 0.2
+  set probability-car-travel 0.2
   set transparency 145
   set nb-ticks-per-day 4
   set incubation-duration 4
   set infection-duration 14
   set quarantine-time (infection-duration + incubation-duration) * nb-ticks-per-day ;why not?
   set contagion-duration-tick ((incubation-duration + infection-duration) * nb-ticks-per-day) ;
-  set probability-asymptomatic-infection 0.1
+ ; set probability-asymptomatic-infection 0.1
 
   set Estimated-mean-mean-daily-contacts 0.004 * population-size + 3.462 ;calibrated from systematic experiments from 1000 to 10000 agents, on same world
   set probability-transmission R0-a-priori / ((Estimated-mean-mean-daily-contacts / nb-ticks-per-day)  * contagion-duration-tick) ; probability per tick
-  set probability-transmission probability-transmission / proba-divider
   set probability-transmission-asymptomatic probability-transmission / 2
 
   set contacts-to-warn-next no-turtles
@@ -422,12 +421,7 @@ to get-in-contact
 ;      if (((ticks - 1) mod nb-ticks-per-day) = 0)[
 ;        set daily-contacts nobody
 ;      ]
-      let contacts no-turtles
-      ifelse big-neighborhood[
-        set contacts (turtle-set other citizens-here citizens-on neighbors)
-      ][
-        set contacts other citizens-here
-      ]
+      let contacts (turtle-set other citizens-here) ; citizens-on neighbors
 ;      set nb-contacts-ticks count contacts
       set daily-contacts (turtle-set daily-contacts contacts)
 
@@ -837,11 +831,18 @@ to-report contagious-lockeddown-tracked
 end
 
 to-report proportion-total-contagious-lockeddown-tracked
-  report total-contagious-lockeddown-tracked / (total-contagious-lockeddown-tracked + total-contagious-lockeddown-symptom) * 100
+  ifelse (total-contagious-lockeddown-tracked + total-contagious-lockeddown-symptom)[
+    report total-contagious-lockeddown-tracked / (total-contagious-lockeddown-tracked + total-contagious-lockeddown-symptom) * 100
+  ][
+    report 0
 end
 
 to-report proportion-total-contagious-lockeddown-symptom
-  report total-contagious-lockeddown-symptom / (total-contagious-lockeddown-tracked + total-contagious-lockeddown-symptom) * 100
+  ifelse (total-contagious-lockeddown-tracked + total-contagious-lockeddown-symptom)[
+    report total-contagious-lockeddown-symptom / (total-contagious-lockeddown-tracked + total-contagious-lockeddown-symptom) * 100
+  ][
+    report 0
+  ]
 end
 
 to-report citizens-per-house
@@ -999,7 +1000,7 @@ CHOOSER
 SCENARIO
 SCENARIO
 "Laisser-faire" "Confinement simple" "Traçage et confinement systématique" "Traçage et confinement sélectif"
-0
+3
 
 MONITOR
 1123
@@ -1032,7 +1033,7 @@ Probabilité-que-le-test-soit-efficace
 Probabilité-que-le-test-soit-efficace
 0
 1
-1.0
+0.95
 0.1
 1
 NIL
@@ -1062,7 +1063,7 @@ Profondeur-temporelle-de-recherche-des-contacts
 Profondeur-temporelle-de-recherche-des-contacts
 1
 5
-4.0
+5.0
 1
 1
 jours
@@ -1077,7 +1078,7 @@ Taux-de-couverture-de-l'application-de-traçage
 Taux-de-couverture-de-l'application-de-traçage
 0
 100
-100.0
+10.0
 10
 1
 %
@@ -1190,7 +1191,7 @@ PLOT
 629
 458
 1403
-732
+733
 EFFICACITE DU DISPOSITIF
 Durée de l'épidémie
 Nombre cumulé
@@ -1239,7 +1240,7 @@ R0-fixé
 R0-fixé
 0
 10
-10.0
+0.5
 0.1
 1
 NIL
@@ -1297,7 +1298,7 @@ Nombre-de-cas-au-départ
 Nombre-de-cas-au-départ
 1
 100
-10.0
+1.0
 1
 1
 NIL
@@ -1419,46 +1420,31 @@ total-lockeddown-tracked
 1
 11
 
-SLIDER
-1474
-676
-1646
-709
-proba-divider
-proba-divider
-0
-10
-1.0
+SWITCH
+1524
+732
+1653
+765
+fixed-seed?
+fixed-seed?
 1
 1
-NIL
-HORIZONTAL
+-1000
 
 SLIDER
-1472
-643
-1660
-676
-probability-car-travel
-probability-car-travel
+1459
+665
+1729
+698
+probability-asymptomatic-infection
+probability-asymptomatic-infection
 0
 1
-0.2
+0.1
 0.1
 1
 NIL
 HORIZONTAL
-
-SWITCH
-1513
-786
-1685
-819
-big-neighborhood
-big-neighborhood
-1
-1
--1000
 
 @#$#@#$#@
 ## DESCRIPTION
@@ -1884,7 +1870,7 @@ NetLogo 6.1.1
       <value value="&quot;Traçage et confinement sélectif&quot;"/>
     </enumeratedValueSet>
   </experiment>
-  <experiment name="Explo_V9_Scenario2" repetitions="100" runMetricsEveryStep="false">
+  <experiment name="Explo_V9_Scenario2-R0inf1" repetitions="100" runMetricsEveryStep="false">
     <setup>setup</setup>
     <go>go</go>
     <exitCondition>not any? citizens with [contagious?]</exitCondition>
@@ -1905,9 +1891,7 @@ NetLogo 6.1.1
       <value value="10"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="R0-fixé">
-      <value value="1"/>
-      <value value="2"/>
-      <value value="3"/>
+      <value value="0.5"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="Temps-d'attente-pour-la-réalisation-du-test">
       <value value="0"/>
@@ -1945,6 +1929,68 @@ NetLogo 6.1.1
       <value value="3"/>
     </enumeratedValueSet>
   </experiment>
+  <experiment name="Explo_V9_Scenarios3-4-R0inf1" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <exitCondition>not any? citizens with [contagious?]</exitCondition>
+    <metric>MaxI%</metric>
+    <metric>nb-non-S%</metric>
+    <metric>epidemic-duration-final</metric>
+    <metric>Max-Conf%</metric>
+    <metric>total-population-locked%</metric>
+    <metric>population-tested%</metric>
+    <metric>total-nb-tests</metric>
+    <metric>total-nb-contagious</metric>
+    <metric>contagious-detected%</metric>
+    <metric>contagious-lockeddown%</metric>
+    <metric>proportion-non-contagious-lockeddown%</metric>
+    <metric>proportion-total-contagious-lockeddown-tracked</metric>
+    <metric>proportion-total-contagious-lockeddown-symptom</metric>
+    <enumeratedValueSet variable="Nombre-de-cas-au-départ">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="R0-fixé">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <steppedValueSet variable="Taux-de-couverture-de-l'application-de-traçage" first="10" step="10" last="100"/>
+    <enumeratedValueSet variable="Temps-d'attente-pour-la-réalisation-du-test">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Profondeur-temporelle-de-recherche-des-contacts">
+      <value value="4"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Probabilité-que-le-test-soit-efficace">
+      <value value="0.7"/>
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Probabilité-de-respect-du-confinement">
+      <value value="0.7"/>
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="SCENARIO">
+      <value value="&quot;Traçage et confinement systématique&quot;"/>
+      <value value="&quot;Traçage et confinement sélectif&quot;"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="Explo_V9_Scenario1-R0inf1" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <exitCondition>not any? citizens with [contagious?]</exitCondition>
+    <metric>MaxI%</metric>
+    <metric>nb-non-S%</metric>
+    <metric>epidemic-duration-final</metric>
+    <enumeratedValueSet variable="SCENARIO">
+      <value value="&quot;Laisser-faire&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Nombre-de-cas-au-départ">
+      <value value="5"/>
+      <value value="10"/>
+      <value value="20"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="R0-fixé">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+  </experiment>
   <experiment name="Explo_V10_Scenario1" repetitions="100" runMetricsEveryStep="false">
     <setup>setup</setup>
     <go>go</go>
@@ -1957,23 +2003,116 @@ NetLogo 6.1.1
     </enumeratedValueSet>
     <enumeratedValueSet variable="Nombre-de-cas-au-départ">
       <value value="1"/>
-      <value value="5"/>
       <value value="10"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="R0-fixé">
       <value value="0.5"/>
       <value value="1"/>
+      <value value="2"/>
       <value value="3"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="probability-asymptomatic-infection">
+      <value value="0.1"/>
+      <value value="0.3"/>
+      <value value="0.8"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="Explo_V10_Scenario2" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <exitCondition>not any? citizens with [contagious?]</exitCondition>
+    <metric>MaxI%</metric>
+    <metric>nb-non-S%</metric>
+    <metric>epidemic-duration-final</metric>
+    <metric>Max-Conf%</metric>
+    <metric>total-population-locked%</metric>
+    <metric>population-tested%</metric>
+    <metric>total-nb-tests</metric>
+    <metric>total-nb-contagious</metric>
+    <metric>contagious-detected%</metric>
+    <metric>contagious-lockeddown%</metric>
+    <metric>proportion-non-contagious-lockeddown%</metric>
+    <metric>proportion-total-contagious-lockeddown-tracked</metric>
+    <metric>proportion-total-contagious-lockeddown-symptom</metric>
+    <enumeratedValueSet variable="Nombre-de-cas-au-départ">
+      <value value="1"/>
       <value value="10"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="probability-car-travel">
-      <value value="0"/>
-      <value value="0.1"/>
-      <value value="0.2"/>
+    <enumeratedValueSet variable="R0-fixé">
+      <value value="0.5"/>
+      <value value="1"/>
+      <value value="2"/>
+      <value value="3"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="big-neighborhood">
-      <value value="true"/>
-      <value value="false"/>
+    <enumeratedValueSet variable="probability-asymptomatic-infection">
+      <value value="0.1"/>
+      <value value="0.3"/>
+      <value value="0.8"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Temps-d'attente-pour-la-réalisation-du-test">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Probabilité-que-le-test-soit-efficace">
+      <value value="0.95"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Probabilité-de-respect-du-confinement">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="SCENARIO">
+      <value value="&quot;Confinement simple&quot;"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="Explo_V10_Scenarios3-4" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <exitCondition>not any? citizens with [contagious?]</exitCondition>
+    <metric>MaxI%</metric>
+    <metric>nb-non-S%</metric>
+    <metric>epidemic-duration-final</metric>
+    <metric>Max-Conf%</metric>
+    <metric>total-population-locked%</metric>
+    <metric>population-tested%</metric>
+    <metric>total-nb-tests</metric>
+    <metric>total-nb-contagious</metric>
+    <metric>contagious-detected%</metric>
+    <metric>contagious-lockeddown%</metric>
+    <metric>proportion-non-contagious-lockeddown%</metric>
+    <metric>proportion-total-contagious-lockeddown-tracked</metric>
+    <metric>proportion-total-contagious-lockeddown-symptom</metric>
+    <enumeratedValueSet variable="Nombre-de-cas-au-départ">
+      <value value="1"/>
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="R0-fixé">
+      <value value="0.5"/>
+      <value value="1"/>
+      <value value="2"/>
+      <value value="3"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="probability-asymptomatic-infection">
+      <value value="0.1"/>
+      <value value="0.3"/>
+      <value value="0.8"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Temps-d'attente-pour-la-réalisation-du-test">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Probabilité-que-le-test-soit-efficace">
+      <value value="0.95"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Probabilité-de-respect-du-confinement">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <steppedValueSet variable="Taux-de-couverture-de-l'application-de-traçage" first="10" step="10" last="100"/>
+    <enumeratedValueSet variable="Temps-d'attente-pour-la-réalisation-du-test">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Profondeur-temporelle-de-recherche-des-contacts">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="SCENARIO">
+      <value value="&quot;Traçage et confinement systématique&quot;"/>
+      <value value="&quot;Traçage et confinement sélectif&quot;"/>
     </enumeratedValueSet>
   </experiment>
 </experiments>
