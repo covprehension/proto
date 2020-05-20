@@ -28,7 +28,7 @@ globals [
   ;; new globals pour dépistage
   on-going-testing? ;; is there a testing campaign currently
   nb-days-testing   ;; number of days elapsed since the beginning of the testing campaign
-  nb-campaigns      ;; number of testing campaigns
+;  nb-campaigns      ;; number of testing campaigns
   TP-tests          ;; total nb of true positive tests
   FP-tests          ;; total nb of false positive tests
   TN-tests          ;; total nb of true negative tests
@@ -115,7 +115,7 @@ end
 ;; generic setup
 to setup-globals
   set infinity 99999
-  set population-size 5000
+  set population-size 2000
   set number-daily-tests daily-tests-per-10000 * population-size / 10000
   set nb-infected-initialisation 1
   set probability-transmission 0.03
@@ -134,7 +134,7 @@ to setup-globals
   ;; tests counters
   set on-going-testing? false
   set nb-days-testing 0
-  set nb-campaigns 0
+;  set nb-campaigns 0
   set TP-tests 0
   set FP-tests 0
   set TN-tests 0
@@ -297,7 +297,7 @@ to test-pop
     any? target-population [
       ;; start a testing campaign
       set on-going-testing? true
-      set nb-campaigns nb-campaigns + 1
+;      set nb-campaigns nb-campaigns + 1
       set nb-days-testing 0
       ;; test the target population
       ask up-to-n-of number-daily-tests target-population [ test-one ]
@@ -305,19 +305,21 @@ to test-pop
 
     ;; if testing is on-going
     on-going-testing? [
-      set nb-days-testing nb-days-testing + 1
 
       ;; are there people to test?
       ifelse any? target-population
       ;; continue the campaign
-      [ ask up-to-n-of number-daily-tests target-population [ test-one ] ]
+      [
+        ask up-to-n-of number-daily-tests target-population [ test-one ]
+        set nb-days-testing nb-days-testing + 1
+      ]
       ;; stop the campaign
       [
-        set on-going-testing? false
-        ask turtles with [tested?] [
-          set tested? false
-          if not quarantined? [ set shape "circle" ]
-        ]
+;        set on-going-testing? false
+;        ask turtles with [tested?] [
+;          set tested? false
+;          if not quarantined? [ set shape "circle" ]
+;        ]
       ]
     ]
   )
@@ -626,8 +628,8 @@ end
 GRAPHICS-WINDOW
 595
 10
-1443
-859
+1123
+539
 -1
 -1
 40.0
@@ -640,10 +642,10 @@ GRAPHICS-WINDOW
 0
 0
 1
--10
-10
--10
-10
+-6
+6
+-6
+6
 1
 1
 1
@@ -704,8 +706,8 @@ CHOOSER
 100
 TESTING-STRATEGY
 TESTING-STRATEGY
-"random" "symptomatic" "older" "workers" "neighbours"
-1
+"random" "symptomatic" "older" "workers"
+0
 
 SLIDER
 12
@@ -759,7 +761,7 @@ PENS
 PLOT
 18
 749
-389
+1237
 974
 Estimated nb of infected
 Days
@@ -775,7 +777,7 @@ PENS
 "Vrais positifs" 1.0 0 -16777216 true "" "set-plot-pen-color [166 97 26] plot nb-to-prop TP-tests total-nb-infected"
 "Faux négatifs" 1.0 0 -16777216 true "" "set-plot-pen-color [223 194 125] plot nb-to-prop FN-tests total-nb-infected"
 "Part de la pop cible dans la pop totale" 1.0 0 -16777216 true "" "set-plot-pen-color [128 205 193] ifelse total-tests > 0 [ plot nb-to-prop (count total-target-population) population-size ] [ plot 0 ]"
-"Part de personnes testées dans la pop totale" 1.0 0 -16777216 true "" "set-plot-pen-color [1 133 113] ifelse total-tests > 0 [ plot nb-to-prop total-tests population-size ] [ plot 0 ]"
+"Part de personnes testées dans la pop cible" 1.0 0 -16777216 true "" "set-plot-pen-color [1 133 113] ifelse total-tests > 0 [ plot nb-to-prop (count (total-target-population with [tested?])) (count total-target-population) ] [ plot 0 ]"
 
 MONITOR
 413
@@ -785,17 +787,6 @@ MONITOR
 % recovered people
 nb-to-prop nb-R population-size
 2
-1
-11
-
-MONITOR
-151
-213
-301
-258
-nb of testing campaigns
-nb-campaigns
-1
 1
 11
 
