@@ -38,6 +38,8 @@ globals [
   TN-today
   FN-today
   list-tests        ;; remember %sick each day
+  list-estim
+  estim-today
   window-size       ;; used for computing %sick over the last XXX days to smooth variations
                     ;; over just today if = 1, over entire epidemic if too big, or over eg 7 days
 
@@ -48,8 +50,8 @@ globals [
   infection-variance
 
   ; caracteristics of test (specificity / sensitivity)
-  proba-false-pos ;; 0 = high specificity (all detected are sick) / 100 = too sensitive (everybody is positive)
-  proba-false-neg ;; 0 = high sensitivity (all sick are detected) / 100 = too specific (everybody is negative)
+  sensitivity ;; 100 = high sensitivity (all sick are detected) / 0 = low sensitivity (sick are tested as negative)
+  specificity ;; 100 = high specificity (all non sick are detected) / 100 = low specificity (non sick are tested as positive)
 
   ;; metrics
   nb-new-infections
@@ -140,11 +142,12 @@ to setup-globals
   set TN-tests 0
   set FN-tests 0
   set list-tests []
+  set list-estim []
   set window-size 7
 
   ;; features of test: specificity/sensitivity
-  set proba-false-pos 0.1
-  set proba-false-neg 0.1
+  set sensitivity 90
+  set specificity 90
 
   ;; metrics
   set total-nb-infected 0
@@ -382,30 +385,30 @@ to test-one
   ifelse infected?
   ; if agent is infected
   [
-    ifelse random-float 1 < proba-false-neg
-    ; false negative
-    [
-      set positive? false
-      set FN-today FN-today + 1
-    ]
+    ifelse random 100 < sensitivity
     ; true positive
     [
       set positive? true
       set TP-today TP-today + 1
     ]
+    ; false negative
+    [
+      set positive? false
+      set FN-today FN-today + 1
+    ]
   ]
   ; if agent is NOT infected / is recovered
   [
-    ifelse random-float 1 < proba-false-pos
-    ; false positive
-    [
-      set positive? true
-      set FP-today FP-today + 1
-    ]
+    ifelse random 100 < specificity
     ; true negative
     [
       set positive? false
       set TN-today TN-today + 1
+    ]
+    ; false positive
+    [
+      set positive? true
+      set FP-today FP-today + 1
     ]
   ]
 
@@ -460,10 +463,13 @@ to update-counters
 
   ;; end of ONE DAY of tests, store % of positive tests
   let %positive-tests-today nb-to-prop positive-today tests-today
+  set estim-today %positive-tests-today * PPV + (nb-to-prop negative-today tests-today) * (1 - NPV)
   ;; put at end of list
   set list-tests lput %positive-tests-today list-tests
+  set list-estim lput estim-today list-estim
   ;; if list over window size, pop start
   if length list-tests > window-size [ set list-tests but-first list-tests ]
+  if length list-estim > window-size [ set list-estim but-first list-estim ]
 
   set total-nb-infected total-nb-infected + nb-new-infections
 end
@@ -574,6 +580,10 @@ to-report nb-I
   report nb-Symp + nb-Asymp + nb-Incub
 end
 
+to-report prop-Symp
+  report nb-to-prop nb-Symp population-size
+end
+
 ; boolean reporter
 to-report virus-present?
   report nb-I > 0
@@ -614,11 +624,21 @@ to-report missing-tests
   report count target-population - number-daily-tests
 end
 
+;; positive predictive value
+to-report PPV
+  report sensitivity * prop-Symp / (sensitivity * prop-Symp + (100 - specificity) * (100 - prop-Symp))
+end
+
+;; negative predictive value
+to-report NPV
+  report specificity * (100 - prop-Symp) / ((100 - sensitivity) * prop-Symp + specificity * (100 - prop-Symp))
+end
+
 
 ;;; ESTIMATING NB OF CASES ;;;
 
-to-report sliding-mean
-  report mean list-tests
+to-report sliding-mean [my-list]
+  report mean my-list
 end
 
 to-report nb-undetected-infected
@@ -707,7 +727,7 @@ CHOOSER
 STRATEGIE-DE-TEST
 STRATEGIE-DE-TEST
 "1- aléatoire" "2- personnes symptomatiques" "3- personnes âgées" "4- personnes travaillant hors domicile"
-3
+1
 
 SLIDER
 11
@@ -756,13 +776,14 @@ true
 "" ""
 PENS
 "Cas réels" 1.0 0 -16777216 true "plot 0" "set-plot-pen-color color-recovered plot nb-to-prop nb-I population-size"
-"Cas estimés" 1.0 0 -16777216 true "" "set-plot-pen-color color-susceptible ifelse ticks > window-size [ plot sliding-mean ] [ plot 0 ]"
+"Cas estimés" 1.0 0 -16777216 true "" "set-plot-pen-color color-susceptible ifelse ticks > window-size [ plot sliding-mean list-tests ] [ plot 0 ]"
+"pen-2" 1.0 0 -16777216 true "" "set-plot-pen-color color-symptomatic ifelse ticks > window-size [ plot sliding-mean list-estim ] [ plot 0 ]"
 
 PLOT
 13
 715
-454
-940
+453
+959
 Statistiques de tests
 Jours
 %
