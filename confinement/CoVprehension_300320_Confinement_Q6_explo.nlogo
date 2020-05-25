@@ -486,7 +486,7 @@ INPUTBOX
 1143
 389
 i-temps_entre_confinement
-77.0
+5.0
 1
 0
 Number
@@ -865,7 +865,7 @@ NetLogo 6.1.1
       <value value="20"/>
     </enumeratedValueSet>
   </experiment>
-  <experiment name="experiment-ose" repetitions="1000" runMetricsEveryStep="true">
+  <experiment name="experiment-pse" repetitions="1000" runMetricsEveryStep="true">
     <setup>setup</setup>
     <go>go</go>
     <metric>nb-S</metric>
@@ -884,7 +884,7 @@ NetLogo 6.1.1
       <value value="&quot;Difficile&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="i-temps_entre_confinement">
-      <value value="77"/>
+      <value value="5"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="i-Confinement-init">
       <value value="1"/>
