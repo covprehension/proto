@@ -14,7 +14,7 @@
   
   rm(list = ls())
   
-  setwd("~/github/CoVprehension_git/proto/confinement/")
+  setwd("~/github/Covprehention/proto/confinement/")
   
   data.df <- read.csv(file = "data/CoVprehension_300320_Confinement_Q6_explo experiment-pse-table.csv",
                       skip = 6, 
@@ -57,8 +57,11 @@
                                                                            "confinement","confinement",
                                                                            "confinement","confinement"),
              angle = 90,)+
-    scale_color_brewer(palette="Dark2", name="Proportion\nde la population", labels=c("Sains","Infectés","Immunisés"))+
-    labs(x = "Durée de l'épidémie en jour", y = "Proportion de la population")+
+    annotate("segment", x = 15, y = 10, xend = 7, yend = 45)+
+    annotate("text", x = 10, y = 47, label = "Déconfinement")+
+    scale_color_brewer(palette="Dark2", name="Proportion\nde la population", 
+                       labels=c("Saine","Infectée","Guérie"))+
+    labs(x = "Durée de l’épidémie, en jours", y = "Proportion de la population")+
     theme_bw()
   gg1
   

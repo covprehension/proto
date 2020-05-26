@@ -6,7 +6,7 @@ library(gganimate)
 
 rm(list = ls())
 
-setwd("~/github/CoVprehension_git/proto/confinement/")
+setwd("~/github/Covprehention/proto/confinement/")
 
 data.df <- read.csv("data/results_pse/population20000.csv", header = T)
 
@@ -17,20 +17,20 @@ data.df$pic_max <- data.df$pic_max/200*100
 data.df$init_conf <- data.df$init_conf / 4         ## input : date du début du premier confinement
 data.df$duration_conf <- data.df$duration_conf / 4 ## input : Durée d'un confinement
 data.df$relesae_conf <- data.df$relesae_conf / 4   ## input : temps entre deux confinement
-data.df$evolution.samples <- data.df$evolution.samples / 200
+data.df$infected <- 100 - data.df$nbS
 
 # output jours_confinement : nombre de jour de confinement effectif
 # output pic_max : nombre de personne toucher simultanenement
 
 
 g2 <- ggplot() + 
-  geom_point(data.df,  mapping = aes(x = jours_confinement, y = pic_max, colour = nbS, size = evolution.samples))+
-  annotate("segment", x = 26.5, y = 21.5, xend = 50, yend = 10)+
-  annotate("text", x = 54, y = 10, label = "A")+
+  geom_point(data.df,  mapping = aes(x = jours_confinement, y = pic_max, colour = infected, size = evolution.samples))+
   annotate("segment", x = 13.5, y = 10, xend = 7, yend = 50)+
-  annotate("text", x = 7, y = 53, label = "B")+
+  annotate("text", x = 7, y = 53, label = "A")+
+  annotate("segment", x = 26.5, y = 21.5, xend = 50, yend = 10)+
+  annotate("text", x = 54, y = 10, label = "B")+
   annotate("rect", xmin = 0, xmax = 27, ymin = 0, ymax = 25, alpha = .2)+
-  scale_color_gradient("% de pop\nnon touché par\nle virus")+
+  scale_color_gradient("% de pop\ninfectée au cours\nde l’épidémie ")+
   scale_size("Robustesse\ndu résultat")+
   labs(x = "Nombre total de jours de confinement pour chaque simulation", 
        y = "Nombre maximum de personnes infectées simultanément (pic de l’épidémie)")+
