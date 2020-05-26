@@ -101,13 +101,31 @@ for(i in c(1:max(data.df$X.run.number.))){
 n <- length(unique(good.condition.df$X.run.number.))/length(unique(data.df$X.run.number.))*100
 paste( "Proportion de réussite ", n, " %")
 
-gg3 <- ggplot(data = good.condition.df)+
-  geom_point(aes(x = s.time, y = nb.S, color = X.run.number.))+
-  annotate("rect", xmin = c(6,41,75,110), xmax = c(21, 56, 90, 125), ymin = 0, ymax = 100, alpha = .2)+
-  annotate("text", x = c(6,21,41,56, 75,90, 110,125)+2, y = 90, label = c("confinement","déconfinement",
-                                                                          "confinement","déconfinement",
-                                                                          "confinement","déconfinement",
-                                                                          "confinement","déconfinement"),
+##Je veut compter le nombre de ligne avec le même X.Step. pour savoir combien
+## de simulation on tourner 
+
+data.dfgg %>% 
+  count(s.time) -> %>%
+  left_join(data.dfgg) -> data2.dfgg
+
+data2.dfgg$n <- data2.dfgg$n / 3000 * 100
+
+gg2 <- ggplot(data = data.dfgg)+
+  geom_boxplot( aes(x = as.factor(s.time), y = value, color= variable), alpha = 0.3)+
+  geom_line(aes(x = as.factor(s.time), y = n))+
+  scale_x_discrete(breaks=seq(0, 130, 20))+
+  geom_vline(xintercept = c(1, 14.25, 15.5, 28.75, 30, 43.25, 44.5, 57.75, 59,72.25, 73.5, 86.75), linetype="twodash")+
+  annotate("rect", xmin = c(1,15.5,30, 44.5, 59, 73.5), xmax = c(14.25, 28.75, 43.25,57.75, 72.25, 86.75), ymin = 0, ymax = 100, alpha = .2)+
+  annotate("text", x = c(1,15.5,30, 44.5, 59, 73.5)+2, y = 95, label = c("confinement","confinement",
+                                                                         "confinement","confinement",
+                                                                         "confinement","confinement"),
            angle = 90,)+
+  annotate("segment", x = 15, y = 10, xend = 7, yend = 45)+
+  annotate("text", x = 10, y = 47, label = "Déconfinement")+
+  scale_color_brewer(palette="Dark2", name="Proportion\nde la population", 
+                     labels=c("Saine","Infectée","Guérie"))+
+  labs(x = "Durée de l’épidémie, en jours", y = "Proportion de la population")+
   theme_bw()
-gg3
+gg2
+
+ggsave("img/Q6-A1-BS-PSE-explo-alpha.png",gg, height = 8, width = 10)
