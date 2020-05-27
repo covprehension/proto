@@ -75,12 +75,12 @@ to setup-population
     set my-supermarket min-one-of supermarkets [distance (myself)]
     create-link-with my-supermarket
     set my-stock random-float 2
-    set size my-stock / 10
+    ;;set size my-stock / 10
 
     set need-basic 1 ;besoin en temps normal
     ;;set need-confinement 1 ; besoin pour periode de confinement
     ;;set need-penurie 4 ; stock en cas de penurie
-    set need-threshold Need-threshold-pop ;; my usual threshold to buy new products
+    set need-threshold ResteAvantCourse ;; my usual threshold to buy new products
     ;;set need-threshold-confinement 0;;1 ;; my need in case of confinement
     set perception-penurie 10 ;; minimal quantity available at the supermarket below which the consumer perceives penurie
     set consommation consommationPerDay ;; consommation of product for each tick
@@ -122,9 +122,19 @@ to citizens-buy
 ask citizens[
 
         ;;consumption of my own stock
-    set need-threshold Need-threshold-pop
-    set consommation consommationPerDay
+
+    ifelse random 100 < PourcentagePanic [
+      set consommation consommationPerDay * 3
+      set need-threshold ResteAvantCourse * 3
+
+    ][
+      set consommation consommationPerDay
+      set need-threshold ResteAvantCourse
+
+    ]
+
     set my-stock max list 0 (my-stock - consommation)
+
 
     ;;if not gone?[
     set color green
@@ -139,8 +149,8 @@ ask citizens[
         ;;determine how much to take
         let quantity min list need-basic [stock] of my-store
 
-      if confinement?
-      [
+      ;;if confinement?
+      ;;[
         ;;confinement
         let missing-quantity-store-rate ([stock-max] of my-store - [stock] of my-store) / [stock-max] of my-store
         if missing-quantity-store-rate > perception-penurie-threshold[
@@ -149,7 +159,7 @@ ask citizens[
           set quantity min list [taille-caddie] of my-store [stock] of my-store
           set color red
           set panic? true
-        ]
+        ;;]
       ]
 
       ;;update stock of supermarket
@@ -162,7 +172,7 @@ ask citizens[
     ]
 
    ;; ]
-    set size my-stock / 3
+   ;; set size my-stock / 3
 
   ]
 end
@@ -261,17 +271,6 @@ NIL
 NIL
 1
 
-SWITCH
-601
-284
-737
-317
-confinement?
-confinement?
-0
-1
--1000
-
 MONITOR
 597
 10
@@ -356,7 +355,7 @@ nb-supermarkets
 nb-supermarkets
 1
 10
-3.0
+1.0
 1
 1
 NIL
@@ -382,14 +381,29 @@ SLIDER
 478
 757
 511
-Need-threshold-pop
-Need-threshold-pop
+ResteAvantCourse
+ResteAvantCourse
 0
 1
 0.0
 0.1
 1
 NIL
+HORIZONTAL
+
+SLIDER
+793
+421
+965
+454
+PourcentagePanic
+PourcentagePanic
+0
+50
+0.0
+1
+1
+%
 HORIZONTAL
 
 @#$#@#$#@
