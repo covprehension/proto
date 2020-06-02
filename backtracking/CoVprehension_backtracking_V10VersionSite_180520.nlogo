@@ -831,14 +831,15 @@ to-report contagious-lockeddown-tracked
 end
 
 to-report proportion-total-contagious-lockeddown-tracked
-  ifelse (total-contagious-lockeddown-tracked + total-contagious-lockeddown-symptom)[
+  ifelse (total-contagious-lockeddown-tracked + total-contagious-lockeddown-symptom) > 0[
     report total-contagious-lockeddown-tracked / (total-contagious-lockeddown-tracked + total-contagious-lockeddown-symptom) * 100
   ][
     report 0
+  ]
 end
 
 to-report proportion-total-contagious-lockeddown-symptom
-  ifelse (total-contagious-lockeddown-tracked + total-contagious-lockeddown-symptom)[
+  ifelse (total-contagious-lockeddown-tracked + total-contagious-lockeddown-symptom) > 0[
     report total-contagious-lockeddown-symptom / (total-contagious-lockeddown-tracked + total-contagious-lockeddown-symptom) * 100
   ][
     report 0
@@ -1000,7 +1001,7 @@ CHOOSER
 SCENARIO
 SCENARIO
 "Laisser-faire" "Confinement simple" "Traçage et confinement systématique" "Traçage et confinement sélectif"
-3
+1
 
 MONITOR
 1123
@@ -1078,7 +1079,7 @@ Taux-de-couverture-de-l'application-de-traçage
 Taux-de-couverture-de-l'application-de-traçage
 0
 100
-10.0
+100.0
 10
 1
 %
@@ -1240,7 +1241,7 @@ R0-fixé
 R0-fixé
 0
 10
-0.5
+3.0
 0.1
 1
 NIL
@@ -1298,7 +1299,7 @@ Nombre-de-cas-au-départ
 Nombre-de-cas-au-départ
 1
 100
-1.0
+10.0
 1
 1
 NIL
@@ -1440,7 +1441,7 @@ probability-asymptomatic-infection
 probability-asymptomatic-infection
 0
 1
-0.1
+0.8
 0.1
 1
 NIL
@@ -2016,6 +2017,9 @@ NetLogo 6.1.1
       <value value="0.3"/>
       <value value="0.8"/>
     </enumeratedValueSet>
+    <enumeratedValueSet variable="fixed-seed?">
+      <value value="false"/>
+    </enumeratedValueSet>
   </experiment>
   <experiment name="Explo_V10_Scenario2" repetitions="100" runMetricsEveryStep="false">
     <setup>setup</setup>
@@ -2057,6 +2061,9 @@ NetLogo 6.1.1
     </enumeratedValueSet>
     <enumeratedValueSet variable="Probabilité-de-respect-du-confinement">
       <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fixed-seed?">
+      <value value="false"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="SCENARIO">
       <value value="&quot;Confinement simple&quot;"/>
@@ -2113,6 +2120,9 @@ NetLogo 6.1.1
     <enumeratedValueSet variable="SCENARIO">
       <value value="&quot;Traçage et confinement systématique&quot;"/>
       <value value="&quot;Traçage et confinement sélectif&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fixed-seed?">
+      <value value="false"/>
     </enumeratedValueSet>
   </experiment>
 </experiments>
