@@ -1,0 +1,64 @@
+val seed = Val[Int]
+val difficulty = Val[String]
+val init_conf = Val[Double]
+val duration_conf = Val[Double]
+val relesae_conf = Val[Double]
+// LES OUTPUTS
+val nbS = Val[Double]
+val nbR = Val[Double]
+val nbIr = Val[Double]
+val nb_confinement = Val[Double]
+val pic_max = Val[Double]
+val jours_confinement = Val[Double]
+
+val model =
+  NetLogo6Task(workDirectory / "CoVprehension_300320_Confinement_Q6_explo_pse.nlogo",
+  setup = Seq("random-seed ${seed}", "setup_om"),
+  go = Seq("while [any? citizens with [epidemic-state = 1]][go]")) set (
+      name := "confinement-stg",
+      // Map the OpenMOLE variables to NetLogo variables
+        inputs += seed,
+        //outputs += (seed, density, difficulty, init_conf, duration_conf, relesae_conf, nbS, nbR, nbIr, nb_confinement),
+        inputs += (difficulty mapped "niveau-difficulté"),
+        inputs += (init_conf mapped "confinement-tick"),
+        inputs += (duration_conf mapped "confinement-duree"),
+        inputs += (relesae_conf mapped "temps_entre_confinement"),
+        outputs += (nbS mapped "nb-S"),
+        outputs += (nbIr mapped "nb-Ir"),
+        outputs += (nbR mapped "nb-R"),
+        outputs += (nb_confinement mapped "nb-confinement"),
+        outputs += (pic_max mapped "max-Ir"),
+        outputs += (jours_confinement mapped "nb-j-conf"),
+        //outputs += (duration_conf mapped "confinement-duree"),
+        //outputs += (relesae_conf mapped "temps_entre_confinement"),
+        // fixed values
+        difficulty := "Difficile"
+  )
+
+val sampling =
+  CSVSampling(workDirectory / "results/population20000.csv") set (
+    outputs += init_conf mapped "init_conf",
+    outputs += duration_conf mapped "duration_conf",
+    outputs += relesae_conf mapped "relesae_conf"
+  ) take 1
+
+val replication =
+  Replication(
+    evaluation = model,
+    replications = 100,
+    seed = seed
+  )
+
+val env =
+  SGEEnvironment(
+    "delay",
+    "cc2-login.cirad.fr",
+    workDirectory = "/homedir/delay/work",
+    queue = "short.q",
+    wallTime = 4 hour
+  )
+
+DirectSampling(
+  evaluation = replication,
+  sampling = sampling
+) hook (workDirectory / "replicated_ppost_pse.csv") on env by 50
