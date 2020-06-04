@@ -141,7 +141,7 @@ to setup-globals
   set delay-before-test  Temps-d'attente-pour-la-réalisation-du-test
   set nb-days-before-test-tagging-contacts Profondeur-temporelle-de-recherche-des-contacts
   set proportion-equiped Taux-de-couverture-de-l'application-de-traçage
-  set probability-respect-lockdown Probabilité-de-respect-du-confinement
+  set probability-respect-lockdown Probabilité-de-respect-de-l'isolement
   set probability-success-test-infected Probabilité-que-le-test-soit-efficace
   set R0-a-priori R0-fixé
   set initial-R-proportion 0
@@ -183,17 +183,17 @@ to setup-globals
     set TRACING? false
     set TESTING? false
     set FAMILY-LOCKDOWN? false
-  ][ifelse SCENARIO = "Confinement simple"[
+  ][ifelse SCENARIO = "Isolement simple"[
     set REACTING? true
     set TRACING? false
     set TESTING? false
     set FAMILY-LOCKDOWN? true
-  ][ifelse SCENARIO = "Traçage et confinement systématique"[
+  ][ifelse SCENARIO = "Traçage et isolement systématique"[
     set REACTING? true
     set TRACING? true
     set TESTING? false
     set FAMILY-LOCKDOWN? false
-  ][ifelse SCENARIO = "Traçage et confinement sélectif"[
+  ][ifelse SCENARIO = "Traçage et isolement sélectif"[
     set REACTING? true
     set TRACING? true
     set TESTING? true
@@ -982,7 +982,7 @@ PENS
 "I. Asymptomatiques" 1.0 0 -1184463 true "" "if population-size > 0 [plotxy (ticks / nb-ticks-per-day) (nb-Inr  / population-size * 100)]"
 "Contagieux" 1.0 0 -955883 true "" "\nif population-size > 0 [plotxy (ticks / nb-ticks-per-day) ((nb-Ir + nb-Inr + nb-Ex) / population-size  * 100)]"
 "Guéris" 1.0 0 -13791810 true "" "\nif population-size > 0 [plotxy (ticks / nb-ticks-per-day) (nb-R / population-size  * 100)]"
-"Confinés" 1.0 0 -8630108 true "" "if population-size > 0 [plotxy (ticks / nb-ticks-per-day) lockdowned%] "
+"Isolés" 1.0 0 -8630108 true "" "if population-size > 0 [plotxy (ticks / nb-ticks-per-day) lockdowned%] "
 
 MONITOR
 897
@@ -996,20 +996,20 @@ nb-non-S%
 11
 
 CHOOSER
-422
-831
-607
-876
+394
+828
+628
+873
 SCENARIO
 SCENARIO
-"Laisser-faire" "Confinement simple" "Traçage et confinement systématique" "Traçage et confinement sélectif"
+"Laisser-faire" "Isolement simple" "Traçage et isolement systématique" "Traçage et isolement sélectif"
 0
 
 MONITOR
 1123
 362
 1403
-407
+408
 Durée de l'épidémie (en jours)
 epidemic-duration-final
 17
@@ -1029,9 +1029,9 @@ MaxI%
 
 SLIDER
 9
-932
-343
-966
+934
+331
+967
 Probabilité-que-le-test-soit-efficace
 Probabilité-que-le-test-soit-efficace
 0
@@ -1043,12 +1043,12 @@ NIL
 HORIZONTAL
 
 SLIDER
-345
-932
+332
+934
 627
-966
-Probabilité-de-respect-du-confinement
-Probabilité-de-respect-du-confinement
+967
+Probabilité-de-respect-de-l'isolement
+Probabilité-de-respect-de-l'isolement
 0
 1
 1.0
@@ -1061,7 +1061,7 @@ SLIDER
 9
 897
 387
-931
+930
 Profondeur-temporelle-de-recherche-des-contacts
 Profondeur-temporelle-de-recherche-des-contacts
 1
@@ -1076,7 +1076,7 @@ SLIDER
 9
 827
 388
-861
+860
 Taux-de-couverture-de-l'application-de-traçage
 Taux-de-couverture-de-l'application-de-traçage
 0
@@ -1091,7 +1091,7 @@ SLIDER
 9
 862
 388
-896
+895
 Temps-d'attente-pour-la-réalisation-du-test
 Temps-d'attente-pour-la-réalisation-du-test
 0
@@ -1104,9 +1104,9 @@ HORIZONTAL
 
 MONITOR
 1263
-409
+410
 1403
-454
+456
 Population testée (%)
 population-tested%
 1
@@ -1118,7 +1118,7 @@ MONITOR
 410
 937
 455
-Population confinée (%)
+Population isolée (%)
 total-population-locked%
 1
 1
@@ -1137,9 +1137,9 @@ nb-I
 
 MONITOR
 1123
-314
+315
 1403
-359
+361
 Nombre de guéris
 nb-R
 17
@@ -1172,8 +1172,8 @@ MONITOR
 1151
 733
 1404
-778
-Personnes contagieuses confinées (%)
+779
+Personnes contagieuses isolées (%)
 contagious-lockeddown%
 1
 1
@@ -1208,8 +1208,8 @@ true
 PENS
 "Contagieux (nombre total)" 1.0 0 -817084 true "" "\nif population-size > 0 [plotxy (ticks / nb-ticks-per-day) total-nb-contagious ]"
 "Contagieux identifiés" 1.0 0 -2674135 true "" "\nif population-size > 0 [plotxy (ticks / nb-ticks-per-day) nb-contagious-detected]\n\n"
-"Contagieux confinés" 1.0 0 -5825686 true "" "\nif population-size > 0 [plotxy (ticks / nb-ticks-per-day) total-nb-contagious-lockeddown]\n\n"
-"Sains ou guéris confinés" 1.0 0 -13840069 true "" "if population-size > 0 [plotxy (ticks / nb-ticks-per-day) total-nb-non-contagious-lockeddown]"
+"Contagieux isolés" 1.0 0 -5825686 true "" "\nif population-size > 0 [plotxy (ticks / nb-ticks-per-day) total-nb-contagious-lockeddown]\n\n"
+"Sains ou guéris isolés" 1.0 0 -13840069 true "" "if population-size > 0 [plotxy (ticks / nb-ticks-per-day) total-nb-non-contagious-lockeddown]"
 "Population testée" 1.0 0 -12895429 true "" "if population-size > 0 [plotxy (ticks / nb-ticks-per-day)  population-tested]"
 
 MONITOR
@@ -1228,7 +1228,7 @@ MONITOR
 409
 782
 454
-Pic de confinement (%)
+Pic d'isolement (%)
 Max-Conf%
 1
 1
@@ -1263,8 +1263,8 @@ nb-Ir
 MONITOR
 897
 314
-1119
-359
+1121
+360
 Nombre d'infectés asymptomatiques
 nb-Inr
 17
@@ -1272,10 +1272,10 @@ nb-Inr
 11
 
 TEXTBOX
-823
-834
-1412
-970
+830
+839
+1410
+976
 EXPLICATIONS\n\nChoisissez un scénario et fixez des conditions initiales (curseurs en bas à gauche de l'écran). \nCliquez sur le bouton \"Initialiser\" puis lancez la simulation.\n\nNB : la durée de la période contagieuse est de 14 jours plus 4 jours d'incubation pendant lesquels la contagiosité croît linéairement jusqu'au début de la phase infectieuse.
 12
 55.0
@@ -1293,10 +1293,10 @@ Population-size
 11
 
 MONITOR
-630
-922
-816
-967
+632
+923
+818
+968
 % Population Infectée au départ
 Nombre-de-cas-au-départ / Population-size * 100
 2
@@ -1306,20 +1306,20 @@ Nombre-de-cas-au-départ / Population-size * 100
 MONITOR
 630
 780
-995
+998
 825
-Proportion des personnes contagieuses confinées par traçage
+Proportion des personnes contagieuses isolées par traçage
 proportion-total-contagious-lockeddown-tracked
 1
 1
 11
 
 MONITOR
-994
+998
 780
-1403
-825
-Proportion des personnes contagieuses confinées par symptômes
+1404
+826
+Proportion des personnes contagieuses isolées par symptômes
 proportion-total-contagious-lockeddown-symptom
 1
 1
@@ -1328,9 +1328,9 @@ proportion-total-contagious-lockeddown-symptom
 MONITOR
 938
 410
-1264
+1261
 455
-Part non contagieuse de la population confinée (%) 
+Part non contagieuse de la population isolée (%) 
 proportion-non-contagious-lockeddown%
 2
 1
@@ -1360,9 +1360,9 @@ Les changements d’état s’opèrent de la manière suivante :
 Sur cette base, quatre scénarios distincts sont proposés (paramètre *SCENARIO*), dans une perspective comparative :
 
 - *S1 : Laisser-faire* : on ne fait rien, l’épidémie suit son cours sans aucune interférence
-- *S2 : Confinement simple* : on identifie les porteurs symptomatiques (test) et on les confine avec leur famille 
-- *S3 : Traçage et confinement systématique* : les infecté symptomatiques sont systématiquement testés et ceux qui sont positifs sont confinés avec leur famille, tandis que leurs contacts (et leur famille) sont confinés sans être testés
-- *S4 : Traçage et confinement sélectif* : els infecté symptomatiques sont systématiquement testés et ceux qui sont positifs sont confinés avec leur famille, tandis que leurs contacts (et leur famille) sont testés et confinés s'ils sont positifs, ainsi que leurs contacts et les contacts de leurs contacts...
+- *S2 : Isolement simple* : on identifie les porteurs symptomatiques (test) et on les confine avec leur famille 
+- *S3 : Traçage et isolement systématique* : les infecté symptomatiques sont systématiquement testés et ceux qui sont positifs sont isolés avec leur famille, tandis que leurs contacts (et leur famille) sont isolés sans être testés
+- *S4 : Traçage et isolement sélectif* : les infectés symptomatiques sont systématiquement testés et ceux qui sont positifs sont isolés avec leur famille, tandis que leurs contacts (et leur famille) sont testés et isolés s'ils sont positifs, ainsi que leurs contacts et les contacts de leurs contacts...
 
 
 
