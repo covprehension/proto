@@ -147,7 +147,7 @@ to setup-globals
   set size_population 2000
   set Nb_contagious_initialisation Nombre-de-cas-au-départ
 
-  set fixed-seed? true
+  set fixed-seed? false
   if fixed-seed?[
     random-seed 30
   ]

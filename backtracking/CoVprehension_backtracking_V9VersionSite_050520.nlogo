@@ -934,7 +934,7 @@ CHOOSER
 SCENARIO
 SCENARIO
 "Laisser-faire" "Confinement simple" "Traçage et confinement systématique" "Traçage et confinement sélectif"
-0
+3
 
 MONITOR
 1123
@@ -997,7 +997,7 @@ Profondeur-temporelle-de-recherche-des-contacts
 Profondeur-temporelle-de-recherche-des-contacts
 1
 5
-5.0
+4.0
 1
 1
 jours
@@ -1012,7 +1012,7 @@ Taux-de-couverture-de-l'application-de-traçage
 Taux-de-couverture-de-l'application-de-traçage
 0
 100
-80.0
+100.0
 10
 1
 %
@@ -1027,7 +1027,7 @@ Temps-d'attente-pour-la-réalisation-du-test
 Temps-d'attente-pour-la-réalisation-du-test
 0
 72
-6.0
+0.0
 6
 1
 heures
@@ -1174,7 +1174,7 @@ R0-fixé
 R0-fixé
 0
 10
-2.2
+3.0
 0.1
 1
 NIL
@@ -1671,7 +1671,7 @@ NetLogo 6.1.1
     <metric>Max-Conf%</metric>
     <metric>Population-locked%</metric>
     <metric>population-tested%</metric>
-    <metric>nb-tests-total</metric>
+    <metric>total-nb-tests</metric>
     <metric>total-nb-contagious</metric>
     <metric>contagious-detected%</metric>
     <metric>contagious-lockeddown%</metric>
@@ -1716,7 +1716,7 @@ NetLogo 6.1.1
     <metric>Max-Conf%</metric>
     <metric>Population-locked%</metric>
     <metric>population-tested%</metric>
-    <metric>nb-tests-total</metric>
+    <metric>total-nb-tests</metric>
     <metric>total-nb-contagious</metric>
     <metric>contagious-detected%</metric>
     <metric>contagious-lockeddown%</metric>
@@ -1754,7 +1754,7 @@ NetLogo 6.1.1
     <metric>nb-non-S%</metric>
     <metric>epidemic-duration-final</metric>
     <enumeratedValueSet variable="SCENARIO">
-      <value value="&quot;Laisser faire&quot;"/>
+      <value value="&quot;Laisser-faire&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="Nombre-de-cas-au-départ">
       <value value="5"/>
