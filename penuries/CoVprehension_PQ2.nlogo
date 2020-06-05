@@ -1,10 +1,17 @@
+;; ouverture supermarché 12 steps par jour
+;; consommation de base 1.0 par jour ou 1.0/12 par step
+;; réapprovisionnement du supermarché tous les 3 jours : 36 steps
+;; quantité de réapprovisionnement basée sur une consommation normale : 36 * 1.0 / 12 * nbClients
+
 globals [ ;;global parameters
   population-size
-  ;;nb-supermarkets
+  nb-step-per-day
+  basic-consommation-per-day
+  basic-consommation-per-step
+  basic-need-threshold
+  basic-qteAchetee
   color-citizens
   color-supermarket
-  global-stock
-  ;;consommationPerDay
 ]
 
 breed [supermarkets supermarket]
@@ -13,38 +20,31 @@ breed [citizens citizen]
 
 citizens-own
 [
-  need-basic  ;besoin en temps normal
-  ;;need-confinement  ; besoin pour periode de confinement
-  ;;need-penurie  ; stock en cas de penurie
   my-supermarket ; mon supermarché
   my-stock ;; my own stock
+  need-basic  ;besoin en temps normal correspond à quantité achetée en temps normal
   need-threshold  ;; my usual threshold to buy new products
-  ;;need-threshold-confinement  ;; my need in case of confinement
-  perception-penurie  ;; minimal quantity available at the supermarket below which the consumer perceives penurie
-  perception-penurie-threshold ;; rate of the missing stock in the supermarket that make the citizen think there is a penurie
   consommation  ;; consommation of product for each tick
   panic? ;;to find who is panicking
-  gone?
 ]
 
 supermarkets-own
 [
   stock ; stock courant
   stock-max ; capacité max de stockage
-  ;;qte-reapprovisionnement ; quantité de réapprovisionnement à chaque step
+  freq-reapprovisionnement-supermarket ;; frequence de reappprovisionnement du supermarché
   nb-visite-consumer
-  taille-caddie
   reapprovisionnement
 ]
 
 to setup-globals
-  set population-size 5000
-  ;;set nb-supermarkets population-size / 100
-  set global-stock population-size / 2
-  ;set walking-angle 50
-  ;set speed 0.5
+  set population-size 1000
+  set nb-step-per-day 12
+  set basic-consommation-per-day 1.0
+  set basic-consommation-per-step (basic-consommation-per-day / nb-step-per-day)
+  set basic-need-threshold 1.0 ;; correspond à la consommation d'une journée
+  set basic-qteAchetee 7.0 ;; achat pour un stock de 7 jours
   setup-colors
-  ;;set   consommationPerDay 0.1
 end
 
 to setup-colors
@@ -56,11 +56,9 @@ end
 to setup-supermarket
   create-supermarkets nb-supermarkets[
     set shape "house"
-    ;;setxy random-xcor random-ycor
-    ;set qte-reapprovisionnement 10 ;+ random 5
     set size 5 ;;stock / 10
     set color one-of base-colors
-    set taille-caddie 10.0 / nb-supermarkets
+    set freq-reapprovisionnement-supermarket nb-step-per-day * 3 ;; reapprovisionnement tous les 3 jours
   ]
   layout-circle supermarkets 15
 end
@@ -70,31 +68,23 @@ to setup-population
   [
     setxy random-xcor random-ycor
     set shape "circle"
-
     set color color-citizens
     set my-supermarket min-one-of supermarkets [distance (myself)]
     create-link-with my-supermarket
-    set my-stock random-float 2
-    ;;set size my-stock / 10
 
-    set need-basic 1 ;besoin en temps normal
-    ;;set need-confinement 1 ; besoin pour periode de confinement
-    ;;set need-penurie 4 ; stock en cas de penurie
-    set need-threshold ResteAvantCourse ;; my usual threshold to buy new products
-    ;;set need-threshold-confinement 0;;1 ;; my need in case of confinement
-    set perception-penurie 10 ;; minimal quantity available at the supermarket below which the consumer perceives penurie
-    set consommation consommationPerDay ;; consommation of product for each tick
-    set perception-penurie-threshold random-float 1.0 ;;rate of the missing stock in supermarket to feel in penurie
+    set my-stock random-float basic-qteAchetee ;; stock de départ dans les maisons correspond à un achat randomisé
+    set need-basic basic-qteAchetee ;besoin en temps normal achat pour une semaine
+    set need-threshold basic-need-threshold ;; my usual threshold to buy new products i.e. quand il me reste un jour ou moins de provision
+    set consommation basic-consommation-per-step ;; consommation of product for each tick
     set panic? false
-    set gone? false
   ]
 end
 
 to setup-stock
   ask supermarkets[
-  set reapprovisionnement consommationPerDay * count citizens with [my-supermarket = myself]
-  set stock 5 * reapprovisionnement
-  set stock-max stock ;;population-size / (2 * nb-supermarkets) ;;random 100
+    set reapprovisionnement basic-consommation-per-step * count citizens with [my-supermarket = myself] * freq-reapprovisionnement-supermarket
+    set stock reapprovisionnement * 1.5 ;; on peut jouer sur le coeff pour plus ou moins stresser l'offre
+    set stock-max stock ;;population-size / (2 * nb-supermarkets) ;;random 100
   ]
 end
 
@@ -110,37 +100,49 @@ end
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 to go
-  citizens-buy
+  citizens-panic
+  update-consommation
   supermarket-refill
+  citizens-buy
   plot-graph
   tick
-  ;;if not any? citizens with [not gone?] [stop]
 end
 
 
+to citizens-panic
+  ask citizens[
+    if who < (population-size / 100 * PourcentagePanic) [
+    become-panic
+  ]]
+  ;; cas à gérer du nombre de paniqués qui diminue
+end
+
+to update-consommation
+  ask citizens [
+    set consommation consommationPerDay / nb-step-per-day ;;correspond à la consommation des paniqués sdans l'interface
+  ]
+end
+
+to become-panic
+  set panic? true
+  set need-threshold ResteAvantCourse
+  set need-basic quantiteAchetee
+  set color orange
+end
+
+
+to become-unpanic
+  set panic? false
+  set need-threshold basic-need-threshold
+  set need-basic basic-qteAchetee
+  set color green
+
+end
+
 to citizens-buy
 ask citizens[
-
-        ;;consumption of my own stock
-
-    ifelse random 100 < PourcentagePanic [
-      set consommation consommationPerDay * 3
-      set need-threshold ResteAvantCourse * 3
-
-    ][
-      set consommation consommationPerDay
-      set need-threshold ResteAvantCourse
-
-    ]
-
+    ;;consommer
     set my-stock max list 0 (my-stock - consommation)
-
-
-    ;;if not gone?[
-    set color green
-    set panic? false
-
-
     ;;need for PQ ?
     if my-stock <= need-threshold[
         ;;need to buy new products
@@ -148,19 +150,22 @@ ask citizens[
         let my-store my-supermarket
         ;;determine how much to take
         let quantity min list need-basic [stock] of my-store
-
-      ;;if confinement?
-      ;;[
-        ;;confinement
-        let missing-quantity-store-rate ([stock-max] of my-store - [stock] of my-store) / [stock-max] of my-store
-        if missing-quantity-store-rate > perception-penurie-threshold[
+      ifelse quantity < need-basic [
+        set size 2
+        become-panic
+      ][
+        set size 1
+        become-unpanic
+      ]
+        ;;let missing-quantity-store-rate ([stock-max] of my-store - [stock] of my-store) / [stock-max] of my-store
+        ;;if missing-quantity-store-rate > perception-penurie-threshold[
           ;;feel in penurie
           ;;set quantity min list need-penurie [stock] of my-store
-          set quantity min list [taille-caddie] of my-store [stock] of my-store
-          set color red
-          set panic? true
+          ;;set quantity min list [taille-caddie] of my-store [stock] of my-store
+          ;;set color red
+          ;;set panic? true
         ;;]
-      ]
+      ;;]
 
       ;;update stock of supermarket
       ask my-store [
@@ -170,17 +175,15 @@ ask citizens[
       set my-stock (my-stock + quantity )
         ;;set gone? true
     ]
-
-   ;; ]
-   ;; set size my-stock / 3
-
   ]
 end
 
 
 to supermarket-refill
   ask supermarkets [
+    if(ticks mod freq-reapprovisionnement-supermarket = 0) [
     set stock min list stock-max (stock + (reapprovisionnement));; / nb-supermarkets))
+    ]
     ;;set size stock / 10
   ]
 end
@@ -347,55 +350,55 @@ PENS
 "default" 1.0 2 -16777216 true "" ""
 
 SLIDER
-313
-435
-485
-468
+5
+426
+177
+459
 nb-supermarkets
 nb-supermarkets
 1
 10
-1.0
+5.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-318
-498
-510
-531
+11
+490
+203
+523
 consommationPerDay
 consommationPerDay
-0
-10
+0.8
+1.2
 1.0
-0.1
+0.01
 1
 NIL
 HORIZONTAL
 
 SLIDER
-579
-478
-757
-511
+350
+460
+543
+493
 ResteAvantCourse
 ResteAvantCourse
-0
 1
-0.0
-0.1
+14
+7.0
+1.0
 1
 NIL
 HORIZONTAL
 
 SLIDER
-793
-421
-965
-454
+323
+424
+495
+457
 PourcentagePanic
 PourcentagePanic
 0
@@ -404,6 +407,21 @@ PourcentagePanic
 1
 1
 %
+HORIZONTAL
+
+SLIDER
+350
+498
+543
+531
+quantiteAchetee
+quantiteAchetee
+7.0
+30.0
+14.0
+1
+1
+NIL
 HORIZONTAL
 
 @#$#@#$#@
