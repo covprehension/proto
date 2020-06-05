@@ -153,6 +153,12 @@ ask citizens[
       ifelse quantity < need-basic [
         set size 2
         become-panic
+        ;;MODIF Changement supermarché
+        if(ChangeSupermarket?)[
+          ask link-with my-supermarket [die]
+          set my-supermarket one-of supermarkets
+          create-link-with my-supermarket
+        ]
       ][
         set size 1
         become-unpanic
@@ -209,7 +215,12 @@ to plot-graph
   set-current-plot "Nb indivs penurie"
   ask supermarkets [
     set-plot-pen-color color ;pour renvoyer la couleur du supermarché
-    plotxy ticks count citizens with [panic?];;nb-visite-consumer
+    plotxy ticks count citizens with [panic? and my-supermarket = myself];;nb-visite-consumer
+    ]
+  set-current-plot "Nb indivs per supermarket"
+  ask supermarkets [
+    set-plot-pen-color color ;pour renvoyer la couleur du supermarché
+    plotxy ticks count citizens with [my-supermarket = myself];;nb-visite-consumer
     ]
 end
 @#$#@#$#@
@@ -358,7 +369,7 @@ nb-supermarkets
 nb-supermarkets
 1
 10
-5.0
+7.0
 1
 1
 NIL
@@ -423,6 +434,35 @@ quantiteAchetee
 1
 NIL
 HORIZONTAL
+
+PLOT
+805
+397
+1005
+547
+Nb indivs per supermarket
+ticks
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" ""
+
+SWITCH
+615
+274
+803
+307
+ChangeSupermarket?
+ChangeSupermarket?
+1
+1
+-1000
 
 @#$#@#$#@
 ## TODO
