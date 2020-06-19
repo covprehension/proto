@@ -1,0 +1,124 @@
+---
+title: "Analyse des résultats de PSE"
+author: "Hélène Arduin"
+date: "19/06/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+
+setwd("~/Documents/CoVprehension/proto/confinement")
+
+raw_data <- read_csv("data/replicated_post_pse.csv")
+
+vec_index <- c()
+for (i in 1:173) {
+    tmp <- rep(i, 100)
+    vec_index <- c(vec_index, tmp)
+}
+
+data <- raw_data %>%
+    mutate_at(vars(ends_with("_conf")), ~ . / 4) %>%
+    mutate_at(vars(nbIr:nbS, pic_max), ~ . / 200 * 100) %>%
+    select(lockdownStartingDate = init_conf, lockdownDuration = duration_conf, lockdownPauseDuration = relesae_conf,
+           propS = nbS, propI = nbIr, propR = nbR,
+           peakHeight = pic_max, totalLockdownDuration = jours_confinement, nbLockdowns = nb_confinement, seed) %>%
+    arrange(lockdownStartingDate, lockdownDuration, lockdownPauseDuration) %>%
+    add_column(index = vec_index) %>%
+    select(index, everything())
+```
+
+## Données globales de PSE
+
+3 graphes pour les 3 possibilités de représentation (les points sont les médianes) :
+
+```{r pse}
+plot_pse1 <- data %>%
+    group_by(index) %>%
+    summarise_at(vars(propR:totalLockdownDuration), list(median)) %>%
+    ggplot(aes(x = totalLockdownDuration, y = peakHeight, color = propR)) +
+    geom_point() +
+    scale_y_continuous(breaks = seq(0, 100, 25), limits = c(0, 100)) +
+    scale_color_viridis_c(name = "Proportion finale\nde gens infectés") +
+    labs(x = "Durée totale de confinement",
+         y = "Taille du pic épidémique") +
+    theme_bw()
+plot_pse1
+
+
+plot_pse2 <- data %>%
+    group_by(index) %>%
+    summarise_at(vars(propR:totalLockdownDuration), list(median)) %>%
+    ggplot(aes(x = propR, y = totalLockdownDuration, color = peakHeight)) +
+    geom_point() +
+    scale_x_continuous(breaks = seq(0, 100, 25), limits = c(0, 100)) +
+    scale_color_viridis_c(name = "Taille du pic\népidémique") +
+    labs(x = "Proportion finale de gens infectés",
+         y = "Durée totale de confinement") +
+    theme_bw()
+plot_pse2
+
+
+plot_pse3 <- data %>%
+    group_by(index) %>%
+    summarise_at(vars(propR:totalLockdownDuration), list(median)) %>%
+    ggplot(aes(x = peakHeight, y = propR, color = totalLockdownDuration)) +
+    geom_point() +
+    scale_x_continuous(breaks = seq(0, 100, 25), limits = c(0, 100)) +
+    scale_y_continuous(breaks = seq(0, 100, 25), limits = c(0, 100)) +
+    scale_color_viridis_c(name = "Durée totale\nde confinement") +
+    labs(x = "Taille du pic épidémique",
+         y = "Proportion finale de gens infectés") +
+    theme_bw()
+plot_pse3
+```
+
+## Sélection des "meilleurs" résultats
+
+Taille du pic < 25% ; Proportion de gens guéris < 40% ; Durée totale du confinement < 25 jours
+
+Il y a 6 points sélectionnés via les médianes, on va dire 6 scénarios, là je reprends les distributions complètes correspondant à chaque scénario.
+
+```{r best, echo = FALSE}
+best_area <- data %>%
+    group_by(index) %>%
+    summarise_at(vars(propR:totalLockdownDuration), list(mean)) %>%
+    filter(totalLockdownDuration < 25 & peakHeight < 25 & propR < 40) %>%
+    select(index) %>%
+    inner_join(data)
+```
+
+### Distributions des 3 variables de sortie pour chaque scénario
+
+```{r distrib}
+plot_distrib <- best_area %>%
+    pivot_longer(cols = propR:totalLockdownDuration, names_to = "output", values_to = "value") %>%
+    # ggplot(aes(x = output, y = value, color = lockdownPauseDuration)) +
+    ggplot(aes(x = output, y = value)) +
+    geom_boxplot(aes(group = output)) +
+    scale_x_discrete(labels = c("taille pic", "% inf", "durée conf")) +
+    # facet_grid(lockdownStartingDate ~ lockdownDuration) +
+    facet_wrap(~ index) +
+    theme_bw()
+plot_distrib
+```
+
+Dans la plupart des cas les distributions sont relativement rammassées, sauf pour la figure en bas au milieu.
+
+### Paramètres d'entrée qui correspondent aux scénarios sélectionnés
+
+```{r input}
+plot_input_space <- best_area %>%
+    ggplot(aes(x = lockdownDuration, y = lockdownPauseDuration, color = lockdownStartingDate)) +
+    geom_point() +
+    scale_color_viridis_c(name = "Date début\nconfinement") +
+    labs(x = "Durée d'un confinement",
+         y = "Durée entre deux confinements") +
+    theme_bw()
+plot_input_space
+```
+
+Ici il y a une seule date de début du confinement sélectionnée (dès le deuxième pas de temps). Tous les points sauf un ont des confinements qui s'enchaînent très vite (peut-être nécessaire de regarder le nombre de confinements associés à ces points-là).
