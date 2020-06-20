@@ -1,7 +1,7 @@
 ---
 title: "Analyse des résultats de PSE"
-author: "Hélène Arduin"
-date: "19/06/2020"
+author: "Hélène Arduin & Etienne Delay"
+date: "20/06/2020"
 output: pdf_document
 ---
 
@@ -10,9 +10,9 @@ knitr::opts_chunk$set(echo = TRUE)
 
 library(tidyverse)
 
-setwd("~/Documents/CoVprehension/proto/confinement")
+setwd("~/github/Covprehention/proto/confinement")
 
-raw_data <- read_csv("data/replicated_post_pse.csv")
+raw_data <- read_csv("~/github/Covprehention/proto/confinement/data/replicated_post_pse.csv")
 
 vec_index <- c()
 for (i in 1:173) {
@@ -122,3 +122,43 @@ plot_input_space
 ```
 
 Ici il y a une seule date de début du confinement sélectionnée (dès le deuxième pas de temps). Tous les points sauf un ont des confinements qui s'enchaînent très vite (peut-être nécessaire de regarder le nombre de confinements associés à ces points-là).
+
+## Séléction de quelques focus
+
+On va se focaliser sur le points 66 qui a un nombre de jours de confinement de 16.5 et minimise les deux autres paramètres
+
+```{r}
+all <- data %>%
+    group_by(index) %>%
+    summarise_at(vars(propR:totalLockdownDuration), list(median))
+
+
+plot_foc1 <- ggplot() +
+    geom_point(data = all, aes(x = peakHeight, y = propR, color = totalLockdownDuration)) +
+    geom_label(data = all, aes(x = peakHeight, y = propR, label = index))+
+    # geom_density_2d(data = best_area,aes(x = peakHeight, y = propR), size=0.25, bins = 100) +
+    # geom_point(data = best_area, aes(x = peakHeight, y = propR), alpha = 0.2, shape=3) +
+    scale_x_continuous(breaks = seq(0, 100, 25), limits = c(0, 50)) +
+    scale_y_continuous(breaks = seq(0, 100, 25), limits = c(0, 50)) +
+    # scale_color_viridis_c(name = "Durée totale\nde confinement") +
+    labs(x = "Taille du pic épidémique",
+         y = "Proportion finale de gens infectés") +
+    theme_bw()
+plot_foc1
+
+sel <- best_area$index == 66
+plot_foc2 <- ggplot() +
+    geom_point(data = all, aes(x = peakHeight, y = propR, color = totalLockdownDuration)) +
+    geom_density_2d(data = best_area[sel,],aes(x = peakHeight, y = propR), size=0.25, bins = 10) +
+    geom_point(data = best_area[sel,], aes(x = peakHeight, y = propR), alpha = 0.2, shape=3) +
+    scale_x_continuous(breaks = seq(0, 100, 25), limits = c(0, 50)) +
+    scale_y_continuous(breaks = seq(0, 100, 25), limits = c(0, 50)) +
+    scale_color_viridis_c(name = "Durée totale\nde confinement") +
+    labs(x = "Taille du pic épidémique",
+         y = "Proportion finale de gens infectés") +
+    theme_bw()
+plot_foc2
+
+
+```
+
