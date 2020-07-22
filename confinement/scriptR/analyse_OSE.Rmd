@@ -1,0 +1,71 @@
+---
+title: "Exploration OSE confinement"
+author: "Delay, Hardin, Banos"
+date: "22/07/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+
+setwd("~/github/Covprehention/proto/confinement")
+
+raw_data <- read_csv("~/github/Covprehention/proto/confinement/data/population2900.csv")
+colnames(raw_data)[5] <- 'Jconfinement'
+
+raw_data$init_conf <- raw_data$init_conf / 4
+raw_data$duration_conf <- raw_data$duration_conf / 4
+raw_data$relesae_conf <- raw_data$relesae_conf / 4
+
+
+```
+
+## R Markdown
+Dans notre cas de figure, nous avons déjà utiliser PSE nous à déjà donner une idées des conditions optimums dans l'espace de sortie pour minimiser nos indicateurs, c.a.d. réduire la proportion de population (en fin de simulation) infecté, réduire la taille du pic épidemique maximal (le nombre max d'infecté simultanément), et réduire le nombre de jours de confinement (l'impact du confinement sur l'économie.
+
+On a voulu ici, fair tourner l'algorythme OSE (Origin Space Exploration) qui comme le disent les auteurs de la question 16, "permet de fixer l’espace de sortie que nous jugeons acceptable" et considérer toutes les simulations qui tombe dedans en explorant l'espace des entrées du modèle.
+
+Dans notre cas de figure l'espace des sorties que nous jugeons acceptable est le suivant : 
+
+* rester en dessous de 50 jours de confinement total
+* conserver 50% de la population saine à la fin des simulation
+
+Nous voulons identifier s'il existe des zones dans l'espace des entré qui mène systématiquement vers un espace des sorties sur un paramètres particulier.
+
+
+```{r OSE}
+plot_ose1 <- raw_data %>%
+    ggplot(aes(x = init_conf, y = duration_conf, color = Jconfinement)) +
+    geom_point() +
+    scale_y_continuous(breaks = seq(0, 100, 25), limits = c(0, 100)) +
+    scale_color_viridis_c(name = "J de confinement\ntotal") +
+    labs(x = "Début du confinement après le premier cas",
+         y = "Durée d'un confinement") +
+    theme_bw()
+plot_ose1
+
+plot_ose2 <- raw_data %>%
+    ggplot(aes(x = relesae_conf, y = duration_conf, color = Jconfinement)) +
+    geom_point() +
+    scale_y_continuous(breaks = seq(0, 100, 25), limits = c(0, 100)) +
+    scale_color_viridis_c(name = "Proportion finale\nde gens infectés") +
+    labs(x = "temps de relache entre deux confienement",
+         y = "Durée d'un confinement") +
+    theme_bw()
+plot_ose2
+
+
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
