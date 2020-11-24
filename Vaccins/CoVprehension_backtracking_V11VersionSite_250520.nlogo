@@ -21,6 +21,7 @@ globals [ ;;global parameters
   Ia ; Infected asymptomatic
   I ; Infected symptomatic
   R ; Recovered
+	V ; Vaccinated
 
   delay-before-test
   incubation-duration
@@ -81,6 +82,9 @@ globals [ ;;global parameters
   TESTING? ; secondary testing, primary infected is always tested
   FAMILY-LOCKDOWN?
   ;fixed-seed?
+	
+	initial-vaccinated-proportion
+	;efficacity-vaccine
 ]
 
 patches-own [wall]
@@ -90,7 +94,7 @@ breed [houses house]
 
 citizens-own
 [
-  epidemic-state; S, Ex, Ia, I or R
+  epidemic-state; S, Ex, Ia, I , R or V
   infection-date
   infection-source
   nb-other-infected
@@ -117,6 +121,7 @@ citizens-own
   family-infection?
   delayed-test
   to-be-tested
+	vaccinated
 ]
 
 houses-own
@@ -137,7 +142,8 @@ to setup-globals
   set Ia 2
   set I 3
   set R 4
-
+	set V 5
+	
   set delay-before-test  Temps-d'attente-pour-la-réalisation-du-test
   set nb-days-before-test-tagging-contacts Profondeur-temporelle-de-recherche-des-contacts
   set proportion-equiped Taux-de-couverture-de-l'application-de-traçage
@@ -156,6 +162,7 @@ to setup-globals
 
   set population-size  size_population
   set nb-house (population-size / 3)
+	
 
   set walking-angle 50
   set speed 1
@@ -177,7 +184,9 @@ to setup-globals
   set list-mean-contacts []
   set mean-mean-daily-contacts []
 
-
+	set	initial-vaccinated-proportion 75
+	;set efficacity-vaccine 0.90
+	
   ifelse SCENARIO = "Laisser-faire"[
     set REACTING? false
     set TRACING? false
@@ -198,10 +207,15 @@ to setup-globals
     set TRACING? true
     set TESTING? true
     set FAMILY-LOCKDOWN? false
+  ][ifelse SCENARIO = "Vaccin"[
+    set REACTING? false
+    set TRACING? false
+    set TESTING? false
+    set FAMILY-LOCKDOWN? false
   ][
     show "error"
     stop
-]]]]
+]]]]]
 
 
 end
@@ -265,7 +279,9 @@ to setup-population
    ]]]
 
   set-R-initialisation
+  set-vaccinated-initialisation-random
   set-equiped-initialisation
+
 end
 
 
@@ -326,6 +342,15 @@ to set-infected-initialisation-random
     become-exposed
   ]
 end
+
+;; vacciné <=> recovered ?
+;; quid si trop de Ex ?
+to set-vaccinated-initialisation-random
+  ask n-of (initial-vaccinated-proportion / 100 * population-size) citizens with [not (epidemic-state = Ex)][
+  	become-vaccinated
+  ]
+end
+
 
 to set-equiped-initialisation
   ask n-of (round (population-size * (Proportion-equiped / 100))) citizens[
@@ -440,7 +465,7 @@ end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 to get-virus [contact-source]
-  ifelse ( ([contagious?] of contact-source)  and (random-float 1 < (contagiousness contact-source)) ) [
+	ifelse ( ([contagious?] of contact-source)  and (random-float 1 < (contagiousness contact-source)) ) [
     become-exposed
     if lockdown? = 1[
       set total-nb-contagious-lockeddown total-nb-contagious-lockeddown + 1
@@ -659,6 +684,11 @@ end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;STATE TRANSITION PROCEDURES;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+to become-vaccinated
+	 set epidemic-state V
+	 set my-contagiousness 0
+	 set contagious? false
+end
 
 to become-exposed
   set epidemic-state Ex
@@ -758,6 +788,10 @@ to-report nb-Ex
   report count citizens with [epidemic-state = Ex ]
 end
 
+to-report nb-V
+  report count citizens with [epidemic-state = V ]
+end
+
 to-report nb-Inr
   report count citizens with [epidemic-state = Ia ]
 end
@@ -766,7 +800,7 @@ to-report nb-I
   report count citizens with [epidemic-state = I or epidemic-state = Ia ]
 end
 
-  to-report nb-R
+to-report nb-R
   report count citizens with [epidemic-state = R]
 end
 
