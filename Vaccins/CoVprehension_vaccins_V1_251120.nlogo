@@ -785,33 +785,34 @@ to-report unlock-time? [a-house]
   report [unlock-time] of a-house
 end
 
-to-report nb-S
-  report count citizens with [epidemic-state = S ]
-end
-
-to-report nb-Ir
-  report count citizens with [epidemic-state = I ]
-end
-
 to-report nb-Ex
   report count citizens with [epidemic-state = Ex ]
-end
-
-to-report nb-Inr
-  report count citizens with [epidemic-state = Ia ]
 end
 
 to-report nb-I
   report count citizens with [epidemic-state = I or epidemic-state = Ia ]
 end
 
+to-report nb-Inr
+  report count citizens with [epidemic-state = Ia ]
+end
+
+to-report nb-Ir
+  report count citizens with [epidemic-state = I ]
+end
+
 to-report nb-R
   report count citizens with [epidemic-state = R]
+end
+
+to-report nb-S
+  report count citizens with [epidemic-state = S ]
 end
 
 to-report nb-V
   report count citizens with [epidemic-state = V ]
 end
+
 
 to-report nb-non-S%
   report (population-size - nb-S) / population-size * 100
