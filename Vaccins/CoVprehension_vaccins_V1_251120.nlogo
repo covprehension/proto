@@ -1577,10 +1577,10 @@ Nb-columns
 Number
 
 SLIDER
-919
-833
-1153
-866
+826
+832
+1060
+865
 initial-vaccinated-proportion
 initial-vaccinated-proportion
 0
@@ -1592,10 +1592,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-919
-867
-1154
-900
+826
+866
+1061
+899
 vaccine-efficacy
 vaccine-efficacy
 0
@@ -1607,10 +1607,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-918
-899
-1156
-932
+825
+898
+1063
+931
 proportion-vaccinated-per-day
 proportion-vaccinated-per-day
 0
