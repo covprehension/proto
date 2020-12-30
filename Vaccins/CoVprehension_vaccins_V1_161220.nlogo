@@ -15,6 +15,13 @@
 ; proportion-var : var / something
 
 globals [ ;;global parameters
+
+  walking-angle
+  speed
+  probability-car-travel
+  population-size
+  nb-house
+
   ;epidemic symbolic constants
   S ; Susceptible
   Ex ; Exposed - Infected and incubating, but already contagious.
@@ -36,14 +43,11 @@ globals [ ;;global parameters
   Nb_contagious_initialisation
   quarantine-time
   initial-spread
-
-  population-size
-  nb-house
   probability-transmission
   probability-transmission-asymptomatic
-  walking-angle
-  speed
-  probability-car-travel
+  probability-hospitalized
+  symptom-to-hospital-duration ; the average delay between the first onset of symptoms and hospitalisation if needed.
+
   ;current-nb-new-infections-reported
   ;current-nb-new-infections-asymptomatic
   transparency
@@ -83,6 +87,7 @@ globals [ ;;global parameters
   FAMILY-LOCKDOWN?
   ;fixed-seed?
 	
+  the-hospital
 	;initial-vaccinated-proportion
 	;efficacity-vaccine
 ]
@@ -91,6 +96,8 @@ patches-own [wall]
 
 breed [citizens citizen]
 breed [houses house]
+breed [hospitals hospital]
+breed [graveyards graveyard]
 
 citizens-own
 [
@@ -121,7 +128,9 @@ citizens-own
   family-infection?
   delayed-test
   to-be-tested
-	vaccinated
+	vaccinated?
+  mobile?
+  hospitalized?
 ]
 
 houses-own
@@ -179,6 +188,9 @@ to setup-globals
   set probability-transmission R0-a-priori / ((Estimated-mean-mean-daily-contacts / nb-ticks-per-day)  * contagion-duration-tick) ; probability per tick
   set probability-transmission-asymptomatic probability-transmission / 2
 
+  set probability-hospitalized 0.07
+  set symptom-to-hospital-duration 7 * nb-ticks-per-day ; one week
+
   set contacts-to-warn-next no-turtles
   set contacts-to-warn no-turtles
   set list-mean-contacts []
@@ -224,13 +236,29 @@ to setup-walls
   ask patches with [abs(pxcor) = max-pxcor or abs(pycor) = max-pycor] [set wall 1]
 end
 
+to setup-hospital
+  create-hospitals 1[
+    setxy max-pxcor - 2  max-pycor - 2
+    set shape "building institution"
+    set size 5
+    set color white
+    set the-hospital self
+  ]
+end
+
 
 to setup-houses
   create-houses nb-house[
     move-to one-of patches with [wall = 0]
     set shape "house"
     fd random-float 0.5
-    setxy random-xcor random-ycor
+
+;**set houses coordinates outside the hospital**
+    setxy  random-xcor random-ycor
+    while [(xcor > (max-pxcor - 5)) and (ycor > (max-pycor - 5))][
+      setxy  random-xcor random-ycor
+    ]
+
     set size 2
     set color lput transparency extract-rgb  white
     set my-humans []
@@ -256,6 +284,7 @@ to setup-population
       set my-humans lput me my-humans
     ]
     move-to my-house
+    set mobile? true
     set liste-contacts []
     set liste-contact-dates []
     set list-date-test []
@@ -269,6 +298,7 @@ to setup-population
     set detected? false
     set contagious? false
     set resistant? false ; resistance is really "defined" when the citizen is Exposed to the virus
+    set hospitalized? false
   ]
     ifelse initial-spread = "Aléatoire"[
     set-infected-initialisation-random
@@ -370,6 +400,7 @@ to setup
   reset-ticks
   setup-globals
   setup-walls
+  setup-hospital
   setup-houses
   setup-population
 end
@@ -437,10 +468,7 @@ end
 
 to move-citizens
   ask citizens[
-    ifelse lockdown? = 1[
-
-
-    ][
+    if mobile? [
       let nighttime? (ticks mod nb-ticks-per-day) = 0
       ifelse nighttime?[
         move-to my-house
@@ -497,7 +525,11 @@ to update-epidemics
         [ become-asymptomatic-infected ]
         [ become-infected ]
     ]
-
+    if ( (ticks - infection-date) = (incubation-duration * nb-ticks-per-day) + symptom-to-hospital-duration) [
+      if random-float 1 < probability-hospitalized [
+        hospitalize
+      ]
+    ]
     if contagion-counter <= 0 [
       become-recovered
     ]
@@ -594,6 +626,7 @@ end
 
 to lockdown
   set lockdown? 1
+  set mobile? false
   set nb-lockdown nb-lockdown + 1 ;
   if nb-lockdown > max-nb-lockdown[
     set max-nb-lockdown nb-lockdown
@@ -628,12 +661,19 @@ to update-lockdown
         foreach my-humans[
           [my-human] -> ask my-human [
             set lockdown? 0
+            set mobile? true
           ]
         ]
       ]
       ;show ("Freedom")
     ]
   ]
+end
+
+to hospitalize
+  set hospitalized? true
+  set mobile? false
+  move-to the-hospital
 end
 
 to update-vaccinated
@@ -813,6 +853,9 @@ to-report nb-V
   report count citizens with [epidemic-state = V ]
 end
 
+to-report nb-H
+  report count citizens with [hospitalized?]
+end
 
 to-report nb-non-S%
   report (population-size - nb-S) / population-size * 100
@@ -1088,6 +1131,7 @@ PENS
 "Guéris" 1.0 0 -13791810 true "" "\nif population-size > 0 [plotxy (ticks / nb-ticks-per-day) (nb-R / population-size  * 100)]"
 "Confinés" 1.0 0 -8630108 true "" "if population-size > 0 [plotxy (ticks / nb-ticks-per-day) lockdowned%] "
 "Vaccinés" 1.0 0 -6759204 true "" "if population-size > 0 [plotxy (ticks / nb-ticks-per-day) (nb-V / population-size * 100)]"
+"Hospitalisés" 1.0 0 -7500403 true "" "if population-size > 0 [plotxy (ticks / nb-ticks-per-day) (nb-H / population-size * 100)]"
 
 MONITOR
 897
@@ -1102,9 +1146,9 @@ nb-non-S%
 
 CHOOSER
 354
-844
+834
 627
-889
+879
 SCENARIO
 SCENARIO
 "Laisser-faire" "Confinement simple" "Traçage et confinement systématique" "Traçage et confinement sélectif"
@@ -1133,10 +1177,10 @@ MaxI%
 11
 
 SLIDER
-354
-904
-626
-937
+1403
+64
+1675
+97
 Probabilité-que-le-test-soit-efficace
 Probabilité-que-le-test-soit-efficace
 0
@@ -1148,10 +1192,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-354
-939
-627
-972
+1403
+99
+1676
+132
 Probabilité-de-respect-du-confinement
 Probabilité-de-respect-du-confinement
 0
@@ -1163,10 +1207,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-3
-939
-353
-972
+1409
+610
+1759
+643
 Profondeur-temporelle-de-recherche-des-contacts
 Profondeur-temporelle-de-recherche-des-contacts
 1
@@ -1178,10 +1222,10 @@ jours
 HORIZONTAL
 
 SLIDER
-3
-869
-353
-902
+1410
+580
+1760
+613
 Taux-de-couverture-de-l'application-de-traçage
 Taux-de-couverture-de-l'application-de-traçage
 0
@@ -1193,10 +1237,10 @@ Taux-de-couverture-de-l'application-de-traçage
 HORIZONTAL
 
 SLIDER
-3
-904
-354
-937
+1402
+32
+1753
+65
 Temps-d'attente-pour-la-réalisation-du-test
 Temps-d'attente-pour-la-réalisation-du-test
 0
@@ -1446,33 +1490,11 @@ proportion-non-contagious-lockeddown%
 1
 11
 
-MONITOR
-1461
-138
-1757
-183
-NIL
-count citizens with [contact-order = 2]
-17
-1
-11
-
-MONITOR
-1477
-343
-1640
-388
-Record de confinements
-max-nb-lockdown
-17
-1
-11
-
 BUTTON
-1409
-596
-1472
-629
+813
+827
+889
+876
 Step
 go
 NIL
@@ -1485,44 +1507,11 @@ NIL
 NIL
 1
 
-MONITOR
-1411
-222
-1793
-267
-NIL
-count citizens with [epidemic-state = I and lockdown? = 1]
-17
-1
-11
-
-MONITOR
-1436
-36
-1686
-81
-NIL
-total-contagious-lockeddown-tracked
-17
-1
-11
-
-MONITOR
-1510
-461
-1684
-506
-NIL
-total-lockeddown-tracked
-17
-1
-11
-
 SWITCH
-1524
-732
-1653
-765
+891
+831
+1020
+864
 fixed-seed?
 fixed-seed?
 1
@@ -1530,10 +1519,10 @@ fixed-seed?
 -1000
 
 SLIDER
-1459
-665
-1729
-698
+1138
+931
+1408
+964
 probability-asymptomatic-infection
 probability-asymptomatic-infection
 0
@@ -1545,20 +1534,20 @@ NIL
 HORIZONTAL
 
 CHOOSER
-1435
-280
-1661
-325
+815
+881
+1041
+926
 Repartition-initiale-des-malades
 Repartition-initiale-des-malades
 "Concentrés" "Bien répartis" "Aléatoire"
 1
 
 INPUTBOX
-1494
-544
-1643
-604
+900
+923
+979
+983
 Nb-lines
 3.0
 1
@@ -1566,10 +1555,10 @@ Nb-lines
 Number
 
 INPUTBOX
-1495
-600
-1644
-660
+817
+924
+901
+984
 Nb-columns
 3.0
 1
@@ -1577,10 +1566,10 @@ Nb-columns
 Number
 
 SLIDER
-826
-832
-1060
-865
+1170
+822
+1404
+855
 initial-vaccinated-proportion
 initial-vaccinated-proportion
 0
@@ -1592,10 +1581,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-826
-866
-1061
-899
+1170
+856
+1405
+889
 vaccine-efficacy
 vaccine-efficacy
 0
@@ -1607,19 +1596,90 @@ NIL
 HORIZONTAL
 
 SLIDER
-825
-898
-1063
-931
+1169
+888
+1406
+921
 proportion-vaccinated-per-day
 proportion-vaccinated-per-day
 0
 10
-1.0
+0.0
 0.5
 1
 NIL
 HORIZONTAL
+
+TEXTBOX
+1405
+10
+1555
+28
+Tests et confinement
+13
+0.0
+0
+
+TEXTBOX
+1410
+557
+1560
+575
+TousAntiCovid
+13
+0.0
+0
+
+TEXTBOX
+1405
+210
+1555
+228
+Gestes barrières
+13
+0.0
+0
+
+SLIDER
+1401
+233
+1649
+266
+Efficacité-des-gestes-barrières
+Efficacité-des-gestes-barrières
+0
+100
+50.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1401
+266
+1632
+299
+Usage-des-gestes-barrières
+Usage-des-gestes-barrières
+0
+100
+50.0
+1
+1
+NIL
+HORIZONTAL
+
+MONITOR
+1441
+719
+1529
+764
+Hospitalisés
+nb-H
+17
+1
+11
 
 @#$#@#$#@
 ## DESCRIPTION
@@ -1712,6 +1772,38 @@ Circle -7500403 true true 110 127 80
 Circle -7500403 true true 110 75 80
 Line -7500403 true 150 100 80 30
 Line -7500403 true 150 100 220 30
+
+building institution
+false
+0
+Rectangle -7500403 true true 0 60 300 270
+Rectangle -16777216 true false 130 196 168 256
+Rectangle -16777216 false false 0 255 300 270
+Polygon -7500403 true true 0 60 150 15 300 60
+Polygon -16777216 false false 0 60 150 15 300 60
+Circle -1 true false 135 26 30
+Circle -16777216 false false 135 25 30
+Rectangle -16777216 false false 0 60 300 75
+Rectangle -16777216 false false 218 75 255 90
+Rectangle -16777216 false false 218 240 255 255
+Rectangle -16777216 false false 224 90 249 240
+Rectangle -16777216 false false 45 75 82 90
+Rectangle -16777216 false false 45 240 82 255
+Rectangle -16777216 false false 51 90 76 240
+Rectangle -16777216 false false 90 240 127 255
+Rectangle -16777216 false false 90 75 127 90
+Rectangle -16777216 false false 96 90 121 240
+Rectangle -16777216 false false 179 90 204 240
+Rectangle -16777216 false false 173 75 210 90
+Rectangle -16777216 false false 173 240 210 255
+Rectangle -16777216 false false 269 90 294 240
+Rectangle -16777216 false false 263 75 300 90
+Rectangle -16777216 false false 263 240 300 255
+Rectangle -16777216 false false 0 240 37 255
+Rectangle -16777216 false false 6 90 31 240
+Rectangle -16777216 false false 0 75 37 90
+Line -16777216 false 112 260 184 260
+Line -16777216 false 105 265 196 265
 
 butterfly
 true
