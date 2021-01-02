@@ -145,6 +145,13 @@ houses-own
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 to setup-globals
+
+  set transparency 145
+  ;set fixed-seed? true
+  if fixed-seed?[
+    random-seed 30
+  ]
+
   ;symbolic constants
   set S 0
   set Ex 1
@@ -153,6 +160,7 @@ to setup-globals
   set R 4
 	set V 5
 	
+  ;traductions
   set delay-before-test  Temps-d'attente-pour-la-réalisation-du-test
   set nb-days-before-test-tagging-contacts Profondeur-temporelle-de-recherche-des-contacts
   set proportion-equiped Taux-de-couverture-de-l'application-de-traçage
@@ -164,19 +172,16 @@ to setup-globals
   set Nb_contagious_initialisation Nombre-de-cas-au-départ
   set initial-spread Repartition-initiale-des-malades
 
-  ;set fixed-seed? true
-  if fixed-seed?[
-    random-seed 30
-  ]
-
   set population-size  size_population
   set nb-house (population-size / 3)
 	
-
   set walking-angle 50
   set speed 1
   set probability-car-travel 0.2
-  set transparency 145
+
+ ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ ;;;;;;;;epidemics characteristics;;;;;;;;;;;
+ ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   set nb-ticks-per-day 4
   set incubation-duration 4
   set infection-duration 14
@@ -191,13 +196,16 @@ to setup-globals
   set probability-hospitalized 0.07
   set symptom-to-hospital-duration 7 * nb-ticks-per-day ; one week
 
+  ;set initial-vaccinated-proportion 75
+	;set efficacity-vaccine 0.90
+
+ ;;;;;;;;Tracing app initialisation;;;;;;;;;;;
   set contacts-to-warn-next no-turtles
   set contacts-to-warn no-turtles
   set list-mean-contacts []
   set mean-mean-daily-contacts []
 
-	;set	initial-vaccinated-proportion 75
-	;set efficacity-vaccine 0.90
+
 	
   ifelse SCENARIO = "Laisser-faire"[
     set REACTING? false
