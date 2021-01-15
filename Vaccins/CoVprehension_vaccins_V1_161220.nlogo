@@ -47,6 +47,7 @@ globals [ ;;global parameters
   probability-transmission-asymptomatic
   probability-hospitalized
   symptom-to-hospital-duration ; the average delay between the first onset of symptoms and hospitalisation if needed.
+  probability-death
 
   ;current-nb-new-infections-reported
   ;current-nb-new-infections-asymptomatic
@@ -196,6 +197,8 @@ to setup-globals
   set probability-hospitalized 0.07
   set symptom-to-hospital-duration 7 * nb-ticks-per-day ; one week
 
+  set probability-death 0.016
+
   ;set initial-vaccinated-proportion 75
 	;set efficacity-vaccine 0.90
 
@@ -313,7 +316,7 @@ to setup-population
   ][ifelse initial-spread = "Concentrés"[
     set-infected-initialisation-concentrated
   ][if initial-spread = "Bien répartis"[
-    set-infected-intialisation-balanced
+    set-infected-initialisation-balanced
    ]]]
 
   set-R-initialisation
@@ -331,7 +334,7 @@ to set-infected-initialisation-concentrated ; all contagious people are initiali
   ]
 end
 
-to set-infected-intialisation-balanced
+to set-infected-initialisation-balanced
   ;let world-width max-pxcor - min-pxcor
   ;let world-height max-pycor - min-pycor
   let block-width int (world-width / nb-columns)
@@ -1641,9 +1644,9 @@ TousAntiCovid
 TEXTBOX
 1405
 210
-1555
-228
-Gestes barrières
+1581
+242
+Gestes barrières (TODO)
 13
 0.0
 0
