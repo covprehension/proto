@@ -48,6 +48,7 @@ globals [ ;;global parameters
   probability-hospitalized
   symptom-to-hospital-duration ; the average delay between the first onset of symptoms and hospitalisation if needed.
   probability-death
+  protective-behaviour-efficiency ; masks, physical distanciation, hygiene... efficiency as an infectiousness divider
 
   ;current-nb-new-infections-reported
   ;current-nb-new-infections-asymptomatic
@@ -134,6 +135,7 @@ citizens-own
   mobile?
   hospitalized?
   dead?
+  protectivity ; easier than a cleaner bollean protectivity? + tests all the time the altered infection probability would be needed
 ]
 
 houses-own
@@ -174,6 +176,7 @@ to setup-globals
   set size_population 2000
   set Nb_contagious_initialisation Nombre-de-cas-au-départ
   set initial-spread Repartition-initiale-des-malades
+  set protective-behaviour-efficiency Efficacité-des-gestes-barrières
 
   set population-size  size_population
   set nb-house (population-size / 3)
@@ -323,6 +326,11 @@ to setup-population
     set hospitalized? false
     set dead? false
     set vaccinated? false
+    ifelse random-float 1 < (Usage-des-gestes-barrières / 100) [
+      set protectivity protective-behaviour-efficiency / 100
+    ][
+      set protectivity 0
+    ]
   ]
     ifelse initial-spread = "Aléatoire"[
     set-infected-initialisation-random
@@ -522,7 +530,8 @@ end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 to get-virus [contact-source]
-	ifelse ( ([contagious?] of contact-source)  and (random-float 1 < (contagiousness contact-source)) and not vaccinated?) [
+  let real-contagiousness ( (contagiousness contact-source) * (1 - [protectivity] of contact-source) * (1 - (protectivity * 0.5)) ) ; good protection from others being careful, some protection from being careful (masks)
+	ifelse ( ([contagious?] of contact-source)  and (random-float 1 < real-contagiousness) and not vaccinated?) [
     become-exposed
     if lockdown? = 1[
       set total-nb-contagious-lockeddown total-nb-contagious-lockeddown + 1
@@ -1554,7 +1563,7 @@ SWITCH
 864
 fixed-seed?
 fixed-seed?
-1
+0
 1
 -1000
 
@@ -1581,7 +1590,7 @@ CHOOSER
 Repartition-initiale-des-malades
 Repartition-initiale-des-malades
 "Concentrés" "Bien répartis" "Aléatoire"
-1
+0
 
 INPUTBOX
 900
@@ -1713,7 +1722,7 @@ HORIZONTAL
 MONITOR
 1441
 719
-1529
+1512
 764
 Hospitalisés
 nb-H
@@ -1722,13 +1731,35 @@ nb-H
 11
 
 MONITOR
-1486
-818
-1543
-863
+1442
+763
+1512
+808
 Morts
 nb-D
 17
+1
+11
+
+MONITOR
+1510
+719
+1593
+764
+% Hospitalisés
+nb-H / population-size * 100
+1
+1
+11
+
+MONITOR
+1510
+763
+1594
+808
+% Morts
+nb-D / population-size * 100
+1
 1
 11
 
