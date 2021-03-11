@@ -785,33 +785,34 @@ to-report unlock-time? [a-house]
   report [unlock-time] of a-house
 end
 
-to-report nb-S
-  report count citizens with [epidemic-state = S ]
-end
-
-to-report nb-Ir
-  report count citizens with [epidemic-state = I ]
-end
-
 to-report nb-Ex
   report count citizens with [epidemic-state = Ex ]
-end
-
-to-report nb-Inr
-  report count citizens with [epidemic-state = Ia ]
 end
 
 to-report nb-I
   report count citizens with [epidemic-state = I or epidemic-state = Ia ]
 end
 
+to-report nb-Inr
+  report count citizens with [epidemic-state = Ia ]
+end
+
+to-report nb-Ir
+  report count citizens with [epidemic-state = I ]
+end
+
 to-report nb-R
   report count citizens with [epidemic-state = R]
+end
+
+to-report nb-S
+  report count citizens with [epidemic-state = S ]
 end
 
 to-report nb-V
   report count citizens with [epidemic-state = V ]
 end
+
 
 to-report nb-non-S%
   report (population-size - nb-S) / population-size * 100
@@ -1576,10 +1577,10 @@ Nb-columns
 Number
 
 SLIDER
-919
-833
-1153
-866
+826
+832
+1060
+865
 initial-vaccinated-proportion
 initial-vaccinated-proportion
 0
@@ -1591,10 +1592,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-919
-867
-1154
-900
+826
+866
+1061
+899
 vaccine-efficacy
 vaccine-efficacy
 0
@@ -1606,10 +1607,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-918
-899
-1156
-932
+825
+898
+1063
+931
 proportion-vaccinated-per-day
 proportion-vaccinated-per-day
 0
